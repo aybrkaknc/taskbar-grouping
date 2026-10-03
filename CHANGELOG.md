@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The popup is visible from its first frame.** The open animation faded in from fully transparent over 200 ms, and it could only start once the first frame had been drawn — several hundred milliseconds after the click. That first frame therefore showed nothing, and the popup became recognisable only part-way through the fade. It now starts half-opaque at 90 % size and settles in 110 ms, so the popup is on screen with the first frame and finished about 90 ms sooner. The 500 ms safety net that snaps a stuck popup to its final appearance now triggers on anything short of that appearance; with a half-opaque start, its old "still nearly invisible" test would never have fired again. Turning *Enable popup animations* off behaves as before.
+
 ### Fixed
 
 - **Popup height grows with the launch-failure strip.** When a launch failed, the red error strip docked to the bottom of the popup without changing `Window.Height`, so it stole space from the fixed 96 px tiles and clipped the bottom row. Height now comes from measuring the popup chrome, clamped to `MinHeight`/`MaxHeight`, and placement is refreshed so the taller popup still clears the taskbar.
