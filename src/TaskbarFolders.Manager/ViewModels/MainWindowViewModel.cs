@@ -49,7 +49,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnSelectedGroupChanged(GroupListItemViewModel? value)
     {
         Editor.Bind(value);
+        EditedGroupName = value?.Name ?? string.Empty;
+        RenameGroupCommand.NotifyCanExecuteChanged();
     }
+
+    /// <summary>
+    /// Pending name for <see cref="RenameGroupCommand"/>; bound to the editor header. Follows
+    /// the selection until the user edits it.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RenameGroupCommand))]
+    private string _editedGroupName = string.Empty;
 
     /// <summary>Window title shown in the chrome.</summary>
     [ObservableProperty]
@@ -149,14 +159,79 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _logger?.LogInformation("Deleted group {Id}.", group.Id);
     }
 
+    private bool CanRenameGroup()
+    {
+        var trimmed = EditedGroupName?.Trim();
+        return SelectedGroup is not null
+            && !string.IsNullOrEmpty(trimmed)
+            && !string.Equals(trimmed, SelectedGroup.Name, StringComparison.Ordinal);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRenameGroup))]
+    private async Task RenameGroupAsync()
+    {
+        var group = SelectedGroup;
+        var trimmed = EditedGroupName?.Trim();
+        if (group is null || string.IsNullOrEmpty(trimmed) ||
+            string.Equals(trimmed, group.Name, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        // Only the display name changes. The id — and with it the AUMID, the icon and the
+        // shortcut paths — stays, which is what keeps an existing taskbar pin working.
+        var previousName = group.Name;
+        group.Name = trimmed;
+        try
+        {
+            await _store.SaveAsync(group.Config).ConfigureAwait(true);
+        }
+        catch
+        {
+            group.Name = previousName;
+            throw;
+        }
+
+        EditedGroupName = trimmed;
+        RenameGroupCommand.NotifyCanExecuteChanged();
+        MoveToAlphabeticalPosition(group);
+
+        // Rewrites the shortcut and the Start Menu anchor under the new name; the anchor
+        // written under the old name is removed once its replacement exists.
+        await _syncService.SyncAsync(group.Config).ConfigureAwait(true);
+
+        _logger?.LogInformation("Renamed group {Id} from '{Old}' to '{New}'.", group.Id, previousName, trimmed);
+    }
+
     private void InsertAlphabetically(GroupListItemViewModel item)
     {
-        var index = 0;
-        while (index < Groups.Count &&
-               StringComparer.CurrentCultureIgnoreCase.Compare(Groups[index].Name, item.Name) < 0)
+        Groups.Insert(AlphabeticalIndexFor(item), item);
+    }
+
+    private void MoveToAlphabeticalPosition(GroupListItemViewModel item)
+    {
+        // Move rather than remove-and-insert: removing the selected item would push a null
+        // selection through the ListBox binding and rebuild the editor for nothing.
+        var current = Groups.IndexOf(item);
+        var target = AlphabeticalIndexFor(item);
+        if (current >= 0 && current != target)
         {
-            index++;
+            Groups.Move(current, target);
         }
-        Groups.Insert(index, item);
+    }
+
+    /// <summary>Index <paramref name="item"/> belongs at among the other groups.</summary>
+    private int AlphabeticalIndexFor(GroupListItemViewModel item)
+    {
+        var index = 0;
+        foreach (var other in Groups)
+        {
+            if (!ReferenceEquals(other, item) &&
+                StringComparer.CurrentCultureIgnoreCase.Compare(other.Name, item.Name) < 0)
+            {
+                index++;
+            }
+        }
+        return index;
     }
 }

@@ -91,6 +91,20 @@ public partial class MainWindow : Window
         }
     }
 
+    private void GroupName_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        if (DataContext is MainWindowViewModel vm && vm.RenameGroupCommand.CanExecute(null))
+        {
+            vm.RenameGroupCommand.Execute(null);
+            e.Handled = true;
+        }
+    }
+
     private void Editor_PreviewDragOver(object sender, DragEventArgs e)
     {
         var hasFiles = e.Data.GetDataPresent(DataFormats.FileDrop);

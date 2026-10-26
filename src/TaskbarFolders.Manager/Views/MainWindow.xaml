@@ -95,7 +95,25 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding BoundItem.Name}" FontSize="28" FontWeight="Light" />
+                        <!-- Rename lives on MainWindowViewModel (it owns the sidebar order),
+                             so these two bind past the Editor DataContext to the window's. -->
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right"
+                                    Content="Rename"
+                                    Margin="8,0,16,0"
+                                    Padding="12,4"
+                                    VerticalAlignment="Center"
+                                    ToolTip="Saves the name typed on the left. Change the name to enable this."
+                                    ToolTipService.ShowOnDisabled="True"
+                                    Command="{Binding DataContext.RenameGroupCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
+                            <TextBox x:Name="GroupNameBox"
+                                     FontSize="22" FontWeight="Light"
+                                     Padding="4,2"
+                                     VerticalContentAlignment="Center"
+                                     ToolTip="Group name — edit and press Enter to rename"
+                                     Text="{Binding DataContext.EditedGroupName, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}"
+                                     KeyDown="GroupName_KeyDown" />
+                        </DockPanel>
                         <TextBlock Text="{Binding BoundItem.Id}" FontSize="11" Foreground="{DynamicResource ForegroundSubtle}" Margin="0,4,0,0" />
                     </StackPanel>
                     <Border Grid.Column="1"

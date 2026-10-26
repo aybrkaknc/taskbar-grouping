@@ -155,6 +155,8 @@ Das Fenster hat keine Tastaturbedienung: `Esc` schließt es nicht, und beim Öff
 
 Wählen Sie eine Gruppe aus, um Programme hinzuzufügen oder zu entfernen. Jede Änderung wird sofort gespeichert, Symbol und Verknüpfung werden neu erzeugt.
 
+**Umbenennen:** Gruppe auswählen, den Namen oben im rechten Bereich ändern und auf **Rename** klicken oder `Enter` drücken. **Rename** bleibt ausgegraut, solange der Name dem bisherigen entspricht. Die Liste links sortiert sich neu, Verknüpfung und Startmenü-Eintrag tragen danach den neuen Namen. Eine bereits angeheftete Kachel funktioniert weiter — sie gehört zur Gruppe, nicht zu ihrem Namen.
+
 **Löschen:** Rechtsklick auf die Gruppe in der Liste links → **Delete group** → bestätigen. Damit verschwinden Konfiguration, Symbol, Verknüpfung und der Startmenü-Eintrag der Gruppe.
 
 > **Die Kachel in der Taskleiste bleibt dabei bestehen.** Klicken Sie sie mit der rechten Maustaste an und wählen Sie **Von Taskleiste lösen**. Die Sicherheitsabfrage weist Sie darauf hin.
@@ -215,7 +217,7 @@ Ausführlicher, mit Zuordnung von Protokollzeilen zu Ursachen: [Troubleshooting]
 
 Keine Fehler, sondern bewusste oder noch offene Grenzen:
 
-- Gruppen lassen sich **nicht umbenennen**, Programme nicht umsortieren, Symbole nicht selbst wählen, Startparameter nicht setzen.
+- Programme lassen sich **nicht umsortieren**, Symbole nicht selbst wählen, Startparameter nicht setzen.
 - Das Aufklapp-Fenster hat **keine Tastaturbedienung**.
 - Das Aufklapp-Fenster richtet die Textfarbe nach Ihrem Windows-Erscheinungsbild, nicht nach dem Hintergrundbild. Seit v0.4.7 bekommen die Namen eine Kontur in der Gegenfarbe und bleiben dadurch in jedem Fall lesbar — auf einem gleich hellen Hintergrund wirken sie allerdings umrandet statt gestochen scharf.
 - Es gibt **keine ARM64-Fassung**.

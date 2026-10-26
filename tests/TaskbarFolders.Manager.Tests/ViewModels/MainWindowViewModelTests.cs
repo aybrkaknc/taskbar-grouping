@@ -44,14 +44,17 @@ public class MainWindowViewModelTests
     private static MainWindowViewModel CreateSut(Mock<IGroupConfigStore> store) =>
         CreateSut(store, alwaysConfirm: true);
 
-    private static MainWindowViewModel CreateSut(Mock<IGroupConfigStore> store, bool alwaysConfirm)
+    private static MainWindowViewModel CreateSut(
+        Mock<IGroupConfigStore> store,
+        bool alwaysConfirm,
+        IGroupSyncService? syncService = null)
     {
         var confirmation = new Mock<IUserConfirmation>();
         confirmation.Setup(c => c.Confirm(It.IsAny<string>(), It.IsAny<string>())).Returns(alwaysConfirm);
         return new MainWindowViewModel(
             store.Object,
             CreateEditor(store.Object),
-            Mock.Of<IGroupSyncService>(),
+            syncService ?? Mock.Of<IGroupSyncService>(),
             confirmation.Object);
     }
 
@@ -253,5 +256,84 @@ public class MainWindowViewModelTests
 
         sut.Groups.Should().HaveCount(1, "user declined the confirmation prompt");
         store.Verify(s => s.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SelectingAGroup_SeedsTheEditableName()
+    {
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+
+        sut.SelectedGroup = sut.Groups[0];
+
+        sut.EditedGroupName.Should().Be("Apps");
+        sut.RenameGroupCommand.CanExecute(null).Should().BeFalse("nothing has been changed yet");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("Apps")]
+    [InlineData("  Apps  ")]
+    public async Task RenameGroupCommand_StaysDisabled_ForBlankOrUnchangedName(string name)
+    {
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+        sut.SelectedGroup = sut.Groups[0];
+
+        sut.EditedGroupName = name;
+
+        sut.RenameGroupCommand.CanExecute(null).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RenameGroupAsync_PersistsResortsAndResyncs_KeepingIdentity()
+    {
+        var store = CreateStoreWith(
+            new GroupConfig { Id = "a", GroupName = "Apps" },
+            new GroupConfig { Id = "b", GroupName = "Browsers" },
+            new GroupConfig { Id = "c", GroupName = "code" });
+        var sync = new Mock<IGroupSyncService>();
+        var sut = CreateSut(store, alwaysConfirm: true, sync.Object);
+        await sut.LoadGroupsAsync();
+        var renamed = sut.Groups[0];
+        sut.SelectedGroup = renamed;
+
+        sut.EditedGroupName = "  Zebra  ";
+        sut.RenameGroupCommand.CanExecute(null).Should().BeTrue();
+        await sut.RenameGroupCommand.ExecuteAsync(null);
+
+        renamed.Name.Should().Be("Zebra");
+        renamed.Config.GroupName.Should().Be("Zebra");
+        renamed.Id.Should().Be("a", "the id carries the AUMID an existing pin depends on");
+        store.Verify(s => s.SaveAsync(
+            It.Is<GroupConfig>(c => c.Id == "a" && c.GroupName == "Zebra"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        sync.Verify(s => s.SyncAsync(renamed.Config, It.IsAny<CancellationToken>()), Times.Once);
+        sut.Groups.Select(g => g.Name).Should().Equal("Browsers", "code", "Zebra");
+        sut.SelectedGroup.Should().BeSameAs(renamed, "a rename must not drop the selection");
+        sut.RenameGroupCommand.CanExecute(null).Should().BeFalse("the saved name is now the current one");
+    }
+
+    [Fact]
+    public async Task RenameGroupAsync_RestoresName_WhenSaveFails()
+    {
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });
+        store.Setup(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()))
+             .ThrowsAsync(new System.IO.IOException("locked"));
+        var sync = new Mock<IGroupSyncService>();
+        var sut = CreateSut(store, alwaysConfirm: true, sync.Object);
+        await sut.LoadGroupsAsync();
+        sut.SelectedGroup = sut.Groups[0];
+        sut.EditedGroupName = "Renamed";
+
+        var act = () => sut.RenameGroupCommand.ExecuteAsync(null);
+
+        await act.Should().ThrowAsync<System.IO.IOException>();
+        sut.Groups[0].Name.Should().Be("Apps");
+        sut.Groups[0].Config.GroupName.Should().Be("Apps");
+        sync.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }
