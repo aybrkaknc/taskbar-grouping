@@ -84,9 +84,11 @@
         </Style>
     </Window.Resources>
 
-    <!-- Layout-only Border: keeps Padding + TextElement.Foreground inheritance but paints nothing.
-         AllowsTransparency on the Window plus Brushes.Transparent here means only the icons (and
-         the per-tile hover highlight) are visible — the popup chrome disappears entirely.
+    <!-- Layout Border: keeps Padding + TextElement.Foreground inheritance. It paints nothing on
+         Windows 11 22H2+, where PopupWindow swaps the window to a non-layered one and DWM draws
+         acrylic behind it; elsewhere code-behind gives it the PopupFallbackBackground panel.
+         AllowsTransparency="True" above is that fallback mode's setting and is switched off in
+         code when the backdrop is used.
          x:Name="ChromeRoot" + Opacity="0" default: storyboard fades the *element* in instead
          of Window.Opacity to dodge the Win11 24H2 paint-skip bug noted above.
          The open-animation ScaleTransform lives here (ScaleX/Y=0.5 default = the animation's

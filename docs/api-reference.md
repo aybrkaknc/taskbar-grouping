@@ -183,7 +183,9 @@ Wraps `SHChangeNotify` so the shell notices a newly written Start menu shortcut.
 
 ### Interop
 
-`WindowBackdrop.TryApply(IntPtr hwnd, WindowBackdropKind kind)` requests a DWM system backdrop. Only `Mica` is used, only on the Manager window; a failure is ignored and the window keeps solid brushes.
+`WindowBackdrop.TryApply(IntPtr hwnd, WindowBackdropKind kind)` requests a DWM system backdrop: `Mica` on the Manager window, `Acrylic` on the popup. A Manager failure is ignored and the window keeps solid brushes; a popup failure switches it to its fallback panel.
+
+`WindowBackdrop.IsSupported` is true from Windows 11 22H2 (build 22621), the first build that honours the backdrop attribute. The popup reads it before its HWND exists, because the backdrop only paints behind a non-layered window. `WindowBackdrop.TrySetRoundedCorners(IntPtr hwnd)` sets `DWMWA_WINDOW_CORNER_PREFERENCE` to round. All three members return `false` rather than throw on a zero handle or an older Windows.
 
 ## TaskbarFolders.Manager
 

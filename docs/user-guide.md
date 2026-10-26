@@ -84,9 +84,9 @@ You can open that folder yourself at any time with **Show shortcut…**.
 
 ## Using a group
 
-Click the pinned tile. A popup opens next to the taskbar, anchored near the tile you clicked, showing every app in the group.
+Click the pinned tile. A popup opens next to the taskbar, anchored near the tile you clicked, showing every app in the group. On Windows 11 22H2 and later it sits on a blurred, translucent glass panel in your theme's tone, like Windows' own flyouts. Older versions get a plain translucent panel.
 
-![The popup, showing only icons and labels](../assets/screenshots/popup.png)
+![The popup](../assets/screenshots/popup.png)
 
 - **Click an icon** to launch it. The popup closes.
 - **If a launch fails**, the popup stays open and shows an error strip naming the app.

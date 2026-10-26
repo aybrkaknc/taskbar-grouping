@@ -2,9 +2,12 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Shell;
 using System.Windows.Threading;
+using TaskbarFolders.Core.Interop;
 using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Shared.Configuration;
@@ -43,6 +46,7 @@ public partial class PopupWindow : Window
     private readonly PopupViewModel _viewModel;
     private readonly ITaskbarPositionHelper _positionHelper;
     private readonly AppSettings _settings;
+    private readonly bool _useSystemBackdrop;
     private DispatcherTimer? _safetyTimer;
     private DispatcherTimer? _activationFallbackTimer;
     private bool _wasActivated;
@@ -63,6 +67,32 @@ public partial class PopupWindow : Window
         _settings = settings;
         DataContext = viewModel;
 
+        // A system backdrop is composed by DWM behind the window, and DWM never paints one
+        // behind a layered window — AllowsTransparency=True is exactly that. So the window
+        // mode has to be chosen here, before the HWND exists. Where the backdrop is
+        // available the popup becomes an ordinary window whose frame covers the whole
+        // client area (the WindowChrome below), and DWM fills it with acrylic. Elsewhere it
+        // stays layered and ChromeRoot paints a translucent fallback panel instead.
+        _useSystemBackdrop = WindowBackdrop.IsSupported;
+        if (_useSystemBackdrop)
+        {
+            AllowsTransparency = false;
+            ResizeMode = ResizeMode.NoResize;
+            WindowChrome.SetWindowChrome(this, new WindowChrome
+            {
+                GlassFrameThickness = new Thickness(-1),
+                CaptionHeight = 0,
+                ResizeBorderThickness = new Thickness(0),
+                CornerRadius = default,
+                UseAeroCaptionButtons = false,
+            });
+        }
+        else
+        {
+            ChromeRoot.SetResourceReference(Border.BackgroundProperty, "PopupFallbackBackground");
+            ChromeRoot.CornerRadius = new CornerRadius(8);
+        }
+
         _viewModel.LaunchSucceeded += OnLaunchSucceeded;
         // LastError toggles the docked strip after open; height must grow/shrink with it
         // or the strip clips the fixed 96 px tiles (issue #24).
@@ -74,6 +104,11 @@ public partial class PopupWindow : Window
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
+        if (_useSystemBackdrop)
+        {
+            ApplySystemBackdrop();
+        }
+
         ApplySizeAndPlacement();
 
         if (_settings.EnableAnimations && TryFindResource("OpenAnimation") is Storyboard storyboard)
@@ -110,6 +145,35 @@ public partial class PopupWindow : Window
             Close();
         };
         _activationFallbackTimer.Start();
+    }
+
+    /// <summary>
+    /// Puts DWM's acrylic behind the popup, tinted to match the theme, with rounded corners.
+    /// With Windows' transparency effects switched off DWM substitutes a solid tint itself.
+    /// </summary>
+    private void ApplySystemBackdrop()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+
+        // WPF clears the client area to the window background before drawing. Transparent
+        // lets the DWM backdrop through; any other colour would cover it.
+        if (HwndSource.FromHwnd(hwnd)?.CompositionTarget is { } target)
+        {
+            target.BackgroundColor = Colors.Transparent;
+        }
+
+        // The immersive dark-mode flag is what picks the dark acrylic tint, not just the
+        // caption colour — the popup has no caption, so this is its only effect here.
+        var dark = LauncherThemeApplier.Resolve(_settings.Theme) == ThemePreference.Dark;
+        _ = WindowBackdrop.TrySetDarkTitleBar(hwnd, dark);
+        _ = WindowBackdrop.TrySetRoundedCorners(hwnd);
+
+        if (!WindowBackdrop.TryApply(hwnd, WindowBackdropKind.Acrylic))
+        {
+            // The window is no longer layered, so a transparent client area would render
+            // black. Paint the fallback panel instead; it is near-opaque in this mode.
+            ChromeRoot.SetResourceReference(Border.BackgroundProperty, "PopupFallbackBackground");
+        }
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

@@ -36,6 +36,18 @@ public static class WindowBackdrop
 {
     private const uint DWMWA_SYSTEMBACKDROP_TYPE = 38;
     private const uint DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+    private const uint DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const int DWMWCP_ROUND = 2;
+
+    /// <summary>First build that honours <c>DWMWA_SYSTEMBACKDROP_TYPE</c> (Windows 11 22H2).</summary>
+    private const int SystemBackdropMinimumBuild = 22621;
+
+    /// <summary>
+    /// Whether this Windows version honours <see cref="TryApply"/>. Callers that must choose a
+    /// window mode before the HWND exists — a system backdrop never paints behind a layered
+    /// (<c>AllowsTransparency</c>) window — decide on this rather than on a failed call.
+    /// </summary>
+    public static bool IsSupported => OperatingSystem.IsWindowsVersionAtLeast(10, 0, SystemBackdropMinimumBuild);
 
     /// <summary>
     /// Attempts to apply the specified backdrop material to the supplied window handle.
@@ -82,6 +94,21 @@ public static class WindowBackdrop
 
         var value = enabled ? 1 : 0;
         var hr = DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref value, sizeof(int));
+        return hr == 0;
+    }
+
+    /// <summary>Asks DWM to round the window's corners, as Windows 11 does for its own flyouts.</summary>
+    /// <param name="hwnd">Target window handle (non-zero).</param>
+    /// <returns><see langword="true"/> if the call succeeded; Windows 10 does not know the attribute.</returns>
+    public static bool TrySetRoundedCorners(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var value = DWMWCP_ROUND;
+        var hr = DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref value, sizeof(int));
         return hr == 0;
     }
 

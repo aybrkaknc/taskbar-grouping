@@ -141,9 +141,9 @@ Diesen Ordner erreichen Sie jederzeit über **Show shortcut…**.
 
 ## Eine Gruppe benutzen
 
-Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fenster mit allen Programmen der Gruppe.
+Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fenster mit allen Programmen der Gruppe. Unter Windows 11 22H2 und neuer liegt es auf einer leicht verschwommenen, durchscheinenden Glasfläche im Farbton Ihres Erscheinungsbilds, wie die Menüs von Windows selbst. Ältere Versionen zeigen eine schlichte durchscheinende Fläche.
 
-![Das Aufklapp-Fenster: nur Symbole und Namen](../assets/screenshots/popup.png)
+![Das Aufklapp-Fenster](../assets/screenshots/popup.png)
 
 - **Auf ein Symbol klicken** startet das Programm, das Fenster schließt sich.
 - **Lässt sich ein Programm nicht starten**, bleibt das Fenster offen und zeigt einen roten Hinweis mit dem Namen.
@@ -219,7 +219,7 @@ Keine Fehler, sondern bewusste oder noch offene Grenzen:
 
 - Programme lassen sich **nicht umsortieren**, Symbole nicht selbst wählen, Startparameter nicht setzen.
 - Das Aufklapp-Fenster hat **keine Tastaturbedienung**.
-- Das Aufklapp-Fenster richtet die Textfarbe nach Ihrem Windows-Erscheinungsbild, nicht nach dem Hintergrundbild. Seit v0.4.7 bekommen die Namen eine Kontur in der Gegenfarbe und bleiben dadurch in jedem Fall lesbar — auf einem gleich hellen Hintergrund wirken sie allerdings umrandet statt gestochen scharf.
+- Der verschwommene Glas-Hintergrund des Aufklapp-Fensters braucht Windows 11 22H2 oder neuer. Sind in Windows die *Transparenzeffekte* ausgeschaltet, ist er eine einfarbige Fläche.
 - Es gibt **keine ARM64-Fassung**.
 - Nichts hindert daran, den Manager **zweimal gleichzeitig** zu starten. Die zweite Instanz kann Änderungen der ersten überschreiben.
 - Das **Löschen einer Gruppe entfernt ihre Kachel nicht**.

@@ -1,7 +1,10 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- v0.3+: PopupBackground / PopupBorder were removed — the popup chrome is fully
-         transparent now and only the icons + per-tile hover highlight are visible. -->
+    <!-- The popup's background is DWM acrylic on Windows 11 22H2+, which no brush can
+         reproduce. This panel stands in where acrylic is unavailable: on older Windows (the
+         popup stays a layered window and this shows the desktop faintly through it) and if
+         DWM refuses the backdrop (the window is then opaque, so the alpha barely matters). -->
+    <SolidColorBrush x:Key="PopupFallbackBackground" Color="#E6F3F3F3" />
     <SolidColorBrush x:Key="ForegroundDefault" Color="#1A1A1A" />
     <SolidColorBrush x:Key="ForegroundSubtle" Color="#5A5A5A" />
     <SolidColorBrush x:Key="TileHoverBackground" Color="#1F0078D4" />
