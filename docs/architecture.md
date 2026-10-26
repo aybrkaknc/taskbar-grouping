@@ -103,7 +103,9 @@ Two paths, both offered in the UI.
 | 3 | Unexpected failure |
 | 5 | Reported as pinned, but no pinned shortcut carrying the group's AUMID was found |
 
-On codes 2 and 3 the Manager opens the shortcut folder so the user can pin manually.
+On codes 2, 3 and 5 the Manager opens the shortcut folder so the user can pin manually.
+
+Because the exit code *is* the result, pin mode runs with `ShutdownMode.OnExplicitShutdown`. Under WPF's default, closing the host window — the last window — starts a shutdown with code 0, and a `Shutdown(exitCode)` issued afterwards is ignored. Until that was fixed the Manager received 0 for every outcome and reported "Pinned" even when pinning was unavailable, declined or unverified.
 
 **Manual.** **Show shortcut…** opens Explorer with the group's `.lnk` selected, for a right-click → *Pin to taskbar*.
 

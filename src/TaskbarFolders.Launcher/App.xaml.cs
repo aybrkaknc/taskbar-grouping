@@ -128,6 +128,12 @@ public partial class App : Application
     /// </summary>
     private async Task RunPinModeAsync(string groupId, bool aumidAlreadyInherited)
     {
+        // The exit code IS this mode's result, so no window may end the process. Under the
+        // default OnLastWindowClose, closing the host window below started a shutdown with
+        // code 0, and the Shutdown(exitCode) that followed was ignored: the Manager read
+        // every outcome — unavailable, declined, failed, not verified — as "Pinned".
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
         // AUMID must match GroupAumid.For(groupId) before the WinRT call so
         // RequestPinCurrentAppAsync pins the right identity. Skip the stamp when Windows
         // already gave us the AUMID via process activation — re-stamping the inherited

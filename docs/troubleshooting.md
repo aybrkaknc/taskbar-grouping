@@ -48,13 +48,15 @@ If the popup opens but is invisible, check the *Enable popup animations* setting
 
 ## "Pin to taskbar" reports that pinning is unavailable
 
-Exit code 2. Programmatic pinning needs Windows 10 version 2004 or newer, and some editions and managed environments block it outright.
+Exit code 2. Programmatic pinning needs Windows 10 version 2004 or newer, and some editions and managed environments block it outright. The launcher log says which: `TaskbarManager.IsPinningAllowed=false` means Windows itself refused before any dialog was shown.
 
 Use the manual path: the Manager opens the shortcut folder for you, or click **Show shortcut…**. Right-click the `.lnk` → **Show more options** (Windows 11 22H2 and later) → **Pin to taskbar**.
 
 ## Pinning appears to succeed but no tile appears
 
 Since v0.4.8 the Manager checks this for you: after Windows reports a pin, it looks for a pinned shortcut carrying the group's AppUserModelID. If none is there you get **Pin not confirmed** rather than a "Pinned" message with nothing behind it, and the shortcut folder opens so you can pin by hand.
+
+**Up to and including v0.4.10 the Manager said "Pinned" for every outcome**, because the launcher's result never reached it (see the changelog). If an older build told you a group was pinned and no tile appeared, the launcher log holds the real outcome — look for `Pin runner exit code` in `launcher-*.log`.
 
 If you see that message:
 
