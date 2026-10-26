@@ -60,7 +60,7 @@ If you see that message:
 
 Windows only persists a programmatic pin when the AppUserModelID is already known to the Start menu index. TaskbarFolders writes a Start menu entry for every group and notifies the shell, but a slow or busy indexer can still lose the race.
 
-1. Close and reopen the Manager. On startup it re-checks and repairs every group's Start menu entry.
+1. Close and reopen the Manager. On startup it re-checks and repairs every group's Start menu entry, and removes entries left behind by groups that no longer exist.
 2. Try **Pin to taskbar** again.
 3. Check that `%APPDATA%\Microsoft\Windows\Start Menu\Programs\TaskbarFolders\` contains an entry for the group. The pin-time log lines in `launcher-*.log` list exactly what that folder contained when the attempt was made.
 
@@ -105,7 +105,6 @@ Current, deliberate or not-yet-implemented — not bugs to report:
 - **The popup's label colour follows your Windows app theme, not your wallpaper.** Since v0.4.7 the labels carry a halo in the opposite tone, so they stay legible either way, but on a wallpaper of the same brightness as the text they read as outlined rather than crisp.
 - **No renaming, reordering, custom icons, or launch arguments** from the interface. `arguments` and the per-group `columns` value (1–6, default 3) exist in the JSON only; a per-group `theme` field is serialised but ignored.
 - **Deleting a group does not unpin its tile.** Unpin it yourself.
-- **Renaming a group by editing its JSON leaves the old Start menu entry behind.** There is no reconciler yet.
 - **Renaming a group's JSON file changes its identity**, orphaning its icon, shortcut and any existing pin.
 - **x64 only.** There is no ARM64 build.
 - **No single-instance guard.** Nothing stops two Managers running at once; the second may overwrite the first's changes.

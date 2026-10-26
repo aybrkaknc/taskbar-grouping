@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
@@ -25,6 +26,7 @@ public sealed class GroupSyncServiceTests : IDisposable
     private readonly Mock<IShortcutGenerator> _shortcutGenerator;
     private readonly Mock<ILauncherPathResolver> _launcherResolver;
     private readonly Mock<IShellChangeNotifier> _shellChangeNotifier;
+    private readonly Mock<IShortcutReader> _shortcutReader;
 
     public GroupSyncServiceTests()
     {
@@ -51,6 +53,7 @@ public sealed class GroupSyncServiceTests : IDisposable
         _launcherResolver = new Mock<ILauncherPathResolver>();
         _launcherResolver.Setup(r => r.TryResolve()).Returns("C:/install/Launcher.exe");
         _shellChangeNotifier = new Mock<IShellChangeNotifier>();
+        _shortcutReader = new Mock<IShortcutReader>();
     }
 
     public void Dispose()
@@ -83,7 +86,35 @@ public sealed class GroupSyncServiceTests : IDisposable
         _cache.Object,
         _shortcutGenerator.Object,
         _launcherResolver.Object,
-        _shellChangeNotifier.Object);
+        _shellChangeNotifier.Object,
+        _shortcutReader.Object);
+
+    /// <summary>
+    /// Puts a placeholder anchor in the Start Menu folder and makes the reader report
+    /// <paramref name="groupId"/>'s AUMID for it (none when <see langword="null"/>).
+    /// </summary>
+    private string StampAnchor(string fileStem, string? groupId)
+    {
+        Directory.CreateDirectory(_paths.StartMenuDirectory);
+        var path = _paths.GetStartMenuShortcutFile(fileStem);
+        File.WriteAllBytes(path, [0]);
+        _shortcutReader
+            .Setup(r => r.TryReadAumid(It.Is<string>(p =>
+                string.Equals(Path.GetFullPath(p), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase))))
+            .Returns(groupId is null ? null : GroupAumid.For(groupId));
+        return path;
+    }
+
+    private GroupConfig SyncableGroup(string id, string name)
+    {
+        _extractor.Setup(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>())).Returns(StubIcon());
+        return new GroupConfig
+        {
+            Id = id,
+            GroupName = name,
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" } },
+        };
+    }
 
     [Fact]
     public async Task SyncAsync_NoOp_ForEmptyGroup()
@@ -327,5 +358,132 @@ public sealed class GroupSyncServiceTests : IDisposable
         var act = () => sut.RemoveArtifacts("never-existed", "Never Existed");
 
         act.Should().NotThrow();
+    }
+
+    [Fact]
+    public async Task SyncAsync_ReplacesAnchorWrittenUnderPreviousName()
+    {
+        // Issue #28: the anchor is named after the display name, so a rename used to leave
+        // a second entry carrying the same AUMID beside the new one.
+        var oldAnchor = StampAnchor("Old Name", "g");
+        var sut = CreateSut();
+
+        await sut.SyncAsync(SyncableGroup("g", "New Name"));
+
+        _shortcutGenerator.Verify(g => g.Generate(It.Is<GroupShortcutRequest>(r =>
+            r.ShortcutPath == _paths.GetStartMenuShortcutFile("New Name"))), Times.Once);
+        File.Exists(oldAnchor).Should().BeFalse("the anchor under the old name carries the same AUMID");
+    }
+
+    [Fact]
+    public async Task SyncAsync_LeavesAnchorsOfOtherGroupsAndForeignFiles()
+    {
+        var otherGroup = StampAnchor("Other", "h");
+        var foreign = StampAnchor("Not ours", groupId: null);
+        var sut = CreateSut();
+
+        await sut.SyncAsync(SyncableGroup("g", "Tools"));
+
+        File.Exists(otherGroup).Should().BeTrue();
+        File.Exists(foreign).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SyncAsync_KeepsPreviousAnchor_WhenWritingTheNewOneFails()
+    {
+        // Until a replacement exists, the old anchor is what keeps a programmatic pin alive.
+        var oldAnchor = StampAnchor("Old Name", "g");
+        _shortcutGenerator
+            .Setup(g => g.Generate(It.Is<GroupShortcutRequest>(r =>
+                r.ShortcutPath == _paths.GetStartMenuShortcutFile("New Name"))))
+            .Throws(new IOException("disk full"));
+        var sut = CreateSut();
+
+        await sut.SyncAsync(SyncableGroup("g", "New Name"));
+
+        File.Exists(oldAnchor).Should().BeTrue();
+    }
+
+    [Fact]
+    public void RemoveArtifacts_RemovesAnchorWrittenUnderEarlierName()
+    {
+        // Deleting a group must not leave its anchor behind just because the name it was
+        // written under is no longer the name the Manager passes in.
+        var earlier = StampAnchor("Earlier Name", "g");
+        var sut = CreateSut();
+
+        sut.RemoveArtifacts("g", "Current Name");
+
+        File.Exists(earlier).Should().BeFalse();
+    }
+
+    [Fact]
+    public void RemoveOrphanedStartMenuAnchors_RemovesOnlyAnchorsOfMissingGroups()
+    {
+        Directory.CreateDirectory(_paths.GroupsDirectory);
+        File.WriteAllText(_paths.GetGroupFile("g"), "{}");
+        // A config that no longer parses still owns its group: LoadAllAsync skips it, but
+        // its tile may be pinned and the user may repair the file.
+        File.WriteAllText(_paths.GetGroupFile("broken"), "not json");
+
+        var live = StampAnchor("Live", "g");
+        var unparsable = StampAnchor("Broken", "broken");
+        var orphan = StampAnchor("Deleted", "gone");
+        var foreign = StampAnchor("Not ours", groupId: null);
+        var sut = CreateSut();
+
+        var removed = sut.RemoveOrphanedStartMenuAnchors();
+
+        removed.Should().Be(1);
+        File.Exists(orphan).Should().BeFalse();
+        File.Exists(live).Should().BeTrue();
+        File.Exists(unparsable).Should().BeTrue();
+        File.Exists(foreign).Should().BeTrue("files without a TaskbarFolders AUMID are not ours to delete");
+    }
+
+    [Fact]
+    public async Task RenameThenDelete_WithRealShortcuts_LeavesNoAnchorBehind()
+    {
+        // The tests above stub the reader. This one writes real .lnk files through the shell
+        // and reads their AUMIDs back, so the matching is proven against what
+        // ShortcutGenerator actually stamps rather than against what a mock was told.
+        var fakeLauncher = Path.Combine(_tempBase, "FakeLauncher.exe");
+        File.WriteAllBytes(fakeLauncher, [0x4D, 0x5A]);
+        _launcherResolver.Setup(r => r.TryResolve()).Returns(fakeLauncher);
+        var sut = new GroupSyncService(
+            _paths,
+            _extractor.Object,
+            _composer.Object,
+            _icoWriter.Object,
+            _cache.Object,
+            new ShortcutGenerator(),
+            _launcherResolver.Object,
+            _shellChangeNotifier.Object,
+            new ShortcutReader());
+        var config = SyncableGroup("g", "Before");
+        var unrelated = SyncableGroup("h", "Unrelated");
+
+        await sut.SyncAsync(config);
+        await sut.SyncAsync(unrelated);
+        config.GroupName = "After";
+        await sut.SyncAsync(config);
+
+        Directory.EnumerateFiles(_paths.StartMenuDirectory, "*.lnk")
+            .Select(Path.GetFileName)
+            .Should().BeEquivalentTo("After.lnk", "Unrelated.lnk");
+
+        sut.RemoveArtifacts("g", "After");
+
+        Directory.EnumerateFiles(_paths.StartMenuDirectory, "*.lnk")
+            .Select(Path.GetFileName)
+            .Should().BeEquivalentTo("Unrelated.lnk");
+    }
+
+    [Fact]
+    public void RemoveOrphanedStartMenuAnchors_IsNoOp_WhenStartMenuFolderMissing()
+    {
+        var sut = CreateSut();
+
+        sut.RemoveOrphanedStartMenuAnchors().Should().Be(0);
     }
 }

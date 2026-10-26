@@ -98,7 +98,7 @@ The popup has no keyboard shortcuts. Escape does not close it, and no icon is fo
 
 Select a group to add or remove apps; every change is saved as you make it, and the icon and shortcut are regenerated.
 
-To delete: right-click the group in the sidebar → **Delete group** → confirm. This removes the configuration, the generated icon and the shortcut.
+To delete: right-click the group in the sidebar → **Delete group** → confirm. This removes the configuration, the generated icon, the shortcut and the group's Start menu entry.
 
 **Deleting a group does not remove its taskbar tile.** Right-click the tile and choose *Unpin from taskbar* yourself; the confirmation dialog reminds you.
 

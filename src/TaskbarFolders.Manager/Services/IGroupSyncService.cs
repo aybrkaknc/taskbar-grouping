@@ -20,10 +20,18 @@ public interface IGroupSyncService
     /// <summary>
     /// Removes the per-group icon, the per-group .lnk under <c>%APPDATA%/TaskbarFolders/shortcuts</c>,
     /// and the Start Menu anchor .lnk under <c>%APPDATA%/Microsoft/Windows/Start Menu/Programs/TaskbarFolders</c>.
-    /// Silent on missing files. <paramref name="displayName"/> is needed to locate the Start
-    /// Menu file (filename = sanitised display name).
+    /// Silent on missing files. <paramref name="displayName"/> locates the current Start Menu
+    /// file (filename = sanitised display name); any further anchor carrying the group's AUMID,
+    /// such as one written under an earlier name, is removed as well.
     /// </summary>
     void RemoveArtifacts(string groupId, string displayName);
+
+    /// <summary>
+    /// Deletes Start Menu anchors whose AUMID names a group that no longer has a config file.
+    /// Anchors without a TaskbarFolders AUMID are left alone. Used by the Manager startup
+    /// reconciler. Returns the number of files removed.
+    /// </summary>
+    int RemoveOrphanedStartMenuAnchors();
 
     /// <summary>
     /// Ensures the Start Menu anchor .lnk for the supplied group exists, writing it from the

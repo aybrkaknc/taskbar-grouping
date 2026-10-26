@@ -74,6 +74,8 @@ A second copy of each shortcut is written to `%APPDATA%\Microsoft\Windows\Start 
 
 This is not decoration. `TaskbarManager.RequestPinCurrentAppAsync` trusts the calling AUMID and can report success while persisting nothing if the shell's AppsFolder index has not yet seen a matching shortcut. The anchor plus the change notification is what makes a programmatic pin stick. `GroupSyncService` also re-checks every group's anchor on Manager startup, so configurations written by older versions heal themselves.
 
+The anchor's file name follows the group's display name, but its identity is the AUMID, which follows the id. Anchors are therefore located by reading their AUMID back, never by name: writing a group's anchor removes any other anchor with the same AUMID (the one left by a rename), deleting a group removes every anchor with its AUMID, and on startup anchors whose AUMID names no `groups\<id>.json` are deleted. The known ids come from the group file names rather than the loaded configs, so a group whose JSON fails to parse keeps its anchor and its pin. Duplicate anchors for one AUMID are a plausible cause of a pin that reports success but leaves no tile.
+
 ## Data flow
 
 ### Creating and syncing a group

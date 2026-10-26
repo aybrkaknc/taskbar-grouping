@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Renaming a group no longer leaves a second Start menu entry behind.** The entry is named after the display name while its identity is the group's AppUserModelID, and nothing removed the entry written under the old name — two Start menu entries ended up carrying one identity, a plausible cause of pins that report success and produce no tile. Entries are now found by reading their AppUserModelID back rather than by file name: writing a group's entry removes any other carrying the same identity, deleting a group removes all of them whatever name they were written under, and Manager startup removes entries whose group no longer exists. A group whose JSON fails to parse keeps its entry, since its tile may still be pinned (#28).
+
 - **Popup height grows with the launch-failure strip.** When a launch failed, the red error strip docked to the bottom of the popup without changing `Window.Height`, so it stole space from the fixed 96 px tiles and clipped the bottom row. Height now comes from measuring the popup chrome, clamped to `MinHeight`/`MaxHeight`, and placement is refreshed so the taller popup still clears the taskbar.
 
 ### Internal

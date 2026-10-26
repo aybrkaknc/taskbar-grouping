@@ -42,6 +42,7 @@ public static class ManagerServiceCollectionExtensions
         services.AddSingleton<ISystemThemeProbe, RegistrySystemThemeProbe>();
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IShortcutGenerator, ShortcutGenerator>();
+        services.AddSingleton<IShortcutReader, ShortcutReader>();
         services.AddSingleton<IShellChangeNotifier, ShellChangeNotifier>();
         services.AddSingleton<ILauncherPathResolver, LauncherPathResolver>();
         services.AddSingleton<IGroupSyncService, GroupSyncService>();

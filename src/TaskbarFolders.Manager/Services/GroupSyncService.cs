@@ -32,6 +32,7 @@ public sealed class GroupSyncService : IGroupSyncService
     private readonly IShortcutGenerator _shortcutGenerator;
     private readonly ILauncherPathResolver _launcherResolver;
     private readonly IShellChangeNotifier _shellChangeNotifier;
+    private readonly IShortcutReader _shortcutReader;
     private readonly ILogger<GroupSyncService>? _logger;
 
     /// <summary>Initializes a new instance.</summary>
@@ -44,6 +45,7 @@ public sealed class GroupSyncService : IGroupSyncService
         IShortcutGenerator shortcutGenerator,
         ILauncherPathResolver launcherResolver,
         IShellChangeNotifier shellChangeNotifier,
+        IShortcutReader shortcutReader,
         ILogger<GroupSyncService>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(paths);
@@ -54,6 +56,7 @@ public sealed class GroupSyncService : IGroupSyncService
         ArgumentNullException.ThrowIfNull(shortcutGenerator);
         ArgumentNullException.ThrowIfNull(launcherResolver);
         ArgumentNullException.ThrowIfNull(shellChangeNotifier);
+        ArgumentNullException.ThrowIfNull(shortcutReader);
 
         _paths = paths;
         _extractor = extractor;
@@ -63,6 +66,7 @@ public sealed class GroupSyncService : IGroupSyncService
         _shortcutGenerator = shortcutGenerator;
         _launcherResolver = launcherResolver;
         _shellChangeNotifier = shellChangeNotifier;
+        _shortcutReader = shortcutReader;
         _logger = logger;
     }
 
@@ -125,6 +129,56 @@ public sealed class GroupSyncService : IGroupSyncService
         TryDelete(_paths.GetGroupIconFile(groupId));
         TryDelete(_paths.GetGroupShortcutFile(groupId));
         TryDelete(_paths.GetStartMenuShortcutFile(SanitizeForFilename(displayName, fallback: groupId)));
+
+        // The name-derived path above misses an anchor written under an earlier display
+        // name, so also sweep by identity.
+        RemoveStartMenuAnchorsFor(groupId, keepPath: null);
+    }
+
+    /// <inheritdoc/>
+    public int RemoveOrphanedStartMenuAnchors()
+    {
+        // Known ids come from the group file names rather than from the loaded configs: the
+        // id is reconstructed from the file name on load anyway, and a group whose JSON fails
+        // to parse is skipped by LoadAllAsync but still owns its pinned tile. Deleting its
+        // anchor would break that pin over a file the user may yet repair.
+        var knownIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (Directory.Exists(_paths.GroupsDirectory))
+            {
+                foreach (var file in Directory.EnumerateFiles(_paths.GroupsDirectory, "*.json"))
+                {
+                    knownIds.Add(Path.GetFileNameWithoutExtension(file));
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Without a reliable list of groups every anchor would look orphaned.
+            _logger?.LogWarning(ex, "Could not enumerate group files; Start Menu anchor reconcile skipped.");
+            return 0;
+        }
+
+        var removed = 0;
+        foreach (var anchor in EnumerateStartMenuAnchors())
+        {
+            var aumid = _shortcutReader.TryReadAumid(anchor);
+            if (!GroupAumid.TryExtractGroupId(aumid, out var groupId) || knownIds.Contains(groupId))
+            {
+                // Not ours, unreadable, or still owned by a group — leave it alone.
+                continue;
+            }
+
+            if (TryDelete(anchor))
+            {
+                _logger?.LogInformation(
+                    "Removed orphaned Start Menu anchor {Path} for missing group {GroupId}.",
+                    anchor, groupId);
+                removed++;
+            }
+        }
+        return removed;
     }
 
     /// <inheritdoc/>
@@ -180,6 +234,11 @@ public sealed class GroupSyncService : IGroupSyncService
             // racing the AppsFolder background indexer. Notify-failures inside the wrapper
             // are swallowed there; this try/catch covers the surrounding sync flow only.
             _shellChangeNotifier.NotifyCreate(startMenuPath);
+
+            // The file name follows the display name while the AUMID follows the id, so a
+            // rename writes a second anchor carrying the same identity. Drop the old one
+            // only after the new one is in place: until then it is what keeps a pin working.
+            RemoveStartMenuAnchorsFor(config.Id, keepPath: startMenuPath);
         }
         catch (Exception ex)
         {
@@ -261,18 +320,61 @@ public sealed class GroupSyncService : IGroupSyncService
         return icon;
     }
 
-    private void TryDelete(string path)
+    /// <summary>
+    /// Deletes every Start Menu anchor stamped with <paramref name="groupId"/>'s AUMID except
+    /// <paramref name="keepPath"/>. Matching by AUMID rather than by file name is what finds
+    /// an anchor left under a display name the group no longer has.
+    /// </summary>
+    private void RemoveStartMenuAnchorsFor(string groupId, string? keepPath)
+    {
+        var aumid = GroupAumid.For(groupId);
+        var keep = keepPath is null ? null : Path.GetFullPath(keepPath);
+
+        foreach (var anchor in EnumerateStartMenuAnchors())
+        {
+            if (keep is not null && string.Equals(Path.GetFullPath(anchor), keep, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (string.Equals(_shortcutReader.TryReadAumid(anchor), aumid, StringComparison.OrdinalIgnoreCase)
+                && TryDelete(anchor))
+            {
+                _logger?.LogInformation("Removed stale Start Menu anchor {Path} for {GroupId}.", anchor, groupId);
+            }
+        }
+    }
+
+    private List<string> EnumerateStartMenuAnchors()
+    {
+        // Materialised so callers can delete while iterating.
+        try
+        {
+            return Directory.Exists(_paths.StartMenuDirectory)
+                ? Directory.EnumerateFiles(_paths.StartMenuDirectory, "*.lnk").ToList()
+                : [];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger?.LogWarning(ex, "Could not enumerate {Directory}.", _paths.StartMenuDirectory);
+            return [];
+        }
+    }
+
+    private bool TryDelete(string path)
     {
         try
         {
             if (File.Exists(path))
             {
                 File.Delete(path);
+                return true;
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
             _logger?.LogWarning(ex, "Could not delete {Path}.", path);
         }
+        return false;
     }
 }

@@ -193,9 +193,12 @@ Wraps `SHChangeNotify` so the shell notices a newly written Start menu shortcut.
 Task SyncAsync(GroupConfig config, CancellationToken cancellationToken = default);
 void RemoveArtifacts(string groupId, string displayName);
 bool EnsureStartMenuShortcut(GroupConfig config);
+int RemoveOrphanedStartMenuAnchors();
 ```
 
 Regenerates icon, shortcut and Start menu anchor for a group. `SyncAsync` returns early for a group with no apps.
+
+Anchors are matched by the AUMID read back through `IShortcutReader`, not by file name: writing an anchor removes any other anchor carrying the same group's AUMID, and `RemoveArtifacts` removes all of them. `RemoveOrphanedStartMenuAnchors` deletes anchors whose AUMID names a group with no `groups\<id>.json`, and leaves files without a TaskbarFolders AUMID alone.
 
 #### [`ILauncherPathResolver`](../src/TaskbarFolders.Manager/Services/ILauncherPathResolver.cs)
 

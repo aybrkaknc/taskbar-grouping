@@ -83,6 +83,10 @@ public partial class App : Application
             sync.EnsureStartMenuShortcut(groupVm.Config);
         }
 
+        // Then the reverse direction: anchors left behind by deleted groups. Only adding
+        // here was how a stale anchor could outlive its group indefinitely.
+        sync.RemoveOrphanedStartMenuAnchors();
+
         // Deferred startup IO: prune stale icon-cache PNGs and old log files in the background
         // so the first paint of MainWindow is not blocked by ~10-70 ms of enumerate-and-delete.
         _host.Services.GetRequiredService<IIconCache>().StartBackgroundPrune();

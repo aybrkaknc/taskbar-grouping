@@ -155,7 +155,7 @@ Das Fenster hat keine Tastaturbedienung: `Esc` schließt es nicht, und beim Öff
 
 Wählen Sie eine Gruppe aus, um Programme hinzuzufügen oder zu entfernen. Jede Änderung wird sofort gespeichert, Symbol und Verknüpfung werden neu erzeugt.
 
-**Löschen:** Rechtsklick auf die Gruppe in der Liste links → **Delete group** → bestätigen. Damit verschwinden Konfiguration, Symbol und Verknüpfung.
+**Löschen:** Rechtsklick auf die Gruppe in der Liste links → **Delete group** → bestätigen. Damit verschwinden Konfiguration, Symbol, Verknüpfung und der Startmenü-Eintrag der Gruppe.
 
 > **Die Kachel in der Taskleiste bleibt dabei bestehen.** Klicken Sie sie mit der rechten Maustaste an und wählen Sie **Von Taskleiste lösen**. Die Sicherheitsabfrage weist Sie darauf hin.
 
