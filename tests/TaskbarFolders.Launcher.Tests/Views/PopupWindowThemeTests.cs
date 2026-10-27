@@ -84,6 +84,47 @@ public sealed class PopupWindowThemeTests
         closeColor.Should().Be(expected, "the close glyph is a Button too, so the same theme-style precedence applies");
     }
 
+    [Theory]
+    [InlineData("Dark.xaml")]
+    [InlineData("Light.xaml")]
+    public void RemoveBadges_AppearOnlyInEditMode_InTheThemeForeground(string themeFile)
+    {
+        var (hiddenBefore, visibleInEdit, hiddenAfter, badgeColor, editColor, expected) = OnStaThread(() =>
+        {
+            var theme = LoadTheme(themeFile);
+            var window = CreatePopup(theme);
+            try
+            {
+                var viewModel = (PopupViewModel)window.DataContext;
+                var badges = FindDescendants<Button>(window).Where(b => b.Name == "RemoveBadge").ToList();
+                var before = badges.All(b => b.Visibility == Visibility.Collapsed);
+
+                viewModel.ToggleEditCommand.Execute(null);
+                window.UpdateLayout();
+                var during = badges.Count == 2 && badges.All(b => b.Visibility == Visibility.Visible);
+
+                viewModel.ToggleEditCommand.Execute(null);
+                var after = badges.All(b => b.Visibility == Visibility.Collapsed);
+
+                var edit = (Button)window.FindName("EditButton");
+                return (before, during, after,
+                    ((SolidColorBrush)badges[0].Foreground).Color,
+                    ((SolidColorBrush)edit.Foreground).Color,
+                    ((SolidColorBrush)theme["ForegroundDefault"]).Color);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+
+        hiddenBefore.Should().BeTrue("tiles are for launching until edit mode is switched on");
+        visibleInEdit.Should().BeTrue("every tile gets a remove badge in edit mode");
+        hiddenAfter.Should().BeTrue();
+        badgeColor.Should().Be(expected, "the badge is a Button, so it must set the theme foreground itself");
+        editColor.Should().Be(expected);
+    }
+
     private static ResourceDictionary LoadTheme(string fileName)
     {
         using var stream = File.OpenRead(Path.Combine(

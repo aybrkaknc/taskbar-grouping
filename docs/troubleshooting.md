@@ -126,7 +126,7 @@ On an affected build, avoid clicking Save unless you intend to set every value i
 
 Current, deliberate or not-yet-implemented — not bugs to report:
 
-- **The popup has almost no keyboard support.** Escape closes it, but no item is focused on open and the arrow keys do nothing.
+- **The popup has almost no keyboard support.** Escape leaves edit mode or closes the popup, but no item is focused on open and the arrow keys do nothing.
 - **Clicking the group's tile while its popup is open does not toggle it.** The click lands outside the popup and closes it, and the tile then starts a new one.
 - **On Windows 11 22H2+ the glass panel does not fade when the popup closes.** DWM draws it and does not animate this window's hide, so only the icons fade.
 - **A group with more apps than the popup can show loses the rest.** The popup stops at 800 DIP, which is eight rows — 24 apps at the default three columns — and the grid does not scroll. Anything past that is off-screen with nothing indicating it exists; a visible launch-failure strip costs a further row.

@@ -107,6 +107,40 @@ public sealed class PopupWindowCloseTests
         closed.Should().BeTrue();
     }
 
+    [Fact]
+    public void Escape_LeavesEditModeFirst_ThenCloses()
+    {
+        var (editingAfterFirst, closedAfterFirst, closedAfterSecond) = OnStaThread(() =>
+        {
+            var window = CreatePopup(enableAnimations: false);
+            var viewModel = (PopupViewModel)window.DataContext;
+            var closed = false;
+            window.Closed += (_, _) => closed = true;
+            viewModel.ToggleEditCommand.Execute(null);
+
+            PressEscape(window);
+            var editing = viewModel.IsEditing;
+            var closedFirst = closed;
+
+            PressEscape(window);
+            return (editing, closedFirst, closed);
+        });
+
+        editingAfterFirst.Should().BeFalse("the first Escape backs out of edit mode");
+        closedAfterFirst.Should().BeFalse("and leaves the popup open");
+        closedAfterSecond.Should().BeTrue("the second Escape closes it");
+    }
+
+    private static void PressEscape(Window window)
+    {
+        var source = PresentationSource.FromVisual(window)
+            ?? throw new InvalidOperationException("The popup has no presentation source.");
+        window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, Key.Escape)
+        {
+            RoutedEvent = Keyboard.KeyDownEvent,
+        });
+    }
+
     [Theory]
     [InlineData(150, 150, false)] // middle
     [InlineData(100, 100, false)] // top-left corner is inside (inclusive)

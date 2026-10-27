@@ -338,6 +338,91 @@ public class PopupViewModelTests
     }
 
     [Fact]
+    public async Task ToggleEditCommand_SwitchesEditModeOnAndOff()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+
+        sut.ToggleEditCommand.Execute(null);
+        sut.IsEditing.Should().BeTrue();
+
+        sut.ToggleEditCommand.Execute(null);
+        sut.IsEditing.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ToggleEditCommand_StaysOff_WhenThereIsNothingToEdit()
+    {
+        var (missing, _, _, _, _) = CreateSut("missing", config: null);
+        await missing.LoadAsync();
+        missing.ToggleEditCommand.Execute(null);
+        missing.IsEditing.Should().BeFalse("a group that could not be loaded cannot be edited");
+
+        var (empty, _, _, _, _) = CreateSut("empty", new GroupConfig { Id = "empty", GroupName = "Empty" });
+        await empty.LoadAsync();
+        empty.ToggleEditCommand.Execute(null);
+        empty.IsEditing.Should().BeFalse("an empty group has no tile to remove");
+    }
+
+    [Fact]
+    public async Task RemoveAppCommand_RemovesTheEntry_SavesAndResyncs()
+    {
+        var config = new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.exe" } },
+        };
+        var sync = new Mock<IGroupSyncService>();
+        var (sut, store, _, _, _) = CreateSut("g", config, sync);
+        await sut.LoadAsync();
+        sut.ToggleEditCommand.Execute(null);
+
+        await sut.RemoveAppCommand.ExecuteAsync(sut.Apps[0]);
+
+        sut.Apps.Select(a => a.Name).Should().Equal("b");
+        store.Verify(s => s.SaveAsync(
+            It.Is<GroupConfig>(c => c.Apps.Count == 1 && c.Apps[0].Path == "b.exe"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        sync.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        sut.IsEditing.Should().BeTrue("removing one of several apps keeps the user in edit mode");
+        sut.IsUnavailable.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemoveAppCommand_LeavesEditMode_WhenTheLastAppGoes()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+        sut.ToggleEditCommand.Execute(null);
+
+        await sut.RemoveAppCommand.ExecuteAsync(sut.Apps[0]);
+
+        sut.Apps.Should().BeEmpty();
+        sut.IsUnavailable.Should().BeTrue("the popup shows the empty state, with + still available");
+        sut.IsEditing.Should().BeFalse();
+        config.Apps.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task LaunchAppCommand_DoesNothing_InEditMode()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, _, _, launcher) = CreateSut("g", config);
+        await sut.LoadAsync();
+        sut.ToggleEditCommand.Execute(null);
+        var succeeded = false;
+        sut.LaunchSucceeded += (_, _) => succeeded = true;
+
+        sut.LaunchAppCommand.Execute(sut.Apps[0]);
+
+        launcher.Verify(l => l.Launch(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
+        succeeded.Should().BeFalse("a click on a tile being edited must not start the app");
+    }
+
+    [Fact]
     public void CloseCommand_RaisesCloseRequested_WithoutLaunchingAnything()
     {
         var (sut, _, _, _, launcher) = CreateSut();

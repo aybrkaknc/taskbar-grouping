@@ -145,6 +145,39 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Round remove badge on a tile in edit mode. Sets Foreground itself, like the other
+             popup buttons. -->
+        <Style x:Key="PopupBadgeButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
+            <Setter Property="Background" Value="{DynamicResource BadgeBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ForegroundSubtle}" />
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="8" />
+            <Setter Property="Content" Value="&#xE711;" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#CCC42B1C" />
+                                <Setter Property="Foreground" Value="{DynamicResource ErrorForeground}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <!-- Layout Border: keeps Padding + TextElement.Foreground inheritance. It paints nothing on
@@ -186,6 +219,28 @@
                         AutomationProperties.Name="Add apps"
                         IsEnabled="{Binding CanEditGroup}"
                         Click="AddApps_Click" />
+                <!-- Edit toggle: pencil while off; a check mark on a tinted plate while on,
+                     so the way out of edit mode is the same button. -->
+                <Button x:Name="EditButton"
+                        DockPanel.Dock="Right"
+                        Margin="0,0,4,0"
+                        Command="{Binding ToggleEditCommand}"
+                        IsEnabled="{Binding CanEditGroup}"
+                        AutomationProperties.Name="Edit apps">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource PopupIconButton}">
+                            <Setter Property="Content" Value="&#xE70F;" />
+                            <Setter Property="ToolTip" Value="Remove apps from this group" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                    <Setter Property="Content" Value="&#xE73E;" />
+                                    <Setter Property="ToolTip" Value="Done" />
+                                    <Setter Property="Background" Value="{DynamicResource EditActiveBackground}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
                 <TextBlock x:Name="GroupNameText"
                            Text="{Binding GroupName}"
                            VerticalAlignment="Center"
@@ -236,23 +291,37 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:PopupAppViewModel}">
-                                <Button Style="{StaticResource AppTileButton}"
-                                        Width="96" Height="96"
-                                        ToolTip="{Binding Name}"
-                                        Command="{Binding DataContext.LaunchAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                        CommandParameter="{Binding}">
-                                    <StackPanel>
-                                        <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform" />
-                                        <TextBlock Text="{Binding Name}"
-                                                   HorizontalAlignment="Center"
-                                                   Margin="0,6,0,0"
-                                                   FontSize="11"
-                                                   FontWeight="SemiBold"
-                                                   TextTrimming="CharacterEllipsis"
-                                                   MaxWidth="80"
-                                                   Effect="{DynamicResource LabelShadow}" />
-                                    </StackPanel>
-                                </Button>
+                                <!-- The badge overlays the tile rather than sitting inside its
+                                     Button, so it is its own click target and the tile keeps its
+                                     fixed 96 px. -->
+                                <Grid Width="96" Height="96">
+                                    <Button Style="{StaticResource AppTileButton}"
+                                            ToolTip="{Binding Name}"
+                                            Command="{Binding DataContext.LaunchAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}">
+                                        <StackPanel>
+                                            <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform" />
+                                            <TextBlock Text="{Binding Name}"
+                                                       HorizontalAlignment="Center"
+                                                       Margin="0,6,0,0"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxWidth="80"
+                                                       Effect="{DynamicResource LabelShadow}" />
+                                        </StackPanel>
+                                    </Button>
+                                    <Button x:Name="RemoveBadge"
+                                            Style="{StaticResource PopupBadgeButton}"
+                                            HorizontalAlignment="Right"
+                                            VerticalAlignment="Top"
+                                            Margin="0,4,10,0"
+                                            ToolTip="Remove from this group"
+                                            AutomationProperties.Name="{Binding Name, StringFormat='Remove {0}'}"
+                                            Visibility="{Binding DataContext.IsEditing, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={x:Static vm:LauncherBoolToVisibilityConverter.Instance}}"
+                                            Command="{Binding DataContext.RemoveAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

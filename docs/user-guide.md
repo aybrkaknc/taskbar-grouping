@@ -92,12 +92,13 @@ Click the pinned tile. A popup opens next to the taskbar, anchored near the tile
 - **Click an icon** to launch it. The popup closes.
 - **Click ✕** in the top-right corner to close the popup without launching anything.
 - **Click +** to add apps: a file picker opens, and every .exe or .lnk you choose is added to the group and appears in the popup. The taskbar icon and shortcut are updated as they are from the Manager. The popup stays open while the picker is.
+- **Click ✎** to remove apps: each tile gets a small ✕, and clicking it takes that app out of the group — only out of the group; the program or shortcut on disk is not touched. Tiles do not launch while editing. Click the ✓ (or press **Escape**) when done. Removing the last app leaves an empty group, which you can fill again with +.
 - **If a launch fails**, the popup stays open and shows an error strip naming the app.
 - **Click anywhere else**, or press **Escape**, to dismiss the popup. A click outside works even if Windows did not give the popup the focus.
 
 With *Enable popup animations* on, the popup fades out briefly as it closes. On Windows 11 22H2 and later the glass panel itself cannot fade, so it disappears right after the icons have.
 
-Escape is the only keyboard shortcut. No icon is focused when the popup opens, and the arrow keys do not move between icons.
+Escape is the only keyboard shortcut; in edit mode the first press leaves edit mode. No icon is focused when the popup opens, and the arrow keys do not move between icons.
 
 ## Editing and deleting groups
 

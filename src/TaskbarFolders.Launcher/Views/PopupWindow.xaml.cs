@@ -147,6 +147,14 @@ public sealed partial class PopupWindow : Window, IDisposable
         if (e.Key == Key.Escape)
         {
             e.Handled = true;
+
+            // Escape backs out one level: out of edit mode first, then out of the popup.
+            if (_viewModel.IsEditing)
+            {
+                _viewModel.IsEditing = false;
+                return;
+            }
+
             Close();
         }
     }

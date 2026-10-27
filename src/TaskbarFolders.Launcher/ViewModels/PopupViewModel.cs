@@ -78,6 +78,12 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _canEditGroup;
 
+    /// <summary>
+    /// Edit mode: each tile shows a remove badge, and a tile click no longer launches the app.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isEditing;
+
     /// <summary>Display name of the loaded group; empty string until <see cref="LoadAsync"/> completes.</summary>
     [ObservableProperty]
     private string _groupName = string.Empty;
@@ -223,6 +229,37 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         return added.Count;
     }
 
+    [RelayCommand]
+    private void ToggleEdit()
+    {
+        // Nothing to edit in a group that could not be loaded or has no apps left.
+        IsEditing = !IsEditing && CanEditGroup && Apps.Count > 0;
+    }
+
+    /// <summary>
+    /// Removes one app from the group — the entry only; the file it points at is untouched —
+    /// then saves and re-syncs. Removing the last app leaves edit mode and shows the empty state.
+    /// </summary>
+    [RelayCommand]
+    private async Task RemoveAppAsync(PopupAppViewModel? app)
+    {
+        if (app is null || _config is null || !Apps.Contains(app))
+        {
+            return;
+        }
+
+        _config.Apps.Remove(app.Entry);
+        Apps.Remove(app);
+        if (Apps.Count == 0)
+        {
+            IsEditing = false;
+            IsUnavailable = true;
+        }
+
+        _logger?.LogInformation("Removed {Path} from group {GroupId} in the popup.", app.Path, _options.GroupId);
+        await PersistAsync().ConfigureAwait(true);
+    }
+
     /// <summary>
     /// Saves the edited group and regenerates its icon and shortcuts. A failure is shown in the
     /// error strip rather than thrown: the popup is a short-lived window with nobody to catch it.
@@ -272,7 +309,9 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         // a failed click re-sets it below.
         LastError = null;
 
-        if (app is null)
+        // In edit mode the tiles are being arranged, not used; a stray click must not start
+        // an app the user is about to remove.
+        if (app is null || IsEditing)
         {
             return;
         }

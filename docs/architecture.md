@@ -90,7 +90,7 @@ The anchor's file name follows the group's display name, but its identity is the
 
 If every icon extraction fails, sync stops before writing a shortcut rather than producing a group tile with no icon.
 
-The popup is the second writer ([ADR-005](adr/005-popup-edits-its-group.md)): adding apps with its **+** saves the group through the same store and runs the same GroupSyncService, which lives in Core for that reason. The launcher resolves the shortcut target as its own executable (SelfLauncherPathResolver). While the file picker it opens is up, the popup's dismissal triggers — outside click, focus loss, the never-activated fallback — are suspended, or it would close under its own dialog.
+The popup is the second writer ([ADR-005](adr/005-popup-edits-its-group.md)): adding apps with its **+** or removing them in its edit mode saves the group through the same store and runs the same GroupSyncService, which lives in Core for that reason. The launcher resolves the shortcut target as its own executable (SelfLauncherPathResolver). While the file picker it opens is up, the popup's dismissal triggers — outside click, focus loss, the never-activated fallback — are suspended, or it would close under its own dialog.
 
 The Manager keeps every group in memory, so it re-reads the store whenever its window is activated and rebuilds the list — reselecting the previous group by id — only if some group differs from the copy in memory. Without that, a change made outside the Manager while it was open would be overwritten by its next save of the same group.
 

@@ -149,12 +149,13 @@ Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fe
 - **Auf ein Symbol klicken** startet das Programm, das Fenster schließt sich.
 - **Auf ✕** oben rechts klicken schließt das Fenster, ohne etwas zu starten.
 - **Auf +** klicken fügt Programme hinzu: Es öffnet sich eine Dateiauswahl, und jede gewählte .exe- oder .lnk-Datei kommt in die Gruppe und erscheint sofort im Fenster. Taskleistensymbol und Verknüpfung werden wie aus dem Manager aktualisiert. Solange die Auswahl offen ist, bleibt das Fenster stehen.
+- **Auf ✎** klicken, um Programme zu entfernen: Jede Kachel bekommt ein kleines ✕, ein Klick darauf nimmt das Programm aus der Gruppe — nur aus der Gruppe; die Programmdatei oder Verknüpfung bleibt unberührt. Während der Bearbeitung starten die Kacheln nichts. Mit ✓ (oder `Esc`) beenden. Wird das letzte Programm entfernt, ist die Gruppe leer und lässt sich mit + wieder füllen.
 - **Lässt sich ein Programm nicht starten**, bleibt das Fenster offen und zeigt einen roten Hinweis mit dem Namen.
 - **Klick daneben** oder **`Esc`** schließt das Fenster. Der Klick daneben wirkt auch dann, wenn Windows dem Fenster den Fokus nicht gegeben hat.
 
 Ist *Enable popup animations* eingeschaltet, blendet sich das Fenster beim Schließen kurz aus. Unter Windows 11 22H2 und neuer kann die Glasfläche selbst nicht ausblenden; sie verschwindet unmittelbar nach den Symbolen.
 
-`Esc` ist die einzige Taste: Beim Öffnen ist kein Symbol vorausgewählt, und die Pfeiltasten wechseln nicht zwischen den Symbolen.
+`Esc` ist die einzige Taste (im Bearbeitungsmodus beendet der erste Druck die Bearbeitung): Beim Öffnen ist kein Symbol vorausgewählt, und die Pfeiltasten wechseln nicht zwischen den Symbolen.
 
 ## Gruppen ändern und löschen
 

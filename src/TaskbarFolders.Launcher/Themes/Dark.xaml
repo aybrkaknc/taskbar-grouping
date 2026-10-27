@@ -5,6 +5,9 @@
     <SolidColorBrush x:Key="ForegroundDefault" Color="#F0F0F0" />
     <SolidColorBrush x:Key="ForegroundSubtle" Color="#A0A0A0" />
     <SolidColorBrush x:Key="TileHoverBackground" Color="#1F4CC2FF" />
+    <!-- Edit mode: the remove badge on each tile, and the edit button while it is active. -->
+    <SolidColorBrush x:Key="BadgeBackground" Color="#F0505050" />
+    <SolidColorBrush x:Key="EditActiveBackground" Color="#404CC2FF" />
     <SolidColorBrush x:Key="ErrorBackdropBrush" Color="#CC202020" />
     <!-- The failure strip paints on a fixed dark red plate in both themes, so its text
          cannot use ForegroundDefault - that would be near-black on dark red in Light. -->

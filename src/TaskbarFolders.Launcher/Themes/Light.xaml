@@ -8,6 +8,9 @@
     <SolidColorBrush x:Key="ForegroundDefault" Color="#1A1A1A" />
     <SolidColorBrush x:Key="ForegroundSubtle" Color="#5A5A5A" />
     <SolidColorBrush x:Key="TileHoverBackground" Color="#1F0078D4" />
+    <!-- Edit mode: the remove badge on each tile, and the edit button while it is active. -->
+    <SolidColorBrush x:Key="BadgeBackground" Color="#F0FFFFFF" />
+    <SolidColorBrush x:Key="EditActiveBackground" Color="#400078D4" />
     <!-- Pill behind error / "no apps" text so it stays readable on any wallpaper.
          Tuned dark so the light theme's dark foreground reads against it. -->
     <SolidColorBrush x:Key="ErrorBackdropBrush" Color="#CCFFFFFF" />
