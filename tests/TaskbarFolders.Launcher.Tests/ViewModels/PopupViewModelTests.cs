@@ -258,6 +258,19 @@ public class PopupViewModelTests
     }
 
     [Fact]
+    public void CloseCommand_RaisesCloseRequested_WithoutLaunchingAnything()
+    {
+        var (sut, _, _, _, launcher) = CreateSut();
+        var requested = 0;
+        sut.CloseRequested += (_, _) => requested++;
+
+        sut.CloseCommand.Execute(null);
+
+        requested.Should().Be(1);
+        launcher.Verify(l => l.Launch(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
     public async Task LaunchAppCommand_DoesNotRaiseLaunchSucceeded_OnFailure()
     {
         var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "bad.exe" } } };

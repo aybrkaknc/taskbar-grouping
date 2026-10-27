@@ -81,6 +81,9 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     /// <summary>Raised after a successful launch so the window can dismiss itself.</summary>
     public event EventHandler? LaunchSucceeded;
 
+    /// <summary>Raised when the user asks to dismiss the popup, e.g. with its close button.</summary>
+    public event EventHandler? CloseRequested;
+
     /// <summary>
     /// Reads the group config and populates <see cref="Apps"/> with icon-less view models.
     /// Returns fast (~5 ms) so the window can be shown without waiting for shell icon
@@ -186,6 +189,9 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
             LastError = $"Could not launch \"{app.Name}\".";
         }
     }
+
+    [RelayCommand]
+    private void Close() => CloseRequested?.Invoke(this, EventArgs.Empty);
 
     private async Task LoadIconForAsync(PopupAppViewModel app, CancellationToken token)
     {

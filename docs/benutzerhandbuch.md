@@ -145,7 +145,9 @@ Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fe
 
 ![Das Aufklapp-Fenster](../assets/screenshots/popup.png)
 
+- Oben im Fenster steht der Name der Gruppe.
 - **Auf ein Symbol klicken** startet das Programm, das Fenster schließt sich.
+- **Auf ✕** oben rechts klicken schließt das Fenster, ohne etwas zu starten.
 - **Lässt sich ein Programm nicht starten**, bleibt das Fenster offen und zeigt einen roten Hinweis mit dem Namen.
 - **Klick daneben** schließt das Fenster.
 

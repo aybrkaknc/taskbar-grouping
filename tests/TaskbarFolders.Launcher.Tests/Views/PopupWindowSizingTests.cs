@@ -43,17 +43,25 @@ public sealed class PopupWindowSizingTests
     /// <summary>Six apps over three columns: two rows of tiles plus the outer padding.</summary>
     private const double TwoRowGridHeight = (2 * TilePx) + (2 * PaddingPx);
 
+    /// <summary>
+    /// The window height with no error strip: the grid, its padding and the header row. The
+    /// header is measured rather than hard-coded, so a restyled header does not break these
+    /// tests while a header that stops being counted still does.
+    /// </summary>
+    private static double ExpectedHeight(PopupWindow window) =>
+        TwoRowGridHeight + ((FrameworkElement)window.FindName("HeaderBar")).DesiredSize.Height;
+
     [Fact]
     public void LastError_GrowsTheWindowSoTheTilesKeepTheirFullHeight()
     {
         WithPopup(appCount: 6, columns: 3, (window, viewModel, _) =>
         {
-            window.Height.Should().Be(TwoRowGridHeight, "no error yet, so the window is grid plus padding");
+            window.Height.Should().Be(ExpectedHeight(window), "no error yet, so the window is header, grid and padding");
 
             viewModel.LastError = "Could not launch \"Broken App\".";
 
             window.Height.Should().BeGreaterThan(
-                TwoRowGridHeight,
+                ExpectedHeight(window),
                 "the strip docks below the tiles, so its height has to be added to the window "
                 + "rather than taken out of the fixed 96 px rows");
         });
@@ -76,7 +84,7 @@ public sealed class PopupWindowSizingTests
                 Visibility.Collapsed,
                 "clearing LastError has to hide the strip again; a window that shrinks while "
                 + "the strip stays visible clips the tiles exactly as issue #24 described");
-            window.Height.Should().Be(TwoRowGridHeight, "with no strip the window is the grid plus its padding");
+            window.Height.Should().Be(ExpectedHeight(window), "with no strip the window is header, grid and padding");
             withStrip.Should().BeGreaterThan(window.Height);
         });
     }

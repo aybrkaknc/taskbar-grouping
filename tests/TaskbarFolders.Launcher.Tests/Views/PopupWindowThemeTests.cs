@@ -58,6 +58,31 @@ public sealed class PopupWindowThemeTests
         label.Should().Be(expected, $"the tile labels must take ForegroundDefault from {themeFile}");
     }
 
+    [Theory]
+    [InlineData("Dark.xaml")]
+    [InlineData("Light.xaml")]
+    public void Header_ShowsTheGroupName_AndTheCloseButtonUsesTheThemeForeground(string themeFile)
+    {
+        var (name, closeColor, expected) = OnStaThread(() =>
+        {
+            var theme = LoadTheme(themeFile);
+            var window = CreatePopup(theme);
+            try
+            {
+                var header = (TextBlock)window.FindName("GroupNameText");
+                var close = (Button)window.FindName("CloseButton");
+                return (header.Text, ((SolidColorBrush)close.Foreground).Color, ((SolidColorBrush)theme["ForegroundDefault"]).Color);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+
+        name.Should().Be("Tools");
+        closeColor.Should().Be(expected, "the close glyph is a Button too, so the same theme-style precedence applies");
+    }
+
     private static ResourceDictionary LoadTheme(string fileName)
     {
         using var stream = File.OpenRead(Path.Combine(

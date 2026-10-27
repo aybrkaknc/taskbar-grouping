@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The popup names its group and has a close button.** A header row shows the group's name on the left and a ✕ on the right that closes the popup without launching anything. The "no apps" message no longer repeats the name. The header is part of the measured popup chrome, so the window grows by its height with no sizing code of its own.
 - **The popup has a glass background.** On Windows 11 22H2 and later the tiles sit on DWM acrylic, a blurred translucent panel tinted by the theme with rounded corners, instead of floating directly on whatever is behind them. Older Windows gets a translucent fallback panel. This reverses the fully transparent popup of v0.3: the group read poorly as one surface, and the labels' legibility depended on the content underneath. A system backdrop never paints behind a layered window, so on 22H2+ the popup is now a non-layered window; the reasoning is recorded in ADR-004.
 - **Groups can be renamed.** The name at the top of the detail pane is now editable; **Rename** or `Enter` saves it. The sidebar re-sorts and the shortcut and Start menu entry follow the new name. Only the display name changes — the id, and with it the AppUserModelID, stays — so a tile already pinned keeps working. Until now the only way was to edit the group's JSON with the Manager closed (#25).
 

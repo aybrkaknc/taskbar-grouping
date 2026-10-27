@@ -88,7 +88,9 @@ Click the pinned tile. A popup opens next to the taskbar, anchored near the tile
 
 ![The popup](../assets/screenshots/popup.png)
 
+- The group's name is shown at the top of the popup.
 - **Click an icon** to launch it. The popup closes.
+- **Click ✕** in the top-right corner to close the popup without launching anything.
 - **If a launch fails**, the popup stays open and shows an error strip naming the app.
 - **Click anywhere else** to dismiss the popup.
 

@@ -94,6 +94,7 @@ public partial class PopupWindow : Window
         }
 
         _viewModel.LaunchSucceeded += OnLaunchSucceeded;
+        _viewModel.CloseRequested += OnCloseRequested;
         // LastError toggles the docked strip after open; height must grow/shrink with it
         // or the strip clips the fixed 96 px tiles (issue #24).
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
@@ -344,6 +345,8 @@ public partial class PopupWindow : Window
 
     private void OnLaunchSucceeded(object? sender, EventArgs e) => Close();
 
+    private void OnCloseRequested(object? sender, EventArgs e) => Close();
+
     private void OnClosed(object? sender, EventArgs e)
     {
         // Cancel any in-flight icon-load tasks so post-close task completions cannot
@@ -357,6 +360,7 @@ public partial class PopupWindow : Window
         _activationFallbackTimer?.Stop();
         _activationFallbackTimer = null;
         _viewModel.LaunchSucceeded -= OnLaunchSucceeded;
+        _viewModel.CloseRequested -= OnCloseRequested;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         Activated -= OnActivated;
         Closed -= OnClosed;

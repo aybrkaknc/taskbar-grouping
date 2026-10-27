@@ -86,6 +86,32 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Small glyph button for the header (the close X). Sets Foreground itself for the
+             same reason AppTileButton does. -->
+        <Style x:Key="PopupIconButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource TileHoverBackground}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <!-- Layout Border: keeps Padding + TextElement.Foreground inheritance. It paints nothing on
@@ -107,72 +133,89 @@
         <Border.RenderTransform>
             <ScaleTransform ScaleX="0.9" ScaleY="0.9" CenterX="0" CenterY="0" />
         </Border.RenderTransform>
-        <Grid>
-            <!-- Inline error state for missing/empty group — gets its own backdrop so the text
-                 stays readable against any wallpaper now that the popup chrome is gone. -->
-            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Padding="16,12"
-                    CornerRadius="6"
-                    Background="{DynamicResource ErrorBackdropBrush}"
-                    Visibility="{Binding IsUnavailable, Converter={x:Static vm:LauncherBoolToVisibilityConverter.Instance}}">
-                <TextBlock Foreground="{DynamicResource ForegroundSubtle}">
-                    <Run Text="{Binding GroupName}" FontWeight="SemiBold" /><LineBreak />
-                    <Run Text="No apps to launch." />
-                </TextBlock>
-            </Border>
+        <DockPanel>
+            <!-- Header: group name and close button, in every state. Part of ChromeRoot, so
+                 the measured window height includes it with no sizing code of its own. -->
+            <DockPanel x:Name="HeaderBar" DockPanel.Dock="Top" Margin="8,0,0,6">
+                <Button x:Name="CloseButton"
+                        DockPanel.Dock="Right"
+                        Style="{StaticResource PopupIconButton}"
+                        Content="&#xE8BB;"
+                        ToolTip="Close"
+                        AutomationProperties.Name="Close"
+                        Command="{Binding CloseCommand}" />
+                <TextBlock x:Name="GroupNameText"
+                           Text="{Binding GroupName}"
+                           VerticalAlignment="Center"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" />
+            </DockPanel>
 
-            <!-- App grid + transient launch-failure banner -->
-            <DockPanel Visibility="{Binding IsUnavailable, Converter={x:Static vm:LauncherInverseBoolToVisibilityConverter.Instance}}">
-                <!-- Docks Bottom in a fill-last DockPanel, so at a grid-only window height it
-                     takes its space out of the fixed 96 px tiles. PopupWindow sizes the window
-                     from ChromeRoot's DesiredSize instead, which already accounts for it.
-                     Visibility must stay a plain binding and must never be written from code:
-                     a local value discards a OneWay binding permanently, and the property then
-                     defaults back to Visible. x:Name is what the regression test binds to. -->
-                <Border x:Name="ErrorStrip"
-                        DockPanel.Dock="Bottom"
-                        Margin="0,8,0,0"
-                        Padding="10,6"
+            <Grid>
+                <!-- Inline error state for missing/empty group — gets its own backdrop so the text
+                     stays readable on the fallback panel. The header already names the group. -->
+                <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Padding="16,12"
                         CornerRadius="6"
-                        Background="#CCC42B1C"
-                        BorderBrush="#88C42B1C"
-                        BorderThickness="1"
-                        Visibility="{Binding LastError, Converter={x:Static vm:LauncherNullToCollapsedConverter.Instance}}">
-                    <TextBlock Text="{Binding LastError}"
-                               Foreground="{DynamicResource ErrorForeground}"
-                               FontSize="11"
-                               TextWrapping="Wrap" />
+                        Background="{DynamicResource ErrorBackdropBrush}"
+                        Visibility="{Binding IsUnavailable, Converter={x:Static vm:LauncherBoolToVisibilityConverter.Instance}}">
+                    <TextBlock Foreground="{DynamicResource ForegroundSubtle}" Text="No apps to launch." />
                 </Border>
 
-                <ItemsControl ItemsSource="{Binding Apps}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <UniformGrid Columns="{Binding Columns}" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:PopupAppViewModel}">
-                            <Button Style="{StaticResource AppTileButton}"
-                                    Width="96" Height="96"
-                                    ToolTip="{Binding Name}"
-                                    Command="{Binding DataContext.LaunchAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                    CommandParameter="{Binding}">
-                                <StackPanel>
-                                    <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform" />
-                                    <TextBlock Text="{Binding Name}"
-                                               HorizontalAlignment="Center"
-                                               Margin="0,6,0,0"
-                                               FontSize="11"
-                                               FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxWidth="80"
-                                               Effect="{DynamicResource LabelShadow}" />
-                                </StackPanel>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </DockPanel>
-        </Grid>
+                <!-- App grid + transient launch-failure banner -->
+                <DockPanel Visibility="{Binding IsUnavailable, Converter={x:Static vm:LauncherInverseBoolToVisibilityConverter.Instance}}">
+                    <!-- Docks Bottom in a fill-last DockPanel, so at a grid-only window height it
+                         takes its space out of the fixed 96 px tiles. PopupWindow sizes the window
+                         from ChromeRoot's DesiredSize instead, which already accounts for it.
+                         Visibility must stay a plain binding and must never be written from code:
+                         a local value discards a OneWay binding permanently, and the property then
+                         defaults back to Visible. x:Name is what the regression test binds to. -->
+                    <Border x:Name="ErrorStrip"
+                            DockPanel.Dock="Bottom"
+                            Margin="0,8,0,0"
+                            Padding="10,6"
+                            CornerRadius="6"
+                            Background="#CCC42B1C"
+                            BorderBrush="#88C42B1C"
+                            BorderThickness="1"
+                            Visibility="{Binding LastError, Converter={x:Static vm:LauncherNullToCollapsedConverter.Instance}}">
+                        <TextBlock Text="{Binding LastError}"
+                                   Foreground="{DynamicResource ErrorForeground}"
+                                   FontSize="11"
+                                   TextWrapping="Wrap" />
+                    </Border>
+
+                    <ItemsControl ItemsSource="{Binding Apps}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="{Binding Columns}" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:PopupAppViewModel}">
+                                <Button Style="{StaticResource AppTileButton}"
+                                        Width="96" Height="96"
+                                        ToolTip="{Binding Name}"
+                                        Command="{Binding DataContext.LaunchAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel>
+                                        <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform" />
+                                        <TextBlock Text="{Binding Name}"
+                                                   HorizontalAlignment="Center"
+                                                   Margin="0,6,0,0"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="80"
+                                                   Effect="{DynamicResource LabelShadow}" />
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
+            </Grid>
+        </DockPanel>
     </Border>
 </Window>
