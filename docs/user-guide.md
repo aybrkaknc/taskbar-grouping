@@ -10,7 +10,7 @@ Everything TaskbarFolders can do, in the order you are likely to need it. If som
 
 Download `TaskbarFolders-Setup.exe` from the [Releases page](https://github.com/gianluca-schwekendiek/taskbar-grouping/releases) and run it.
 
-The installer needs administrator rights — it writes to Program Files. Two optional steps in the wizard:
+The installer installs for your user account only, into `%LOCALAPPDATA%\Programs\TaskbarFolders`, and does not ask for administrator rights. Two optional steps in the wizard:
 
 - **Start with Windows** — pre-selected. It adds a per-user entry under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`. Clear the checkbox if you would rather start the Manager yourself; you can also change it later in Settings.
 - **Create a desktop icon** — not selected by default.
@@ -135,7 +135,7 @@ Settings apply when you click **Save**. Closing the dialog discards changes; an 
 
 The autostart checkbox reflects the registry, not the settings file — if you remove the Run entry by hand, the dialog shows it as off.
 
-**Remove from this PC…**, at the bottom, is for deleting a portable copy: after a confirmation it removes everything TaskbarFolders registered outside its folder (Explorer menu, start-with-Windows entry, the groups' shortcuts, icons and Start menu entries), switches the menu and autostart settings off, and closes the Manager. Your groups stay in `%APPDATA%\TaskbarFolders\groups`, and pinned tiles stay on the taskbar until you unpin them. To undo it, open the Manager, turn the settings back on, and change something in each group so its shortcuts are written again.
+**Uninstall TaskbarFolders…**, at the bottom, starts the uninstaller that came with this copy and closes the Manager — see [Uninstalling](#uninstalling).
 
 The theme covers the whole interface, including the Settings dialog, the standard controls and the window title bar. Switching it takes effect immediately; there is no restart.
 
@@ -162,12 +162,19 @@ The file name is what identifies a group. Renaming `groups\abc.json` renames the
 
 ## Uninstalling
 
-**Installer:** *Settings → Apps → Installed apps → TaskbarFolders → Uninstall*, or *Add or Remove Programs*. This removes the program and the autostart entry.
+Uninstalling removes TaskbarFolders and everything it added to Windows, and leaves nothing behind:
 
-**Portable:** before deleting the extracted folder, run `Uninstall.cmd` in it, or click **Remove from this PC…** in Settings. Either removes the Explorer menu entry, the start-with-Windows entry, and every group's shortcuts, icons and Start menu entries, then closes the Manager. Unpin the group tiles from the taskbar yourself, then delete the folder. Without this step the menu entry stays behind, pointing at a missing program.
+- the group tiles on the taskbar (they are unpinned),
+- the *Taskbar Groups* entry in Explorer's right-click menu,
+- the start-with-Windows entry,
+- the Start menu entries and the desktop icon,
+- **your groups and settings** — all of `%APPDATA%\TaskbarFolders`,
+- the runtime files .NET unpacks to `%TEMP%\.net`, and the records Windows keeps about programs it has run.
 
-Neither removes your groups. To clear everything:
+Back up `%APPDATA%\TaskbarFolders\groups` first if you want to keep your groups for a later reinstall.
 
-1. Unpin any group tiles from the taskbar.
-2. Delete `%APPDATA%\TaskbarFolders`.
-3. Delete `%APPDATA%\Microsoft\Windows\Start Menu\Programs\TaskbarFolders`, which holds one Start menu entry per group.
+**Installer:** *Settings → Apps → Installed apps → TaskbarFolders → Uninstall*, or **Uninstall TaskbarFolders…** at the bottom of the Manager's Settings.
+
+**Portable:** run `Uninstall.cmd` in the extracted folder, or click **Uninstall TaskbarFolders…** in Settings. After you confirm, it removes everything listed above and then the `Manager` and `Launcher` folders and itself; the extracted folder goes too if nothing else is in it. Deleting the folder without this leaves the menu entry, the tiles and your data behind — if that already happened, extract the ZIP again and run its `Uninstall.cmd`.
+
+If a tile cannot be unpinned, the uninstaller says so: right-click it and choose *Unpin from taskbar*.

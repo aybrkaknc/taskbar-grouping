@@ -97,7 +97,19 @@ Files can also reach a group on the launcher's command line — `--group-id <id>
 
 Explorer's *Taskbar Groups* menu ([ADR-007](adr/007-explorer-menu-registry-verbs.md)) is a set of per-user static verbs under `HKCU\Software\Classes\{exefile,lnkfile}\shell\TaskbarFolders.Groups`, one entry per group, each running the launcher with `--group-id <id> "%1"`. `ExplorerContextMenuService` in the Manager deletes and rewrites the whole submenu on startup, whenever the group list changes (`MainWindowViewModel.GroupListChanged`) and when settings are saved; the *Show "Taskbar Groups"* setting removes it.
 
-Everything the app registers outside its folder — that menu, the Run entry, the per-group shortcuts, icons and Start menu anchors — is undone in one place, `ShellIntegrationRemover`, reached from *Settings → Remove from this PC…* and from `TaskbarFolders.Manager.exe --remove-integration`, which the portable ZIP's `Uninstall.cmd` runs. It switches the menu and autostart settings off first so the next Manager start does not recreate them, keeps the group configs, and leaves pinned tiles alone.
+### Uninstalling
+
+Every trace outside the program folder is removed in one place, `Uninstaller` in the Manager, run as `TaskbarFolders.Manager.exe --uninstall` ([ADR-008](adr/008-per-user-install-and-complete-uninstall.md)). Order matters:
+
+1. End the other Manager and Launcher processes of this session (`IInstanceCloser`), so nothing writes back and no file is locked.
+2. Unpin every taskbar tile whose pinned shortcut carries a group AppUserModelID, through the shell's own `taskbarunpin` verb (`ITaskbarUnpinner`), while the shortcuts still resolve.
+3. Switch the menu and autostart settings off, remove the Run entry and Explorer's menu, and each group's icons, shortcut and Start menu anchor.
+4. Delete the values Windows keeps about the program — MuiCache, FeatureUsage, the Compatibility Assistant store — that name a path inside this copy or a group AppUserModelID.
+5. Delete `%APPDATA%\TaskbarFolders`, then sweep the Start menu anchors left (all orphans now) and the Start menu folder if empty. Nothing is logged after the data folder is gone; the file logger drops lines it cannot write instead of re-creating the folder.
+
+Two callers run it. The Inno Setup uninstaller passes `--no-confirm` (it has asked already) and afterwards deletes, through `[UninstallDelete]`, what the running Manager could not: its last log lines and `%TEMP%\.net\TaskbarFolders.*`, where .NET unpacks the native parts of the single-file executables. The portable `Uninstall.cmd` lets the Manager ask, continues only on exit code 0 or 1, and then deletes the same leftovers, the `Manager` and `Launcher` folders and itself. *Settings → Uninstall TaskbarFolders…* starts whichever of the two ships with the copy and closes the Manager.
+
+The installer is per user (`PrivilegesRequired=lowest`): everything the app touches is the user's, and Inno Setup cannot run a step as the original user while uninstalling, so an elevated uninstaller could neither unpin the user's tiles reliably nor be sure whose `HKCU` and `%APPDATA%` it was cleaning.
 
 The Manager keeps every group in memory, so it re-reads the store whenever its window is activated and rebuilds the list — reselecting the previous group by id — only if some group differs from the copy in memory. Without that, a change made outside the Manager while it was open would be overwritten by its next save of the same group. The re-read is skipped while the editor is saving an add or remove (`GroupEditorViewModel.IsSaving`), checked before and after reading: then memory is ahead of the disk, and closing the add-apps picker activates the window exactly then.
 

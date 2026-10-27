@@ -40,12 +40,29 @@ internal static class NativeMethods
         IntPtr dwItem1,
         IntPtr dwItem2);
 
+    /// <summary>Creates a shell item for a file-system path; used to reach its context menu.</summary>
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    public static extern int SHCreateItemFromParsingName(
+        string pszPath,
+        IntPtr pbc,
+        ref Guid riid,
+        [MarshalAs(UnmanagedType.Interface)] out IShellItem ppv);
+
     // --- user32 -----------------------------------------------------------
 
     /// <summary>Destroys an icon and frees any memory the icon occupied.</summary>
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool DestroyIcon(IntPtr hIcon);
+
+    /// <summary>Creates an empty popup menu for <c>IContextMenu.QueryContextMenu</c> to fill.</summary>
+    [DllImport("user32.dll", ExactSpelling = true)]
+    public static extern IntPtr CreatePopupMenu();
+
+    /// <summary>Destroys a menu created by <see cref="CreatePopupMenu"/>.</summary>
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool DestroyMenu(IntPtr hMenu);
 
     // --- Flags & constants ------------------------------------------------
 
@@ -75,6 +92,19 @@ internal static class NativeMethods
     public const int SHCNE_UPDATEITEM = 0x00002000;
     public const uint SHCNF_PATHW = 0x00000005;
     public const uint SHCNF_FLUSH = 0x00001000;
+
+    // IContextMenu.QueryContextMenu: include verbs normally shown only with Shift.
+    public const uint CMF_EXTENDEDVERBS = 0x00000100;
+    public const int SW_SHOWNORMAL = 1;
+
+    /// <summary>IID for IShellItem.</summary>
+    public static readonly Guid IID_IShellItem = new("43826D1E-E718-42EE-BC55-A1E261C37BFE");
+
+    /// <summary>IID for IContextMenu.</summary>
+    public static readonly Guid IID_IContextMenu = new("000214E4-0000-0000-C000-000000000046");
+
+    /// <summary>BHID_SFUIObject: binds a shell item to its UI objects, such as its context menu.</summary>
+    public static readonly Guid BHID_SFUIObject = new("3981E225-F559-11D3-8E3A-00C04F6837D5");
 
     /// <summary>IID for IImageList.</summary>
     public static readonly Guid IID_IImageList = new("46EB5926-582E-4017-9FDF-E8998DAA0950");

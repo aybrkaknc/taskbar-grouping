@@ -1,8 +1,10 @@
-﻿namespace TaskbarFolders.Manager.Services;
+﻿using System.Collections.Generic;
+
+namespace TaskbarFolders.Manager.Services;
 
 /// <summary>
-/// The few operations the Explorer menu needs on <c>HKEY_CURRENT_USER</c>. Abstracted so the
-/// key layout can be tested without touching the real registry.
+/// The few operations the Explorer menu and the uninstaller need on <c>HKEY_CURRENT_USER</c>.
+/// Abstracted so the key layout can be tested without touching the real registry.
 /// </summary>
 public interface IRegistryWriter
 {
@@ -15,4 +17,13 @@ public interface IRegistryWriter
     /// <param name="name">Value name; <see langword="null"/> for the key's default value.</param>
     /// <param name="value">String data.</param>
     void SetString(string subKey, string? name, string value);
+
+    /// <summary>Names of the values on <paramref name="subKey"/>; empty when it does not exist.</summary>
+    /// <param name="subKey">Path under <c>HKEY_CURRENT_USER</c>.</param>
+    IReadOnlyList<string> GetValueNames(string subKey);
+
+    /// <summary>Deletes one value; silent when the key or the value does not exist.</summary>
+    /// <param name="subKey">Path under <c>HKEY_CURRENT_USER</c>.</param>
+    /// <param name="name">Value name.</param>
+    void DeleteValue(string subKey, string name);
 }

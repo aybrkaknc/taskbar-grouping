@@ -128,7 +128,7 @@ Current, deliberate or not-yet-implemented — not bugs to report:
 
 - **The popup has almost no keyboard support.** Escape leaves edit mode or closes the popup, but no item is focused on open and the arrow keys do nothing.
 - **The "Taskbar Groups" menu is classic-menu only on Windows 11** (*Show more options*). The Manager rewrites it whenever a group is created, renamed or deleted; only a group file edited by hand while the Manager is closed shows its old name there until the Manager next starts.
-- **A deleted portable folder leaves its menu entry behind** unless `Uninstall.cmd` or *Settings → Remove from this PC…* ran first. To clean up afterwards, extract the portable ZIP again and run its `Uninstall.cmd`.
+- **A portable folder deleted by hand leaves its tiles, menu entry and data behind** — only `Uninstall.cmd` or *Settings → Uninstall TaskbarFolders…* clean up. To do it afterwards, extract the portable ZIP again and run its `Uninstall.cmd`.
 - **On Windows 11 22H2+ the glass panel does not fade when the popup closes.** DWM draws it and does not animate this window's hide, so only the icons fade.
 - **A group with more apps than the popup can show loses the rest.** The popup stops at 800 DIP, which is eight rows — 24 apps at the default three columns — and the grid does not scroll. Anything past that is off-screen with nothing indicating it exists; a visible launch-failure strip costs a further row.
 - **The blurred popup background needs Windows 11 22H2 or later.** Older versions get a plain translucent panel. With Windows' *Transparency effects* turned off, the background is a solid colour instead of glass.
@@ -138,7 +138,15 @@ Current, deliberate or not-yet-implemented — not bugs to report:
 - **Renaming a group's JSON file changes its identity**, orphaning its icon, shortcut and any existing pin. Rename from the Manager instead; that changes only the display name.
 - **x64 only.** There is no ARM64 build.
 - **No single-instance guard.** Nothing stops two Managers running at once; the second may overwrite the first's changes.
-- **Uninstalling leaves `%APPDATA%\TaskbarFolders` and the Start menu entries in place.** See the [user guide](user-guide.md#uninstalling) for removing them.
+- **Uninstalling deletes your groups.** It removes `%APPDATA%\TaskbarFolders` with everything else; back up `groups\` first to keep them.
+
+## Setup says an earlier version is installed for all users
+
+Releases up to 0.4.x installed into Program Files for every user; setup is now per user, into `%LOCALAPPDATA%\Programs`, and cannot replace or remove that copy. Uninstall the old one under *Settings → Apps → Installed apps* (it asks for administrator rights), then run setup again. Your groups in `%APPDATA%\TaskbarFolders` are not touched by that old uninstaller.
+
+## Something was left after uninstalling
+
+The uninstaller reports anything it could not remove. Usually a file was in use: restart Windows, then extract the portable ZIP and run its `Uninstall.cmd`, which removes what is left. A group tile it could not unpin is removed by right-clicking it and choosing *Unpin from taskbar*. `Uninstall.cmd` deletes nothing unless the Manager reports that the uninstall ran: if you cancel, or the Manager stops unexpectedly, every file stays.
 
 ## "Taskbar Groups" is missing from the right-click menu
 

@@ -51,6 +51,11 @@ public sealed class ExplorerContextMenuServiceTests
             Values[(subKey, name)] = value;
             Order.Add("set " + subKey);
         }
+
+        public IReadOnlyList<string> GetValueNames(string subKey) =>
+            Values.Keys.Where(k => k.Key == subKey && k.Name is not null).Select(k => k.Name!).ToList();
+
+        public void DeleteValue(string subKey, string name) => Values.Remove((subKey, name));
     }
 
     private readonly RecordingRegistry _registry = new();

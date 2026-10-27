@@ -54,7 +54,7 @@ Zwei Funktionen richten sich nach Ihrer Windows-Version, fallen aber nicht aus, 
 ### Mit Installationsprogramm
 
 1. Laden Sie `TaskbarFolders-Setup.exe` von der [Releases-Seite](https://github.com/gianluca-schwekendiek/taskbar-grouping/releases) herunter.
-2. Starten Sie die Datei. Windows fragt nach Administratorrechten — das Programm wird nach „Programme" installiert.
+2. Starten Sie die Datei. Das Programm wird nur für Ihr Benutzerkonto nach `%LOCALAPPDATA%\Programs\TaskbarFolders` installiert; Administratorrechte sind nicht nötig.
 3. Im Assistenten können Sie zwei Dinge wählen:
    - **Mit Windows starten** — ist vorausgewählt. Der Manager startet dann bei jeder Anmeldung mit. Sie können das später in den Einstellungen ändern.
    - **Desktopsymbol anlegen** — ist nicht vorausgewählt.
@@ -190,7 +190,7 @@ Zu erreichen über den **⚙**-Knopf oben rechts.
 
 Der Autostart-Haken zeigt den tatsächlichen Zustand in der Windows-Registrierung. Wenn Sie den Eintrag von Hand entfernen, erscheint der Haken beim nächsten Öffnen ausgeschaltet.
 
-**Remove from this PC…** ganz unten ist für das Löschen einer portablen Fassung gedacht: Nach einer Rückfrage entfernt es alles, was TaskbarFolders außerhalb seines Ordners eingetragen hat (Explorer-Menü, Autostart-Eintrag, Verknüpfungen, Symbole und Startmenü-Einträge der Gruppen), schaltet Menü und Autostart in den Einstellungen aus und schließt den Manager. Ihre Gruppen bleiben in `%APPDATA%\TaskbarFolders\groups`, angeheftete Kacheln bleiben auf der Taskleiste, bis Sie sie lösen. Rückgängig machen: Manager öffnen, die Einstellungen wieder einschalten und in jeder Gruppe etwas ändern, damit ihre Verknüpfungen neu geschrieben werden.
+**Uninstall TaskbarFolders…** ganz unten startet das Deinstallationsprogramm dieser Fassung und schließt den Manager — siehe [Deinstallieren](#deinstallieren).
 
 ### Spaltenanzahl des Aufklapp-Fensters
 
@@ -237,16 +237,23 @@ Keine Fehler, sondern bewusste oder noch offene Grenzen:
 - Es gibt **keine ARM64-Fassung**.
 - Nichts hindert daran, den Manager **zweimal gleichzeitig** zu starten. Die zweite Instanz kann Änderungen der ersten überschreiben.
 - Das **Löschen einer Gruppe entfernt ihre Kachel nicht**.
-- Das **Deinstallieren entfernt Ihre Gruppen nicht**.
+- Das **Deinstallieren löscht auch Ihre Gruppen und Einstellungen**. Sichern Sie `%APPDATA%\TaskbarFolders\groups` vorher, wenn Sie sie behalten möchten.
 
 ## Deinstallieren
 
-**Installierte Fassung:** *Einstellungen → Apps → Installierte Apps → TaskbarFolders → Deinstallieren*. Das entfernt das Programm und den Autostart-Eintrag.
+Das Deinstallieren entfernt TaskbarFolders und alles, was es in Windows hinzugefügt hat, ohne Reste:
 
-**Portable Fassung:** Vor dem Löschen des entpackten Ordners `Uninstall.cmd` darin ausführen oder in den Einstellungen **Remove from this PC…** anklicken. Beides entfernt den Explorer-Menüeintrag, den Autostart-Eintrag sowie Verknüpfungen, Symbole und Startmenü-Einträge aller Gruppen und schließt den Manager. Die Gruppenkacheln lösen Sie selbst von der Taskleiste, danach können Sie den Ordner löschen. Ohne diesen Schritt bleibt der Menüeintrag zurück und zeigt auf ein fehlendes Programm.
+- die Gruppenkacheln auf der Taskleiste (sie werden gelöst),
+- den Eintrag *Taskbar Groups* im Explorer-Kontextmenü,
+- den Autostart-Eintrag,
+- die Startmenü-Einträge und das Desktopsymbol,
+- **Ihre Gruppen und Einstellungen** — den ganzen Ordner `%APPDATA%\TaskbarFolders`,
+- die Laufzeitdateien, die .NET nach `%TEMP%\.net` entpackt, und die Einträge, die Windows über ausgeführte Programme anlegt.
 
-Ihre Gruppen bleiben in beiden Fällen erhalten. Wenn Sie wirklich alles entfernen möchten:
+Sichern Sie vorher `%APPDATA%\TaskbarFolders\groups`, wenn Sie Ihre Gruppen für eine spätere Neuinstallation behalten möchten.
 
-1. Angeheftete Gruppenkacheln mit Rechtsklick von der Taskleiste lösen.
-2. Den Ordner `%APPDATA%\TaskbarFolders` löschen.
-3. Den Ordner `%APPDATA%\Microsoft\Windows\Start Menu\Programs\TaskbarFolders` löschen.
+**Installierte Fassung:** *Einstellungen → Apps → Installierte Apps → TaskbarFolders → Deinstallieren*, oder **Uninstall TaskbarFolders…** ganz unten in den Einstellungen des Managers.
+
+**Portable Fassung:** `Uninstall.cmd` im entpackten Ordner ausführen oder in den Einstellungen **Uninstall TaskbarFolders…** anklicken. Nach Ihrer Bestätigung entfernt es alles oben Genannte, danach die Ordner `Manager` und `Launcher` und sich selbst; der entpackte Ordner verschwindet mit, wenn sonst nichts darin liegt. Wird der Ordner ohne diesen Schritt gelöscht, bleiben Menüeintrag, Kacheln und Daten zurück — dann das ZIP erneut entpacken und dessen `Uninstall.cmd` ausführen.
+
+Lässt sich eine Kachel nicht lösen, meldet das Deinstallationsprogramm das: Rechtsklick darauf und *Von Taskleiste lösen* wählen.

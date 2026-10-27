@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -20,7 +21,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly IAppSettingsStore _store;
     private readonly IAutoStartService _autoStartService;
     private readonly IThemeService _themeService;
-    private readonly IShellIntegrationRemover _remover;
+    private readonly InstallLocation _install;
+    private readonly IProcessRunner _processes;
     private readonly IUserConfirmation _confirmation;
     private readonly ILogger<SettingsViewModel>? _logger;
 
@@ -31,20 +33,23 @@ public sealed partial class SettingsViewModel : ObservableObject
         IAppSettingsStore store,
         IAutoStartService autoStart,
         IThemeService themeService,
-        IShellIntegrationRemover remover,
+        InstallLocation install,
+        IProcessRunner processes,
         IUserConfirmation confirmation,
         ILogger<SettingsViewModel>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(autoStart);
         ArgumentNullException.ThrowIfNull(themeService);
-        ArgumentNullException.ThrowIfNull(remover);
+        ArgumentNullException.ThrowIfNull(install);
+        ArgumentNullException.ThrowIfNull(processes);
         ArgumentNullException.ThrowIfNull(confirmation);
 
         _store = store;
         _autoStartService = autoStart;
         _themeService = themeService;
-        _remover = remover;
+        _install = install;
+        _processes = processes;
         _confirmation = confirmation;
         _logger = logger;
     }
@@ -69,10 +74,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     public event EventHandler? Saved;
 
     /// <summary>
-    /// Raised after <see cref="RemoveFromThisPcCommand"/> has run. The Manager closes then:
-    /// staying open, it would write the Start menu entries straight back on the next sync.
+    /// Raised once <see cref="UninstallCommand"/> has started the uninstaller. The Manager exits
+    /// then: its executable cannot be deleted while it runs.
     /// </summary>
-    public event EventHandler? RemovedFromThisPc;
+    public event EventHandler? UninstallStarted;
 
     /// <summary>Whether any property has been mutated since the last load or save.</summary>
     [ObservableProperty]
@@ -132,29 +137,37 @@ public sealed partial class SettingsViewModel : ObservableObject
         Saved?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>
+    /// Starts the uninstaller that came with this copy — the installer's, or the portable
+    /// <c>Uninstall.cmd</c>. It asks for confirmation itself; the Manager then has to exit so
+    /// that its own files can be deleted.
+    /// </summary>
     [RelayCommand]
-    private async Task RemoveFromThisPcAsync()
+    private void Uninstall()
     {
-        if (!_confirmation.Confirm(
-                "Remove from this PC",
-                "This removes the \"Taskbar Groups\" menu, the start-with-Windows entry, and every group's " +
-                "shortcuts, icons and Start menu entries, then closes the Manager. Your groups are kept. " +
-                "Pinned taskbar tiles stay until you unpin them.\n\nContinue?"))
+        var uninstaller = _install.FindUninstaller();
+        if (uninstaller is null)
         {
+            _confirmation.Notify(
+                "Uninstall",
+                "No uninstaller was found next to this copy of TaskbarFolders. A development build has none; " +
+                $"run TaskbarFolders.Manager.exe {UninstallArguments.Uninstall} to clean up instead.");
             return;
         }
 
-        var complete = await _remover.RemoveAsync().ConfigureAwait(true);
-        _confirmation.Notify("Remove from this PC", RemovalResultMessage(complete));
-        RemovedFromThisPc?.Invoke(this, EventArgs.Empty);
-    }
+        var psi = uninstaller.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase)
+            ? new ProcessStartInfo("cmd.exe", $"/c \"\"{uninstaller}\"\"") { UseShellExecute = false, CreateNoWindow = true }
+            : new ProcessStartInfo(uninstaller) { UseShellExecute = true };
 
-    /// <summary>What to tell the user after a removal, from the Settings button or the command line.</summary>
-    /// <param name="complete">Result of <see cref="IShellIntegrationRemover.RemoveAsync"/>.</param>
-    public static string RemovalResultMessage(bool complete) => complete
-        ? "Done. Unpin the group tiles from the taskbar, then the TaskbarFolders folder can be deleted."
-        : "Some entries could not be removed; see %APPDATA%\\TaskbarFolders\\logs for details. " +
-          "Unpin the group tiles from the taskbar before deleting the folder.";
+        if (!_processes.TryStart(psi))
+        {
+            _logger?.LogWarning("Uninstall: could not start {Path}.", uninstaller);
+            _confirmation.Notify("Uninstall", $"The uninstaller could not be started:\n{uninstaller}");
+            return;
+        }
+
+        UninstallStarted?.Invoke(this, EventArgs.Empty);
+    }
 
     partial void OnThemeChanged(ThemePreference value) => MarkDirty();
     partial void OnAutoStartChanged(bool value) => MarkDirty();

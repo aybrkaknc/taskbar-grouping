@@ -18,4 +18,8 @@ public interface IProcessRunner
     /// elapses before exit.
     /// </summary>
     Task<int> RunAndWaitAsync(ProcessStartInfo psi, TimeSpan timeout, CancellationToken cancellationToken = default);
+
+    /// <summary>Starts the process described by <paramref name="psi"/> without waiting for it.</summary>
+    /// <returns><see langword="false"/> when it could not be started.</returns>
+    bool TryStart(ProcessStartInfo psi);
 }

@@ -179,6 +179,10 @@ string? TryReadAumid(string shortcutPath);
 
 The read counterpart to `IShortcutGenerator`. Returns `null` — never throws — when the shortcut carries no AppUserModelID, does not exist, or cannot be read. Used to verify that a pin actually landed: Windows copies the shortcut it resolved into its own pinned-items folder under a name of its choosing, so the AUMID is the only stable identity across the programmatic and manual pin routes.
 
+#### [`ITaskbarUnpinner`](../src/TaskbarFolders.Core/Shortcuts/ITaskbarUnpinner.cs)
+
+`bool TryUnpin(string pinnedShortcutPath)` invokes the shell's `taskbarunpin` verb — by canonical name, never the localized caption — on a shortcut in the taskbar's pinned-items folder, through `IShellItem` → `IContextMenu`. The shell then removes the tile and the file. Works from a normal user process; there is no public API for this. Default `ShellTaskbarUnpinner`; only the uninstaller calls it.
+
 #### [`IShellChangeNotifier`](../src/TaskbarFolders.Core/Shortcuts/IShellChangeNotifier.cs)
 
 ```csharp
@@ -225,13 +229,19 @@ Task RefreshAsync(CancellationToken cancellationToken = default);
 void Write(IReadOnlyList<GroupConfig> groups, string? launcherPath);
 ```
 
-Keeps Explorer's *Taskbar Groups* menu in step with the groups and the `AppSettings.ShowInExplorerMenu` setting. `RefreshAsync` reads both stores and the launcher path, logs and swallows registry failures. `Write` deletes the submenu for both file classes and writes it again, or leaves it deleted for no groups or no launcher. Registry access goes through `IRegistryWriter` (`DeleteTree`, `SetString` on HKCU; `CurrentUserRegistryWriter` in production). `MainWindowViewModel.GroupListChanged` and `SettingsViewModel.Saved` trigger it.
+Keeps Explorer's *Taskbar Groups* menu in step with the groups and the `AppSettings.ShowInExplorerMenu` setting. `RefreshAsync` reads both stores and the launcher path, logs and swallows registry failures. `Write` deletes the submenu for both file classes and writes it again, or leaves it deleted for no groups or no launcher. Registry access goes through `IRegistryWriter` (`DeleteTree`, `SetString`, `GetValueNames`, `DeleteValue` on HKCU; `CurrentUserRegistryWriter` in production). `MainWindowViewModel.GroupListChanged` and `SettingsViewModel.Saved` trigger it.
 
-#### [`IShellIntegrationRemover`](../src/TaskbarFolders.Manager/Services/IShellIntegrationRemover.cs)
+#### [`IUninstaller`](../src/TaskbarFolders.Manager/Services/IUninstaller.cs)
 
-`Task<bool> RemoveAsync(CancellationToken)` — "Remove from this PC". Switches `ShowInExplorerMenu` and `AutoStart` off in the settings first, then disables the Run entry, deletes the Explorer menu (`ExplorerContextMenuService.Write([], null)`), calls `IGroupSyncService.RemoveArtifacts` for every group and deletes the Start menu folder if it is empty. Each step runs even if an earlier one failed; the result is `false` if any did. Group configs and pinned taskbar tiles are never touched. Default implementation `ShellIntegrationRemover`.
+`Task<UninstallReport> RunAsync(CancellationToken)` removes every trace outside the program folder, in this order: ends the other TaskbarFolders processes of the session (`IInstanceCloser`), unpins tiles whose pinned shortcut carries a group AUMID (`ITaskbarUnpinner`), turns the menu and autostart settings off, removes the Run entry, the Explorer menu and each group's artifacts (`IGroupSyncService.RemoveArtifacts`), deletes the `WindowsRecordKeys` values for which `IsOurRecord(name, installRoot)` holds, deletes `%APPDATA%\TaskbarFolders`, then sweeps orphaned Start menu anchors and the empty Start menu folder. Every step runs even if an earlier one failed. `UninstallReport(bool Complete, int TilesLeftPinned)`. Default implementation `Uninstaller`.
 
-Callers: `SettingsViewModel.RemoveFromThisPcCommand` (confirms, reports with `SettingsViewModel.RemovalResultMessage(bool)`, then raises `RemovedFromThisPc`, on which `App` shuts the Manager down) and `TaskbarFolders.Manager.exe --remove-integration` (`App.RemoveIntegrationArgument`; no main window, exit code 0 when complete, 1 otherwise), which the portable ZIP's `Uninstall.cmd` runs.
+`static bool IsOurRecord(string valueName, string installRoot)` — true for a value name that starts with `installRoot` plus a separator, or with `GroupAumid.Prefix`.
+
+[`UninstallArguments`](../src/TaskbarFolders.Manager/Services/UninstallArguments.cs) is the command line around it: `TaskbarFolders.Manager.exe --uninstall [--no-confirm]` runs it with no main window (`App`), asking first unless `--no-confirm`, and reporting always without it, only problems with it. Exit codes `ExitComplete` 0, `ExitIncomplete` 1, `ExitCancelled` 2.
+
+[`InstallLocation`](../src/TaskbarFolders.Manager/Services/InstallLocation.cs)`(string Root)` is the folder holding `Manager` and `Launcher` (`OfRunningManager()`); `FindUninstaller()` returns `unins000.exe` or `Uninstall.cmd` in it, or `null` for a development build. `SettingsViewModel.UninstallCommand` starts it through `IProcessRunner.TryStart` and raises `UninstallStarted`, on which `App` exits.
+
+[`IInstanceCloser`](../src/TaskbarFolders.Manager/Services/IInstanceCloser.cs) — `int CloseOthers()` ends every Manager but this process and every Launcher in the current session, returning how many would not end. Default `ProcessInstanceCloser`.
 
 #### [`LauncherPathResolver`](../src/TaskbarFolders.Manager/Services/LauncherPathResolver.cs)
 
@@ -254,7 +264,7 @@ Task<PinResult> PinAsync(string groupId, CancellationToken cancellationToken = d
 | [`IAutoStartService`](../src/TaskbarFolders.Manager/Services/IAutoStartService.cs) | `IsEnabled`, `Enable()`, `Disable()` over the per-user Run key |
 | [`ISystemThemeProbe`](../src/TaskbarFolders.Manager/Services/ISystemThemeProbe.cs) | `IsLightMode` from the Windows personalisation setting |
 | [`IThemeService`](../src/TaskbarFolders.Manager/Services/IThemeService.cs) | `Preference`, `EffectiveTheme`, `SetPreference()`; subscribes to system theme changes only while the preference is `System` |
-| [`IProcessRunner`](../src/TaskbarFolders.Manager/Services/IProcessRunner.cs) | `RunAndWaitAsync(ProcessStartInfo, TimeSpan, …)` returning the exit code |
+| [`IProcessRunner`](../src/TaskbarFolders.Manager/Services/IProcessRunner.cs) | `RunAndWaitAsync(ProcessStartInfo, TimeSpan, …)` returning the exit code; `TryStart(ProcessStartInfo)` without waiting |
 | [`IUserConfirmation`](../src/TaskbarFolders.Manager/Services/IUserConfirmation.cs) | `Confirm()` and `Notify()`, so view models stay free of `MessageBox` |
 
 ## TaskbarFolders.Launcher

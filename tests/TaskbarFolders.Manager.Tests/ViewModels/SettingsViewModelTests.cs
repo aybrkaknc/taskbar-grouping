@@ -1,4 +1,7 @@
-﻿using System.Threading;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
@@ -31,47 +34,78 @@ public class SettingsViewModelTests
         themeMock = new Mock<IThemeService>();
 
         return new SettingsViewModel(
-            storeMock.Object, autoMock.Object, themeMock.Object, Mock.Of<IShellIntegrationRemover>(), Mock.Of<IUserConfirmation>());
+            storeMock.Object, autoMock.Object, themeMock.Object, new InstallLocation(Path.GetTempPath()), Mock.Of<IProcessRunner>(), Mock.Of<IUserConfirmation>());
     }
 
-    private static SettingsViewModel CreateRemovalSut(bool confirm, bool complete, out Mock<IShellIntegrationRemover> remover, out Mock<IUserConfirmation> confirmation)
+    private static SettingsViewModel CreateUninstallSut(
+        string installRoot, out Mock<IProcessRunner> processes, out Mock<IUserConfirmation> confirmation)
     {
-        remover = new Mock<IShellIntegrationRemover>();
-        remover.Setup(r => r.RemoveAsync(It.IsAny<CancellationToken>())).ReturnsAsync(complete);
+        processes = new Mock<IProcessRunner>();
+        processes.Setup(p => p.TryStart(It.IsAny<ProcessStartInfo>())).Returns(true);
         confirmation = new Mock<IUserConfirmation>();
-        confirmation.Setup(c => c.Confirm(It.IsAny<string>(), It.IsAny<string>())).Returns(confirm);
 
         return new SettingsViewModel(
-            Mock.Of<IAppSettingsStore>(), Mock.Of<IAutoStartService>(), Mock.Of<IThemeService>(), remover.Object, confirmation.Object);
+            Mock.Of<IAppSettingsStore>(), Mock.Of<IAutoStartService>(), Mock.Of<IThemeService>(),
+            new InstallLocation(installRoot), processes.Object, confirmation.Object);
     }
 
-    [Fact]
-    public async Task RemoveFromThisPc_DoesNothing_WhenTheUserCancels()
+    private static string NewInstallRoot(string? withFile)
     {
-        var sut = CreateRemovalSut(confirm: false, complete: true, out var remover, out _);
-        var closed = false;
-        sut.RemovedFromThisPc += (_, _) => closed = true;
-
-        await sut.RemoveFromThisPcCommand.ExecuteAsync(null);
-
-        remover.Verify(r => r.RemoveAsync(It.IsAny<CancellationToken>()), Times.Never);
-        closed.Should().BeFalse();
+        var root = Path.Combine(Path.GetTempPath(), "tf-settings-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        if (withFile is not null)
+        {
+            File.WriteAllText(Path.Combine(root, withFile), "");
+        }
+        return root;
     }
 
     [Theory]
-    [InlineData(true, "Done.")]
-    [InlineData(false, "could not be removed")]
-    public async Task RemoveFromThisPc_RemovesReportsAndClosesTheManager(bool complete, string expectedText)
+    [InlineData(InstallLocation.InstallerUninstallerName, false)]
+    [InlineData(InstallLocation.PortableUninstallerName, true)]
+    public void Uninstall_StartsTheUninstallerOfThisCopy_AndClosesTheManager(string uninstaller, bool viaCmd)
     {
-        var sut = CreateRemovalSut(confirm: true, complete, out var remover, out var confirmation);
-        var closed = false;
-        sut.RemovedFromThisPc += (_, _) => closed = true;
+        var root = NewInstallRoot(uninstaller);
+        try
+        {
+            var sut = CreateUninstallSut(root, out var processes, out _);
+            var closing = false;
+            sut.UninstallStarted += (_, _) => closing = true;
 
-        await sut.RemoveFromThisPcCommand.ExecuteAsync(null);
+            sut.UninstallCommand.Execute(null);
 
-        remover.Verify(r => r.RemoveAsync(It.IsAny<CancellationToken>()), Times.Once);
-        confirmation.Verify(c => c.Notify(It.IsAny<string>(), It.Is<string>(m => m.Contains(expectedText))), Times.Once);
-        closed.Should().BeTrue("left open, the Manager would write the Start menu entries back on the next sync");
+            var expected = Path.Combine(root, uninstaller);
+            processes.Verify(p => p.TryStart(It.Is<ProcessStartInfo>(psi => viaCmd
+                ? psi.FileName == "cmd.exe" && psi.Arguments.Contains(expected, StringComparison.Ordinal)
+                : psi.FileName == expected)), Times.Once);
+            closing.Should().BeTrue("the Manager's own files cannot be deleted while it runs");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Uninstall_ExplainsAndStaysOpen_WhenThisCopyHasNoUninstaller()
+    {
+        var root = NewInstallRoot(withFile: null);
+        try
+        {
+            var sut = CreateUninstallSut(root, out var processes, out var confirmation);
+            var closing = false;
+            sut.UninstallStarted += (_, _) => closing = true;
+
+            sut.UninstallCommand.Execute(null);
+
+            processes.Verify(p => p.TryStart(It.IsAny<ProcessStartInfo>()), Times.Never);
+            confirmation.Verify(c => c.Notify(It.IsAny<string>(), It.Is<string>(m => m.Contains("--uninstall"))), Times.Once);
+            closing.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]

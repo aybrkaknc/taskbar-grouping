@@ -63,13 +63,13 @@
             </TextBlock>
 
             <Separator Margin="0,16,0,12" />
-            <TextBlock Text="Before deleting a portable copy" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <TextBlock Text="Uninstall" FontWeight="SemiBold" Margin="0,0,0,4" />
             <TextBlock Margin="0,0,0,8" Foreground="{DynamicResource ForegroundSubtle}" FontSize="11" TextWrapping="Wrap">
-                Removes the Explorer menu, the start-with-Windows entry and every group's shortcuts and
-                Start menu entries, then closes the Manager. Your groups are kept.
+                Removes TaskbarFolders and everything it added to Windows — taskbar tiles, the Explorer
+                menu, Start menu entries, your groups and settings. Asks before it starts.
             </TextBlock>
-            <Button Content="Remove from this PC…" HorizontalAlignment="Left" Padding="12,4"
-                    Command="{Binding RemoveFromThisPcCommand}" />
+            <Button Content="Uninstall TaskbarFolders…" HorizontalAlignment="Left" Padding="12,4"
+                    Command="{Binding UninstallCommand}" />
 
         </StackPanel>
     </DockPanel>
