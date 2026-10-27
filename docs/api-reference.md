@@ -16,10 +16,12 @@ One application inside a group.
 
 | Property | Type | Notes |
 |---|---|---|
-| `Name` | `string` | Required. Display name; the Manager fills it from the file name without its extension |
+| `Name` | `string` | Required. Display name, filled from the file name without its extension |
 | `Path` | `string` | Required. Full path to the `.exe` or `.lnk` |
 | `IconPath` | `string?` | Declared for a future custom-icon feature; **not read by any current code** |
 | `Arguments` | `string?` | Launch arguments; omitted from JSON when null, and not editable in the UI |
+
+`static bool TryCreateFromPath(string? path, out AppEntry? entry)` is the one rule for turning a picked or dropped file into an entry: `.exe` and `.lnk` only, any case, named after the file. Everything that adds apps goes through it.
 
 #### [`GroupConfig`](../src/TaskbarFolders.Shared/Models/GroupConfig.cs)
 
@@ -181,15 +183,9 @@ void NotifyCreate(string path);
 
 Wraps `SHChangeNotify` so the shell notices a newly written Start menu shortcut. Without it a programmatic pin can silently fail to persist. The interface exists so call sites stay testable without executing native code.
 
-### Interop
+### Groups
 
-`WindowBackdrop.TryApply(IntPtr hwnd, WindowBackdropKind kind)` requests a DWM system backdrop: `Mica` on the Manager window, `Acrylic` on the popup. A Manager failure is ignored and the window keeps solid brushes; a popup failure switches it to its fallback panel.
-
-`WindowBackdrop.IsSupported` is true from Windows 11 22H2 (build 22621), the first build that honours the backdrop attribute. The popup reads it before its HWND exists, because the backdrop only paints behind a non-layered window. `WindowBackdrop.TrySetRoundedCorners(IntPtr hwnd)` sets `DWMWA_WINDOW_CORNER_PREFERENCE` to round. All three members return `false` rather than throw on a zero handle or an older Windows.
-
-## TaskbarFolders.Manager
-
-#### [`IGroupSyncService`](../src/TaskbarFolders.Manager/Services/IGroupSyncService.cs)
+#### [`IGroupSyncService`](../src/TaskbarFolders.Core/Groups/IGroupSyncService.cs)
 
 ```csharp
 Task SyncAsync(GroupConfig config, CancellationToken cancellationToken = default);
@@ -198,17 +194,29 @@ bool EnsureStartMenuShortcut(GroupConfig config);
 int RemoveOrphanedStartMenuAnchors();
 ```
 
-Regenerates icon, shortcut and Start menu anchor for a group. `SyncAsync` returns early for a group with no apps.
+Regenerates icon, shortcut and Start menu anchor for a group. `SyncAsync` returns early for a group with no apps. Lives in Core so that both executables that change a group can run it.
 
 Anchors are matched by the AUMID read back through `IShortcutReader`, not by file name: writing an anchor removes any other anchor carrying the same group's AUMID, and `RemoveArtifacts` removes all of them. `RemoveOrphanedStartMenuAnchors` deletes anchors whose AUMID names a group with no `groups\<id>.json`, and leaves files without a TaskbarFolders AUMID alone.
 
-#### [`ILauncherPathResolver`](../src/TaskbarFolders.Manager/Services/ILauncherPathResolver.cs)
+#### [`ILauncherPathResolver`](../src/TaskbarFolders.Core/Groups/ILauncherPathResolver.cs)
 
 ```csharp
 string? TryResolve();
 ```
 
-Probes side-by-side, sibling-folder and development layouts in that order, logging every probed path when none match.
+The launcher executable a group's shortcuts target, or `null` when it cannot be found — sync then logs and skips the shortcut. Each executable supplies its own implementation (see the Manager section).
+
+### Interop
+
+`WindowBackdrop.TryApply(IntPtr hwnd, WindowBackdropKind kind)` requests a DWM system backdrop: `Mica` on the Manager window, `Acrylic` on the popup. A Manager failure is ignored and the window keeps solid brushes; a popup failure switches it to its fallback panel.
+
+`WindowBackdrop.IsSupported` is true from Windows 11 22H2 (build 22621), the first build that honours the backdrop attribute. The popup reads it before its HWND exists, because the backdrop only paints behind a non-layered window. `WindowBackdrop.TrySetRoundedCorners(IntPtr hwnd)` sets `DWMWA_WINDOW_CORNER_PREFERENCE` to round. All three members return `false` rather than throw on a zero handle or an older Windows.
+
+## TaskbarFolders.Manager
+
+#### [`LauncherPathResolver`](../src/TaskbarFolders.Manager/Services/LauncherPathResolver.cs)
+
+The Manager's `ILauncherPathResolver` (see Core). Probes side-by-side, sibling-folder and development layouts in that order, logging every probed path when none match.
 
 #### [`IPinToTaskbarService`](../src/TaskbarFolders.Manager/Services/IPinToTaskbarService.cs)
 

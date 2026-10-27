@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using FluentAssertions;
 using Moq;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
-using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
 using Xunit;
 
-namespace TaskbarFolders.Manager.Tests.Services;
+namespace TaskbarFolders.Core.Tests.Groups;
 
 public sealed class GroupSyncServiceTests : IDisposable
 {

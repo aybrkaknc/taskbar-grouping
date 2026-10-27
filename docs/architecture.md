@@ -47,7 +47,7 @@ graph TB
 | Project | Role | Constraint |
 |---|---|---|
 | `TaskbarFolders.Shared` | Models, JSON persistence with atomic writes, path provider, file logging | No Windows-only APIs — kept portable |
-| `TaskbarFolders.Core` | Icon extraction and composition, Win32/COM interop, shortcut generation, shell change notification, window backdrop | `[SupportedOSPlatform("windows")]` |
+| `TaskbarFolders.Core` | Icon extraction and composition, Win32/COM interop, shortcut generation, shell change notification, window backdrop, group sync (`GroupSyncService`) | `[SupportedOSPlatform("windows")]` |
 | `TaskbarFolders.Manager` | WPF application for group CRUD, settings, pinning | DI graph in `ManagerServiceCollectionExtensions` |
 | `TaskbarFolders.Launcher` | Short-lived popup process, one per tile click; also the pin runner | DI graph in `LauncherServiceCollectionExtensions` |
 

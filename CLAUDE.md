@@ -19,7 +19,7 @@ Four-project solution. Dependencies flow Manager/Launcher → Core → Shared.
 | Project | Purpose | Constraint |
 |---|---|---|
 | `TaskbarFolders.Shared` | Models, JSON persistence, file logging | **No Windows-only APIs** — keep portable |
-| `TaskbarFolders.Core` | Icon engine, Win32 P/Invoke, shortcut generation | `[SupportedOSPlatform("windows")]` |
+| `TaskbarFolders.Core` | Icon engine, Win32 P/Invoke, shortcut generation, group sync (`Core.Groups`) | `[SupportedOSPlatform("windows")]` |
 | `TaskbarFolders.Manager` | WPF group-CRUD app | DI via `ManagerServiceCollectionExtensions` |
 | `TaskbarFolders.Launcher` | Per-group popup (short-lived per click) | DI via `LauncherServiceCollectionExtensions` |
 

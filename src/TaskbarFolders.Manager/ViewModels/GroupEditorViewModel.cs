@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Shared.Configuration;
@@ -139,24 +140,12 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         var added = 0;
         foreach (var raw in paths)
         {
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                continue;
-            }
-
-            var ext = Path.GetExtension(raw);
-            if (!string.Equals(ext, ".exe", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(ext, ".lnk", StringComparison.OrdinalIgnoreCase))
+            if (!AppEntry.TryCreateFromPath(raw, out var entry))
             {
                 _logger?.LogDebug("Ignored non-executable drop {Path}", raw);
                 continue;
             }
 
-            var entry = new AppEntry
-            {
-                Name = Path.GetFileNameWithoutExtension(raw),
-                Path = raw,
-            };
             _boundItem.Config.Apps.Add(entry);
 
             var appVm = new AppEntryViewModel(entry);

@@ -2,11 +2,12 @@
 using System.Threading.Tasks;
 using TaskbarFolders.Shared.Models;
 
-namespace TaskbarFolders.Manager.Services;
+namespace TaskbarFolders.Core.Groups;
 
 /// <summary>
 /// Keeps the on-disk per-group artifacts (composite .ico + pinnable .lnk) in sync with the
-/// current <see cref="GroupConfig"/>. Called whenever the Manager persists a group.
+/// current <see cref="GroupConfig"/>. Called whenever a group is persisted — by the Manager, or by
+/// the popup when apps are added or removed there.
 /// </summary>
 public interface IGroupSyncService
 {

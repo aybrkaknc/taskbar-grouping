@@ -12,7 +12,7 @@ using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
 
-namespace TaskbarFolders.Manager.Services;
+namespace TaskbarFolders.Core.Groups;
 
 /// <summary>
 /// Default <see cref="IGroupSyncService"/>. Pipelines the icon engine and the shortcut writer
