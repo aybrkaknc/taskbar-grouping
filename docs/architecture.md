@@ -145,7 +145,7 @@ The taskbar starts the launcher. Startup order matters and is deliberate:
 
 Names appear immediately; icons stream in afterwards on the thread pool. Each `BitmapSource` is frozen inside the producer before the continuation crosses back to the UI thread — an unfrozen bitmap carries the wrong dispatcher affinity and the WPF binding throws.
 
-The popup closes on a click outside it, Escape, its ✕ button, focus loss, a successful launch, or via a three-second fallback if Windows never granted it activation. A *failed* launch keeps it open and shows an inline error strip.
+The popup closes on a click outside it, Escape, its ✕ button, focus loss, a successful launch, or via a three-second fallback if Windows never granted it activation. A *failed* launch keeps it open and shows an inline error strip. While `PopupViewModel.IsPinned`, `PopupWindow.DismissesOnOutsideInteraction` is false and a successful launch does not close either; a press on the group's own tile (`OutsidePressEventArgs.IsOnOpeningTile`) still does.
 
 All of these end in `Window.Close()`, and `OnClosing` is the single place that applies the fade-out: with animations on it cancels the first request, plays `CloseAnimation` on `ChromeRoot` (about 120 ms), and closes for real on `Completed` or after a 300 ms safety net. Clicks outside are detected by `OutsideClickWatcher`, a process-local `WH_MOUSE_LL` hook installed on `ContentRendered` and removed when the popup closes, because `Deactivated` only fires for a popup that was activated in the first place.
 

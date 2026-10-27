@@ -210,6 +210,27 @@
                         ToolTip="Close"
                         AutomationProperties.Name="Close"
                         Command="{Binding CloseCommand}" />
+                <!-- Pin toggle: keeps the popup open across clicks elsewhere and launches;
+                     tinted plate while on, like the edit toggle. -->
+                <Button x:Name="PinButton"
+                        DockPanel.Dock="Right"
+                        Margin="0,0,4,0"
+                        Command="{Binding TogglePinCommand}"
+                        AutomationProperties.Name="Keep open">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource PopupIconButton}">
+                            <Setter Property="Content" Value="&#xE718;" />
+                            <Setter Property="ToolTip" Value="Keep open" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                    <Setter Property="Content" Value="&#xE840;" />
+                                    <Setter Property="ToolTip" Value="Close when I click elsewhere" />
+                                    <Setter Property="Background" Value="{DynamicResource EditActiveBackground}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
                 <Button x:Name="AddAppsButton"
                         DockPanel.Dock="Right"
                         Margin="0,0,4,0"

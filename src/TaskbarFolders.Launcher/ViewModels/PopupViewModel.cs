@@ -84,6 +84,14 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isEditing;
 
+    /// <summary>
+    /// Pinned open: clicks elsewhere, losing the focus and launching an app no longer close the
+    /// popup. Close, Escape and a click on the group's own tile still do. Lasts for this popup
+    /// only; the next one opens unpinned.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isPinned;
+
     /// <summary>Display name of the loaded group; empty string until <see cref="LoadAsync"/> completes.</summary>
     [ObservableProperty]
     private string _groupName = string.Empty;
@@ -261,6 +269,9 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         await PersistAsync().ConfigureAwait(true);
         return added.Count;
     }
+
+    [RelayCommand]
+    private void TogglePin() => IsPinned = !IsPinned;
 
     [RelayCommand]
     private void ToggleEdit()

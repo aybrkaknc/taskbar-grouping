@@ -106,7 +106,7 @@ Placement is DPI-sensitive. On mixed-DPI or scaled setups it should still land n
 
 ## The popup closes immediately, or will not close
 
-The popup closes on a mouse click anywhere outside it, on Escape, on its ✕ button, when it loses focus, after a successful launch, and via a three-second fallback if Windows never gave it focus and the pointer is not over it. A click outside is seen through a low-level mouse hook, so it works whether or not the popup got the focus. A failed launch keeps it open and shows an error strip naming the app.
+If it stays open after a launch or a click elsewhere, check the pin in its header: a pinned popup closes only on ✕, Escape or its own tile. Otherwise the popup closes on a mouse click anywhere outside it, on Escape, on its ✕ button, when it loses focus, after a successful launch, and via a three-second fallback if Windows never gave it focus and the pointer is not over it. A click outside is seen through a low-level mouse hook, so it works whether or not the popup got the focus. A failed launch keeps it open and shows an error strip naming the app.
 
 With *Enable popup animations* on, every close is a fade of about 120 ms. If the popup appears to linger, turn animations off to isolate the fade: a 300 ms safety net closes it even if the fade never completes.
 

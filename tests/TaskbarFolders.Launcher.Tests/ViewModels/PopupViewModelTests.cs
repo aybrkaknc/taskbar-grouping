@@ -382,6 +382,21 @@ public class PopupViewModelTests
     }
 
     [Fact]
+    public async Task TogglePinCommand_StartsOff_AndSwitchesOnAndOff()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+        sut.IsPinned.Should().BeFalse("every popup opens unpinned");
+
+        sut.TogglePinCommand.Execute(null);
+        sut.IsPinned.Should().BeTrue();
+
+        sut.TogglePinCommand.Execute(null);
+        sut.IsPinned.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task ToggleEditCommand_SwitchesEditModeOnAndOff()
     {
         var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };

@@ -94,6 +94,7 @@ Click the pinned tile. A popup opens next to the taskbar, anchored near the tile
 - **Click +** to add apps: a file picker opens, and every .exe or .lnk you choose is added to the group and appears in the popup. The taskbar icon and shortcut are updated as they are from the Manager. The popup stays open while the picker is.
 - **Click ✎** to remove apps: each tile gets a small ✕, and clicking it takes that app out of the group — only out of the group; the program or shortcut on disk is not touched. Tiles do not launch while editing. Click the ✓ (or press **Escape**) when done. Removing the last app leaves an empty group, which you can fill again with +.
 - **If a launch fails**, the popup stays open and shows an error strip naming the app.
+- **Click the pin** to keep the popup open: while it is highlighted, clicking elsewhere, switching windows and launching an app no longer close it, so you can start several apps in a row. ✕, **Escape** or a click on the group's taskbar tile still close it, and the next popup opens unpinned.
 - **Click anywhere else**, or press **Escape**, to dismiss the popup. A click outside works even if Windows did not give the popup the focus.
 - **Click the group's taskbar tile again** to close the popup; it does not reopen.
 

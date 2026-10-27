@@ -375,12 +375,12 @@ public partial class App : Application
 
         // A press on the tile that opened the popup is also the click that starts the next
         // launcher; leave it the marker that tells it to stay hidden.
-        popup.ClosingFromOutsidePress += (_, press) =>
+        popup.OutsidePress += (_, press) =>
         {
-            if (_tileToggle is null
-                && TileToggle.IsOnOpeningTile(anchor, (int)press.X, (int)press.Y, VisualTreeHelper.GetDpi(popup).DpiScaleX))
+            if (TileToggle.IsOnOpeningTile(anchor, (int)press.Position.X, (int)press.Position.Y, VisualTreeHelper.GetDpi(popup).DpiScaleX))
             {
-                _tileToggle = TileToggle.MarkDismissed(groupId);
+                press.IsOnOpeningTile = true;
+                _tileToggle ??= TileToggle.MarkDismissed(groupId);
             }
         };
 

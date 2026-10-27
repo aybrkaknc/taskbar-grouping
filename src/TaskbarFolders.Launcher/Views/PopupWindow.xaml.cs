@@ -63,11 +63,18 @@ public sealed partial class PopupWindow : Window, IDisposable
     private bool _wasActivated;
 
     /// <summary>
-    /// Raised on the UI thread when a press outside the popup is about to close it, with the
-    /// press position in device pixels. <see cref="App"/> uses it to tell a press on the
-    /// group's own tile apart (see <see cref="TileToggle"/>).
+    /// Raised on the UI thread for every press outside the popup while it may be dismissed,
+    /// with the press position in device pixels. <see cref="App"/> sets
+    /// <see cref="OutsidePressEventArgs.IsOnOpeningTile"/> for a press on the group's own tile
+    /// (see <see cref="TileToggle"/>), which closes the popup even while it is pinned.
     /// </summary>
-    public event EventHandler<Point>? ClosingFromOutsidePress;
+    public event EventHandler<OutsidePressEventArgs>? OutsidePress;
+
+    /// <summary>
+    /// Whether a click elsewhere, losing the focus or the never-activated fallback may close
+    /// the popup: not while a dialog it owns is open, and not while it is pinned.
+    /// </summary>
+    public bool DismissesOnOutsideInteraction => !_dismissSuspended && !_viewModel.IsPinned;
 
     /// <summary>Initializes a new instance of the <see cref="PopupWindow"/> class.</summary>
     public PopupWindow(
@@ -142,11 +149,17 @@ public sealed partial class PopupWindow : Window, IDisposable
         var hwnd = new WindowInteropHelper(this).Handle;
         _outsideClicks = new OutsideClickWatcher(hwnd, (x, y) =>
         {
-            if (!_dismissSuspended)
+            if (_dismissSuspended)
             {
-                // Synchronous: the marker has to exist before the shell starts the launcher
-                // that the same click on the tile triggers.
-                ClosingFromOutsidePress?.Invoke(this, new Point(x, y));
+                return;
+            }
+
+            // Synchronous: the marker has to exist before the shell starts the launcher that
+            // the same click on the tile triggers.
+            var press = new OutsidePressEventArgs(new Point(x, y));
+            OutsidePress?.Invoke(this, press);
+            if (DismissesOnOutsideInteraction || press.IsOnOpeningTile)
+            {
                 Dispatcher.BeginInvoke(new Action(Close));
             }
         });
@@ -274,7 +287,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         };
         _activationFallbackTimer.Tick += (_, _) =>
         {
-            if (_wasActivated || IsMouseOver || _dismissSuspended)
+            if (_wasActivated || IsMouseOver || !DismissesOnOutsideInteraction)
             {
                 return;
             }
@@ -474,13 +487,19 @@ public sealed partial class PopupWindow : Window, IDisposable
         // Only dismiss after the window has genuinely held activation once. A spurious
         // deactivation before first activation would otherwise close the popup before
         // the user ever saw it.
-        if (_wasActivated && !_dismissSuspended)
+        if (_wasActivated && DismissesOnOutsideInteraction)
         {
             Close();
         }
     }
 
-    private void OnLaunchSucceeded(object? sender, EventArgs e) => Close();
+    private void OnLaunchSucceeded(object? sender, EventArgs e)
+    {
+        if (!_viewModel.IsPinned)
+        {
+            Close();
+        }
+    }
 
     private void OnCloseRequested(object? sender, EventArgs e) => Close();
 

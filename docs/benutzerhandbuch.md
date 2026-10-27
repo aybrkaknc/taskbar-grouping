@@ -151,6 +151,7 @@ Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fe
 - **Auf +** klicken fügt Programme hinzu: Es öffnet sich eine Dateiauswahl, und jede gewählte .exe- oder .lnk-Datei kommt in die Gruppe und erscheint sofort im Fenster. Taskleistensymbol und Verknüpfung werden wie aus dem Manager aktualisiert. Solange die Auswahl offen ist, bleibt das Fenster stehen.
 - **Auf ✎** klicken, um Programme zu entfernen: Jede Kachel bekommt ein kleines ✕, ein Klick darauf nimmt das Programm aus der Gruppe — nur aus der Gruppe; die Programmdatei oder Verknüpfung bleibt unberührt. Während der Bearbeitung starten die Kacheln nichts. Mit ✓ (oder `Esc`) beenden. Wird das letzte Programm entfernt, ist die Gruppe leer und lässt sich mit + wieder füllen.
 - **Lässt sich ein Programm nicht starten**, bleibt das Fenster offen und zeigt einen roten Hinweis mit dem Namen.
+- **Auf die Stecknadel** klicken hält das Fenster offen: Solange sie hervorgehoben ist, schließen weder ein Klick daneben noch ein Fensterwechsel noch das Starten eines Programms das Fenster — so lassen sich mehrere Programme nacheinander starten. ✕, **`Esc`** oder ein Klick auf die Taskleistenkachel der Gruppe schließen es weiterhin; das nächste Fenster öffnet sich ohne Nadel.
 - **Klick daneben** oder **`Esc`** schließt das Fenster. Der Klick daneben wirkt auch dann, wenn Windows dem Fenster den Fokus nicht gegeben hat.
 - **Erneuter Klick auf die Taskleistenkachel** der Gruppe schließt das Fenster, ohne es wieder zu öffnen.
 

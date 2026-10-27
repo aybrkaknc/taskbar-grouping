@@ -131,6 +131,52 @@ public sealed class PopupWindowCloseTests
         closedAfterSecond.Should().BeTrue("the second Escape closes it");
     }
 
+    [Fact]
+    public void Pinned_StaysOpenAfterALaunch_AndIgnoresOutsideInteraction_ButEscapeStillCloses()
+    {
+        var (dismissesWhilePinned, closedByLaunch, dismissesUnpinned, closedByEscape) = OnStaThread(() =>
+        {
+            var window = CreatePopup(enableAnimations: false, launchSucceeds: true);
+            var viewModel = (PopupViewModel)window.DataContext;
+            var closed = false;
+            window.Closed += (_, _) => closed = true;
+
+            viewModel.TogglePinCommand.Execute(null);
+            var dismisses = window.DismissesOnOutsideInteraction;
+            viewModel.LaunchAppCommand.Execute(viewModel.Apps[0]);
+            var closedLaunch = closed;
+
+            viewModel.TogglePinCommand.Execute(null);
+            var dismissesAgain = window.DismissesOnOutsideInteraction;
+            viewModel.TogglePinCommand.Execute(null);
+
+            PressEscape(window);
+            return (dismisses, closedLaunch, dismissesAgain, closed);
+        });
+
+        dismissesWhilePinned.Should().BeFalse("a pinned popup ignores clicks elsewhere and focus loss");
+        closedByLaunch.Should().BeFalse("a pinned popup stays open to launch the next app");
+        dismissesUnpinned.Should().BeTrue("unpinning restores the normal dismissal");
+        closedByEscape.Should().BeTrue("Escape closes a pinned popup");
+    }
+
+    [Fact]
+    public void Unpinned_ClosesAfterALaunch()
+    {
+        var closed = OnStaThread(() =>
+        {
+            var window = CreatePopup(enableAnimations: false, launchSucceeds: true);
+            var viewModel = (PopupViewModel)window.DataContext;
+            var wasClosed = false;
+            window.Closed += (_, _) => wasClosed = true;
+
+            viewModel.LaunchAppCommand.Execute(viewModel.Apps[0]);
+            return wasClosed;
+        });
+
+        closed.Should().BeTrue();
+    }
+
     private static void PressEscape(Window window)
     {
         var source = PresentationSource.FromVisual(window)
@@ -156,7 +202,7 @@ public sealed class PopupWindowCloseTests
             .Should().Be(expected);
     }
 
-    private static PopupWindow CreatePopup(bool enableAnimations)
+    private static PopupWindow CreatePopup(bool enableAnimations, bool launchSucceeds = false)
     {
         var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = 3 };
         config.Apps.Add(new AppEntry { Name = "App 1", Path = @"C:\does\not\exist\app1.exe" });
@@ -175,7 +221,7 @@ public sealed class PopupWindowCloseTests
             store.Object,
             extractor.Object,
             cache.Object,
-            Mock.Of<IProcessLauncher>(),
+            Mock.Of<IProcessLauncher>(l => l.Launch(It.IsAny<string>(), It.IsAny<string?>()) == launchSucceeds),
             Mock.Of<IGroupSyncService>(),
             new LauncherOptions("g1"));
         viewModel.LoadAsync().GetAwaiter().GetResult();
