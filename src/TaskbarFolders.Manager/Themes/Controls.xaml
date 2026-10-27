@@ -214,6 +214,98 @@
         </Style.Triggers>
     </Style>
 
+    <!-- Tabs: a row of plain labels over a hairline, the selected one in full colour with a
+         short accent bar under it, as in Windows 11's own pages. The Aero2 template draws
+         white tab faces and a white content box in fixed colours. -->
+    <Style TargetType="TabControl">
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderSubtle}">
+                            <TabPanel IsItemsHost="True" KeyboardNavigation.TabIndex="1" />
+                        </Border>
+                        <!-- The name is a contract: TabItem's automation peer finds the selected
+                             content through it, and without it UI Automation (screen readers
+                             included) sees no content on any tab. -->
+                        <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" Margin="{TemplateBinding Padding}" />
+                    </DockPanel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- The header's font and colour are set on the header presenter only: set on the TabItem
+         they would be inherited by the tab's whole content. The gap between tabs is inside
+         the template, because TabPanel lays tabs out without their Margin and a margin
+         clipped the label instead. -->
+    <Style TargetType="TabItem">
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="4,8" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Grid Background="{TemplateBinding Background}" Margin="0,0,20,0">
+                        <ContentPresenter x:Name="Header"
+                                          ContentSource="Header" Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="Center" RecognizesAccessKey="True"
+                                          TextElement.FontSize="14"
+                                          TextElement.Foreground="{DynamicResource ForegroundSubtle}" />
+                        <Border x:Name="Indicator"
+                                Height="3" Width="16" CornerRadius="1.5"
+                                VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                                Background="{DynamicResource AccentBrush}"
+                                Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Header" Property="TextElement.Foreground" Value="{DynamicResource ForegroundDefault}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Header" Property="TextElement.Foreground" Value="{DynamicResource ForegroundDefault}" />
+                            <Setter TargetName="Header" Property="TextElement.FontWeight" Value="SemiBold" />
+                            <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A row in a content list (the group's apps): hover and selection as a light fill. -->
+    <Style x:Key="ListRowItem" TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="Margin" Value="0,1" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
+                            CornerRadius="{StaticResource ControlCornerRadius}">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource ItemHoverBackground}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource SelectionBackgroundInactive}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Sidebar group row: a light fill and a short accent bar at the left edge mark the
          selection, as in Windows 11's own navigation lists, instead of a full-width block. -->
     <Style x:Key="SidebarItem" TargetType="ListBoxItem">

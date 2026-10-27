@@ -8,14 +8,15 @@ finishes it, and a change of order or scope is recorded here when it is agreed, 
 
 ## Where we are
 
-- **Branch:** `feature/manager-header`, off `develop`. Holds the group header and the themed
-  menus; not yet merged into `develop`.
-- **`develop`:** everything up to and including the reworked group list, merged locally
-  (`cd601bf`). **Not pushed** — `origin/develop` still has only the README fork notice.
+- **Branch:** `feature/manager-app-list`, off `develop`. Holds the app list step; not yet
+  merged into `develop`.
+- **`develop`:** everything up to and including the group header, the themed menus and this
+  file, merged locally (`cd601bf`, `1da190a`). **Not pushed** — `origin/develop` still has only
+  the README fork notice.
 - **`origin`:** `feature/send-to-group` (`9ca0245`) and `feature/rename-group-orphan-anchor`
   are the only pushed work branches. The older stacked branches still exist locally; deleting
   them waits for approval.
-- **Next:** C6 step 3 — the app list.
+- **Next:** C6 — settings and empty state.
 
 ## How an item is worked
 
@@ -41,15 +42,15 @@ comes first so that C1–C4 land in their final place instead of being laid out 
   selection, **+ New group**, per-row context menu, F2/Del. `d7d1abd`, merged into `develop`.
 - [x] **Group header** — name edited in place, **Pin to taskbar** as the one accent button,
   *⋯* menu for *Show shortcut…*, *Copy group id* and *Delete group…*, icon menu for
-  *Change icon…* / *Use app icons*. `b62aa23`, branch `feature/manager-header`.
-- [x] **Themed context menus** — no light icon column in dark mode. `88fceff`, branch
-  `feature/manager-header`.
-- [ ] **App list** — *Apps* and *Appearance* tabs; a slim "add apps" row in place of the large
-  drop box (the whole tab accepts dropped files); a small delete icon that shows on hover
-  instead of a *Remove* button on every row. *Appearance* holds only the group icon choice
-  until C1 + C2 fill it. **Next.**
+  *Change icon…* / *Use app icons*. `b62aa23`, merged into `develop`.
+- [x] **Themed context menus** — no light icon column in dark mode. `88fceff`, merged into
+  `develop`.
+- [x] **App list** — *Apps* and *Appearance* tabs; a slim **Add apps…** row in place of the
+  large drop box (the whole tab takes dropped files); a delete icon on the hovered or selected
+  row instead of a *Remove* button on every row, `Del` to remove. *Appearance* holds only the
+  group icon choice until C1 + C2 fill it. Commit below, branch `feature/manager-app-list`.
 - [ ] **Settings and empty state** — settings apply as they are changed (no *Save*); with no
-  groups, a three-step "get started" view.
+  groups, a three-step "get started" view. **Next.**
 - [ ] **Visual polish** — let the Manager's Mica backdrop show through (it is applied but
   hidden under solid brushes), Fluent icons, consistent spacing; retake the screenshots.
 
@@ -79,4 +80,5 @@ comes first so that C1–C4 land in their final place instead of being laid out 
 | Screenshots retaken | `066d96a` | merged |
 | Shell icon extraction serialised (random blank popup tiles) | `66a99af` | merged |
 | C6 — group list | `d7d1abd` | merged |
-| C6 — group header, themed menus | `b62aa23`, `88fceff` | `feature/manager-header` |
+| C6 — group header, themed menus | `b62aa23`, `88fceff` | merged |
+| C6 — app list: tabs, slim add row, hover delete | see `git log feature/manager-app-list` | `feature/manager-app-list` |

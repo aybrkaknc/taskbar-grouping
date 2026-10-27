@@ -58,6 +58,8 @@ public sealed class ControlStyleTests
     [InlineData(typeof(ContextMenu))]
     [InlineData(typeof(ToolTip))]
     [InlineData(typeof(ScrollBar))]
+    [InlineData(typeof(TabControl))]
+    [InlineData(typeof(TabItem))]
     public void EveryStyledControl_HasAnImplicitStyleThatApplies(Type controlType)
     {
         OnStaThread(() =>
@@ -120,6 +122,104 @@ public sealed class ControlStyleTests
         });
 
         gutter.Should().Be(expected, $"the menu's left edge must take ControlBackground from {themeFile}");
+    }
+
+    [Theory]
+    [InlineData("Dark.xaml")]
+    [InlineData("Light.xaml")]
+    public void TabControl_DrawsNoFaceOfItsOwn_AndMarksTheSelectedTab(string themeFile)
+    {
+        // WPF's own TabControl template paints white tab faces and a white content box in
+        // fixed colours. The editor's Apps/Appearance tabs sit on the window background.
+        var (contentArea, tabFace, indicatorShown, accent, underline, hasContentHost) = OnStaThread(() =>
+        {
+            var theme = LoadTheme(themeFile);
+            var resources = new ResourceDictionary();
+            resources.MergedDictionaries.Add(theme);
+            resources.MergedDictionaries.Add(LoadControls());
+
+            var tabs = new TabControl { Resources = resources, Width = 300, Height = 120 };
+            tabs.Items.Add(new TabItem { Header = "Apps", Content = new Grid() });
+            tabs.Items.Add(new TabItem { Header = "Appearance", Content = new Grid() });
+            tabs.SelectedIndex = 0;
+            tabs.Measure(new Size(300, 120));
+            tabs.Arrange(new Rect(0, 0, 300, 120));
+            tabs.UpdateLayout();
+
+            var bitmap = new RenderTargetBitmap(300, 120, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(tabs);
+            byte[] Pixel(int x, int y)
+            {
+                var pixel = new byte[4];
+                bitmap.CopyPixels(new Int32Rect(x, y, 1, 1), pixel, 4, 0);
+                return pixel;
+            }
+
+            var selected = (TabItem)tabs.Items[0];
+            var indicator = (FrameworkElement)selected.Template.FindName("Indicator", selected);
+            var accentColor = ((SolidColorBrush)theme["AccentBrush"]).Color;
+
+            // Somewhere in the tab strip, a fully opaque pixel in the accent colour: the bar.
+            var drawnInAccent = false;
+            for (var y = 0; y < 50 && !drawnInAccent; y++)
+            {
+                for (var x = 0; x < 150 && !drawnInAccent; x++)
+                {
+                    var p = Pixel(x, y);
+                    drawnInAccent = p[3] == 255 && Color.FromRgb(p[2], p[1], p[0]) == accentColor;
+                }
+            }
+
+            return (
+                Pixel(150, 100)[3],
+                Pixel(2, 2)[3],
+                // IsVisible needs a window; this control is rendered on its own.
+                indicator.Visibility == Visibility.Visible,
+                accentColor,
+                drawnInAccent ? accentColor : Colors.Transparent,
+                tabs.Template.FindName("PART_SelectedContentHost", tabs) is ContentPresenter);
+        });
+
+        contentArea.Should().Be(0, "the content area shows the window behind it");
+        hasContentHost.Should().BeTrue("UI Automation reaches a tab's content only through PART_SelectedContentHost");
+        tabFace.Should().Be(0, "tabs are labels, not raised faces");
+        indicatorShown.Should().BeTrue("the selected tab is marked");
+        underline.Should().Be(accent, $"the mark takes AccentBrush from {themeFile}");
+    }
+
+    [Fact]
+    public void TabItem_KeepsItsHeaderTypeToItself_AndShowsTheWholeLabel()
+    {
+        // Set on the TabItem, the header's size and weight were inherited by everything on the
+        // tab; a Margin on it was taken out of the label's width by TabPanel ("Ap" for "Apps").
+        var (contentWeight, contentSize, defaultSize, clipped) = OnStaThread(() =>
+        {
+            var resources = new ResourceDictionary();
+            resources.MergedDictionaries.Add(LoadTheme("Dark.xaml"));
+            resources.MergedDictionaries.Add(LoadControls());
+
+            var body = new TextBlock { Text = "Group icon" };
+            var tabs = new TabControl { Resources = resources };
+            tabs.Items.Add(new TabItem { Header = "Apps", Content = body });
+            tabs.Items.Add(new TabItem { Header = "Appearance", Content = new Grid() });
+            tabs.SelectedIndex = 0;
+            tabs.Measure(new Size(600, 200));
+            tabs.Arrange(new Rect(0, 0, 600, 200));
+            tabs.UpdateLayout();
+
+            var anyClipped = false;
+            foreach (TabItem tab in tabs.Items)
+            {
+                var header = (FrameworkElement)tab.Template.FindName("Header", tab);
+                anyClipped |= header.ActualWidth + 0.5 < header.DesiredSize.Width - header.Margin.Left - header.Margin.Right;
+            }
+
+            return (body.FontWeight, body.FontSize, new TextBlock().FontSize, anyClipped);
+        });
+
+        contentWeight.Should().Be(FontWeights.Normal, "the selected tab's bold header must not reach its content");
+        contentSize.Should().Be(defaultSize, "the header's font size must not reach the content");
+        clipped.Should().BeFalse("every tab label is shown in full");
     }
 
     private static ResourceDictionary LoadTheme(string fileName)

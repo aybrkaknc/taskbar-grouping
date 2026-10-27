@@ -89,10 +89,10 @@ In der Liste links stehen alle Gruppen alphabetisch. Jede Zeile zeigt das Symbol
 
 ![Der Manager mit ausgewählter Gruppe](../assets/screenshots/manager-dark.png)
 
-Wählen Sie eine Gruppe aus. Dann entweder
+Wählen Sie eine Gruppe aus. Dann auf der Registerkarte **Apps** entweder
 
-- Dateien mit der Maus aus dem Explorer auf die Programmliste **ziehen**, oder
-- auf **Add app…** klicken und eine oder mehrere Dateien auswählen.
+- Dateien mit der Maus aus dem Explorer irgendwo auf die Registerkarte **ziehen** — sie wird dabei umrandet —, oder
+- auf **Add apps…** klicken und eine oder mehrere Dateien auswählen.
 
 Es werden nur Programmdateien (`.exe`) und Verknüpfungen (`.lnk`) übernommen. Ziehen Sie versehentlich anderes mit, wird es kommentarlos übergangen.
 
@@ -102,7 +102,7 @@ Der Pfad unter dem Namen wird gekürzt dargestellt: alles innerhalb Ihres Benutz
 
 ### Programm entfernen
 
-Klicken Sie in der Zeile auf **Remove**. Die Gruppe wird sofort gespeichert und ihr Symbol neu erzeugt.
+Zeigen Sie mit der Maus auf die Zeile (oder wählen Sie sie aus) und klicken Sie rechts auf das Papierkorb-Symbol, oder wählen Sie sie aus und drücken Sie `Entf`. Entfernt wird nur der Eintrag in der Gruppe — das Programm selbst bleibt unberührt. Die Gruppe wird sofort gespeichert und ihr Symbol neu erzeugt.
 
 ## Das Gruppensymbol
 
@@ -117,7 +117,7 @@ Das Symbol der Gruppe wird aus den Symbolen der enthaltenen Programme zusammenge
 
 ### Ein eigenes Bild als Symbol
 
-Ein Klick auf das Gruppensymbol oben im rechten Bereich → **Change icon…** öffnet die Dateiauswahl für ein `.ico`, `.png`, `.jpg` oder `.bmp`. Das Gruppensymbol — Verknüpfung, Startmenü-Eintrag und angeheftete Kachel — zeigt dann dieses Bild statt der Programme, ganz gleich, welche Programme Sie hinzufügen oder entfernen. Gespeichert wird eine Kopie, quadratisch eingepasst mit durchsichtigen Rändern; die Originaldatei darf also verschoben oder gelöscht werden. Bei einer `.ico`-Datei wird die größte enthaltene Größe verwendet.
+Ein Klick auf das Gruppensymbol oben im rechten Bereich → **Change icon…** (oder **Choose image…** auf der Registerkarte **Appearance**) öffnet die Dateiauswahl für ein `.ico`, `.png`, `.jpg` oder `.bmp`. Das Gruppensymbol — Verknüpfung, Startmenü-Eintrag und angeheftete Kachel — zeigt dann dieses Bild statt der Programme, ganz gleich, welche Programme Sie hinzufügen oder entfernen. Gespeichert wird eine Kopie, quadratisch eingepasst mit durchsichtigen Rändern; die Originaldatei darf also verschoben oder gelöscht werden. Bei einer `.ico`-Datei wird die größte enthaltene Größe verwendet.
 
 **Use app icons** im selben Menü kehrt zum aus den Programmen zusammengesetzten Symbol zurück. Zeigt eine angeheftete Kachel noch das alte Bild, hat Windows ihr Symbol noch nicht neu gelesen; Ab- und wieder Anmelden oder ein Neustart des Explorers hilft.
 

@@ -35,10 +35,10 @@ Groups are listed alphabetically. Each row shows the group's icon as it appears 
 
 ![The Manager with a group selected](../assets/screenshots/manager-dark.png)
 
-With a group selected, either:
+With a group selected, on its **Apps** tab, either:
 
-- **drag** `.exe` or `.lnk` files onto the app list from Explorer, or
-- click **Add app…** and pick one or more files.
+- **drag** `.exe` or `.lnk` files from Explorer anywhere onto the tab — it is outlined while you drag — or
+- click **Add apps…** and pick one or more files.
 
 Only `.exe` and `.lnk` are accepted; anything else in a dropped selection is ignored without an error. The display name comes from the file name, and the icon is read from the file itself — for a shortcut, from whatever it points at. A program that has no icon of its own — or whose file can no longer be found — shows a plain window outline instead, in the list, in the popup and in the group's icon.
 
@@ -59,13 +59,13 @@ Only the **first four** apps in the group contribute to the icon. The popup stil
 
 ### Using your own image as the icon
 
-Click the group's icon at the top of the detail pane → **Change icon…** and pick an `.ico`, `.png`, `.jpg` or `.bmp`. The group's icon — its shortcut, Start menu entry and pinned tile — then shows that image instead of its apps, whatever apps you add or remove. A copy is stored, fitted into a square with transparent edges, so moving or deleting the original file changes nothing. For an `.ico` the largest size it contains is used.
+Click the group's icon at the top of the detail pane → **Change icon…** (or **Choose image…** on the **Appearance** tab) and pick an `.ico`, `.png`, `.jpg` or `.bmp`. The group's icon — its shortcut, Start menu entry and pinned tile — then shows that image instead of its apps, whatever apps you add or remove. A copy is stored, fitted into a square with transparent edges, so moving or deleting the original file changes nothing. For an `.ico` the largest size it contains is used.
 
 The same menu's **Use app icons** goes back to the icon built from the apps. If a pinned tile keeps the old picture, Windows has not refreshed its icon yet; signing out and in again, or restarting Explorer, makes it re-read.
 
 ### Removing an app
 
-Click **Remove** on its row. The group is saved and its icon regenerated immediately.
+Point at its row (or select it) and click the bin icon that appears on the right, or select it and press `Del`. Only the entry in the group goes — the program itself is not touched. The group is saved and its icon regenerated immediately.
 
 ## Pinning a group to the taskbar
 

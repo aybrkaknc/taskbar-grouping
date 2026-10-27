@@ -159,8 +159,28 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void AppsTab_DragEnter(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        {
+            DropOverlay.Visibility = Visibility.Visible;
+        }
+    }
+
+    // DragLeave also fires when the pointer merely moves from one child of the tab onto
+    // another, so the outline goes only once the pointer is outside the tab itself.
+    private void AppsTab_DragLeave(object sender, DragEventArgs e)
+    {
+        var position = e.GetPosition(AppsTab);
+        if (position.X < 0 || position.Y < 0 || position.X >= AppsTab.ActualWidth || position.Y >= AppsTab.ActualHeight)
+        {
+            DropOverlay.Visibility = Visibility.Collapsed;
+        }
+    }
+
     private void Editor_Drop(object sender, DragEventArgs e)
     {
+        DropOverlay.Visibility = Visibility.Collapsed;
         if (DataContext is not MainWindowViewModel vm)
         {
             return;

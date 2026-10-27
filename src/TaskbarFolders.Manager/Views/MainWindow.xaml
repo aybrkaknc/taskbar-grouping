@@ -180,65 +180,138 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Drop zone hint + Add button -->
-                <Border DockPanel.Dock="Top"
-                        Padding="16" Margin="0,0,0,12"
-                        Background="{DynamicResource DropZoneBackground}"
-                        BorderBrush="{DynamicResource BorderEmphasis}" BorderThickness="1"
-                        CornerRadius="8"
-                        AllowDrop="True"
-                        PreviewDragOver="Editor_PreviewDragOver"
-                        Drop="Editor_Drop">
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right"
-                                Content="Add app..." Padding="12,4"
-                                Click="AddAppPicker_Click" />
-                        <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource ForegroundSubtle}"
-                                   Text="Drop .exe or .lnk files here, or use the button to browse." />
-                    </DockPanel>
-                </Border>
-
-                <!-- App list -->
-                <ListBox ItemsSource="{Binding Apps}" BorderThickness="0" Background="Transparent">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:AppEntryViewModel}">
-                            <Grid Margin="0,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="40" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Image Grid.Column="0" Source="{Binding Icon}" Width="32" Height="32" Stretch="Uniform" />
-                                <!-- Icons load synchronously here, so a null icon means the app has none. -->
-                                <Viewbox Grid.Column="0" Width="32" Height="32">
-                                    <Viewbox.Style>
-                                        <Style TargetType="Viewbox">
-                                            <Setter Property="Visibility" Value="Collapsed" />
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
-                                                    <Setter Property="Visibility" Value="Visible" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Viewbox.Style>
-                                    <Path Width="{x:Static icons:PlaceholderIcon.DesignSize}"
-                                          Height="{x:Static icons:PlaceholderIcon.DesignSize}"
-                                          Data="{x:Static icons:PlaceholderIcon.Shape}"
-                                          Stroke="{DynamicResource ForegroundSubtle}"
-                                          StrokeThickness="{x:Static icons:PlaceholderIcon.StrokeThickness}" />
-                                </Viewbox>
-                                <StackPanel Grid.Column="1" Margin="8,0">
-                                    <TextBlock Text="{Binding Name}" FontSize="13" />
-                                    <TextBlock Text="{Binding DisplayPath}" FontSize="11" Foreground="{DynamicResource ForegroundSubtle}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}" />
+                <TabControl x:Name="EditorTabs">
+                    <TabItem Header="Apps">
+                        <!-- The whole tab takes dropped files; the outline appears only while
+                             something is dragged over it. -->
+                        <Grid x:Name="AppsTab"
+                              Background="Transparent"
+                              AllowDrop="True"
+                              DragEnter="AppsTab_DragEnter"
+                              DragLeave="AppsTab_DragLeave"
+                              PreviewDragOver="Editor_PreviewDragOver"
+                              Drop="Editor_Drop">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,14,0,8">
+                                    <Button Padding="12,4" Click="AddAppPicker_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" />
+                                            <TextBlock Text="Add apps…" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
+                                    <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource ForegroundSubtle}"
+                                               Text="or drop .exe and .lnk files here" />
                                 </StackPanel>
-                                <Button Grid.Column="2"
-                                        Content="Remove" Padding="8,2"
-                                        Command="{Binding DataContext.RemoveAppCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                        CommandParameter="{Binding}" />
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+
+                                <ListBox x:Name="AppList"
+                                         ItemsSource="{Binding Apps}"
+                                         ItemContainerStyle="{StaticResource ListRowItem}"
+                                         BorderThickness="0" Background="Transparent">
+                                    <ListBox.InputBindings>
+                                        <KeyBinding Key="Delete"
+                                                    Command="{Binding RemoveAppCommand}"
+                                                    CommandParameter="{Binding SelectedItem, ElementName=AppList}" />
+                                    </ListBox.InputBindings>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:AppEntryViewModel}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="32" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Image Grid.Column="0" Source="{Binding Icon}" Width="32" Height="32" Stretch="Uniform" />
+                                                <!-- Icons load synchronously here, so a null icon means the app has none. -->
+                                                <Viewbox Grid.Column="0" Width="32" Height="32">
+                                                    <Viewbox.Style>
+                                                        <Style TargetType="Viewbox">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Viewbox.Style>
+                                                    <Path Width="{x:Static icons:PlaceholderIcon.DesignSize}"
+                                                          Height="{x:Static icons:PlaceholderIcon.DesignSize}"
+                                                          Data="{x:Static icons:PlaceholderIcon.Shape}"
+                                                          Stroke="{DynamicResource ForegroundSubtle}"
+                                                          StrokeThickness="{x:Static icons:PlaceholderIcon.StrokeThickness}" />
+                                                </Viewbox>
+                                                <StackPanel Grid.Column="1" Margin="12,0">
+                                                    <TextBlock Text="{Binding Name}" FontSize="13" />
+                                                    <TextBlock Text="{Binding DisplayPath}" FontSize="11" Foreground="{DynamicResource ForegroundSubtle}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}" />
+                                                </StackPanel>
+                                                <!-- Shown for the row under the mouse or the selected one; Del removes
+                                                     the selected app as well. Hidden, not collapsed, so rows keep their
+                                                     width when it appears. -->
+                                                <Button Grid.Column="2"
+                                                        x:Name="RemoveButton"
+                                                        Style="{StaticResource SubtleButton}"
+                                                        Padding="8"
+                                                        Visibility="Hidden"
+                                                        ToolTip="Remove from the group (Del). The program itself is not touched."
+                                                        Command="{Binding DataContext.RemoveAppCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}">
+                                                    <TextBlock Text="&#xE74D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" />
+                                                </Button>
+                                            </Grid>
+                                            <DataTemplate.Triggers>
+                                                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                    <Setter TargetName="RemoveButton" Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                    <Setter TargetName="RemoveButton" Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </DataTemplate.Triggers>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+
+                            <Border x:Name="DropOverlay"
+                                    Visibility="Collapsed"
+                                    IsHitTestVisible="False"
+                                    Margin="0,8,0,0"
+                                    CornerRadius="8"
+                                    BorderThickness="2"
+                                    BorderBrush="{DynamicResource AccentBrush}"
+                                    Background="{DynamicResource DropZoneBackground}"
+                                    Opacity="0.92">
+                                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="14"
+                                           Text="Drop to add to the group" />
+                            </Border>
+                        </Grid>
+                    </TabItem>
+
+                    <TabItem Header="Appearance">
+                        <StackPanel Margin="0,16,0,0">
+                            <TextBlock Text="Group icon" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock Margin="0,4,0,10" TextWrapping="Wrap" Foreground="{DynamicResource ForegroundSubtle}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Built from the icons of the group's first four apps." />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasCustomIcon}" Value="True">
+                                                <Setter Property="Text" Value="An image you chose. The apps you add or remove do not change it." />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="Choose image…" Padding="12,4" Click="ChooseGroupIcon_Click"
+                                        ToolTip="Use an .ico, .png, .jpg or .bmp as the group's icon on the taskbar." />
+                                <Button Content="Use app icons" Padding="12,4" Margin="8,0,0,0"
+                                        Command="{Binding ResetGroupIconCommand}"
+                                        ToolTip="Go back to the icon built from the group's apps. Available while an image is in use."
+                                        ToolTipService.ShowOnDisabled="True" />
+                            </StackPanel>
+                        </StackPanel>
+                    </TabItem>
+                </TabControl>
             </DockPanel>
         </Grid>
     </Grid>
