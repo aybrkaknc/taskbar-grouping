@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using TaskbarFolders.Core.Interop;
@@ -29,8 +30,20 @@ public partial class MainWindow : Window
 
         InitializeComponent();
         DataContext = viewModel;
+        viewModel.RenameRequested += OnRenameRequested;
         SourceInitialized += OnSourceInitialized;
+        Activated += OnActivated;
         Closed += OnClosed;
+    }
+
+    // The popup can add or remove a group's apps while the Manager sits in the background;
+    // coming back to the window is when that has to show up, before anything is saved.
+    private async void OnActivated(object? sender, EventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            await vm.RefreshFromStoreAsync().ConfigureAwait(true);
+        }
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -62,6 +75,11 @@ public partial class MainWindow : Window
         {
             themeService.ThemeChanged -= OnThemeChanged;
         }
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.RenameRequested -= OnRenameRequested;
+        }
+        Activated -= OnActivated;
         Closed -= OnClosed;
     }
 
@@ -77,16 +95,25 @@ public partial class MainWindow : Window
             ? services.GetService<IThemeService>()
             : null;
 
-    private void NewGroupName_KeyDown(object sender, KeyEventArgs e)
+    // The editor header may only just have been bound to a new group, so wait for layout
+    // before moving the caret into it.
+    private void OnRenameRequested(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        {
+            GroupNameBox.Focus();
+            GroupNameBox.SelectAll();
+        });
+
+    private void GroupName_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter)
         {
             return;
         }
 
-        if (DataContext is MainWindowViewModel vm && vm.AddGroupCommand.CanExecute(null))
+        if (DataContext is MainWindowViewModel vm && vm.RenameGroupCommand.CanExecute(null))
         {
-            vm.AddGroupCommand.Execute(null);
+            vm.RenameGroupCommand.Execute(null);
             e.Handled = true;
         }
     }
@@ -109,6 +136,25 @@ public partial class MainWindow : Window
         {
             vm.Editor.AddAppsCommand.Execute(paths);
             e.Handled = true;
+        }
+    }
+
+    private void ChooseGroupIcon_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Images|*.ico;*.png;*.jpg;*.jpeg;*.bmp|All files|*.*",
+            Title = "Choose the group's icon",
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            vm.Editor.ChooseGroupIconCommand.Execute(dialog.FileName);
         }
     }
 

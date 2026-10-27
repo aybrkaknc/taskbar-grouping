@@ -45,7 +45,20 @@ public sealed class JsonGroupConfigStore : IGroupConfigStore
         var results = new List<GroupConfig>();
         foreach (var file in Directory.EnumerateFiles(_paths.GroupsDirectory, "*.json"))
         {
-            var config = await LoadFromFileAsync(file, cancellationToken).ConfigureAwait(false);
+            GroupConfig? config;
+            try
+            {
+                config = await LoadFromFileAsync(file, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+            {
+                // One damaged or locked file must not take every other group with it: the
+                // Manager, and the uninstaller with it, used to crash on start. The file stays
+                // on disk for the user to repair; its id still counts as a known group in the
+                // Start menu sweep, which reads file names, not contents.
+                continue;
+            }
+
             if (config is not null)
             {
                 results.Add(config);

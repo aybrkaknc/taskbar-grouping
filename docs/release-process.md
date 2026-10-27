@@ -61,7 +61,7 @@ Pushing the tag triggers `release.yml` on `windows-latest`:
 
 1. Restore, build in Release, run the tests. A failing test stops the release.
 2. Publish each executable **separately** into sibling folders — `./publish/Manager` and `./publish/Launcher` — self-contained, `win-x64`, single-file, with native libraries included for self-extraction.
-3. Zip `./publish/*` into `TaskbarFolders-portable.zip`.
+3. Copy `installer/Uninstall.cmd` to `./publish/` and zip `./publish/*` into `TaskbarFolders-portable.zip`. The script runs `Manager\TaskbarFolders.Manager.exe --uninstall`; the installer does not ship it (its own uninstaller runs the same switch).
 4. Build the installer with the Inno Setup compiler pre-installed on the runner. The step fails loudly if `ISCC.exe` is not where it expects — a runner image change is the likely cause.
 5. Lift the matching `## [X.Y.Z]` section out of `CHANGELOG.md` and use it as the release body, with a link back to the full changelog. If no such section exists the step warns and falls back to GitHub's generated notes — which on this repository produce nothing but a compare link, because releases are cut from direct pushes rather than pull requests.
 6. Create the GitHub release and attach both assets.
@@ -89,7 +89,8 @@ The tag and the assets exist before anyone has confirmed they work. **Install th
 - [ ] Exercise whatever this release changed.
 - [ ] Open `%APPDATA%\TaskbarFolders\logs\` and read both logs.
 - [ ] Extract `TaskbarFolders-portable.zip` somewhere else and repeat the first four steps.
-- [ ] Uninstall, and confirm the uninstaller removes the program and the autostart entry.
+- [ ] Uninstall with a group tile pinned, and confirm nothing is left: the program folder under `%LOCALAPPDATA%\Programs`, the *Installed apps* entry, the Run value, both `TaskbarFolders.Groups` keys under `HKCU\Software\Classes\{exefile,lnkfile}\shell`, `%APPDATA%\TaskbarFolders`, the Start menu folder, the desktop icon, `%TEMP%\.net\TaskbarFolders.*` and the tile must all be gone.
+- [ ] Do the same with the portable copy's `Uninstall.cmd`; the extracted folder must be gone afterwards. Then run it again and answer *No*: nothing may be deleted.
 
 Two minutes of clicking catches what the test suite cannot. v0.2.0 shipped with **Show shortcut…** broken on every real installation: the development layout and the CI runner both happened to place the launcher where the Manager could find it, and the installed layout did not. Only an installed smoke test would have caught it.
 

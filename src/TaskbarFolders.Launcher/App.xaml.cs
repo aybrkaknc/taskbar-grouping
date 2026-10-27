@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TaskbarFolders.Core.Icons;
@@ -38,6 +39,8 @@ namespace TaskbarFolders.Launcher;
 public partial class App : Application
 {
     private ServiceProvider? _services;
+    private PopupPresence? _presence;
+    private TileToggle? _tileToggle;
 
     /// <summary>
     /// Gets the application service provider once <see cref="OnStartup"/> has completed.
@@ -128,6 +131,12 @@ public partial class App : Application
     /// </summary>
     private async Task RunPinModeAsync(string groupId, bool aumidAlreadyInherited)
     {
+        // The exit code IS this mode's result, so no window may end the process. Under the
+        // default OnLastWindowClose, closing the host window below started a shutdown with
+        // code 0, and the Shutdown(exitCode) that followed was ignored: the Manager read
+        // every outcome — unavailable, declined, failed, not verified — as "Pinned".
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
         // AUMID must match GroupAumid.For(groupId) before the WinRT call so
         // RequestPinCurrentAppAsync pins the right identity. Skip the stamp when Windows
         // already gave us the AUMID via process activation — re-stamping the inherited
@@ -178,10 +187,10 @@ public partial class App : Application
     /// </summary>
     private async Task RunPopupModeAsync(StartupEventArgs e, string groupId, bool aumidAlreadyInherited)
     {
-        // v0.4.1: per-checkpoint Stopwatch timestamps so the launcher-*.log shows where the
-        // user's perceived popup-open time goes. The single LogInformation line at the end
-        // is the only output the user has to look at. GetTimestamp() costs ~10 ns per call;
-        // negligible against the 100s of ms we are profiling.
+        // Per-checkpoint Stopwatch timestamps so the launcher-*.log shows where the user's
+        // perceived popup-open time goes. Two lines come out of it: "Startup timing" from
+        // Loaded and "First render" from ContentRendered. GetTimestamp() costs ~10 ns per
+        // call; negligible against the 100s of ms we are profiling.
         var tStart = Stopwatch.GetTimestamp();
 
         // Per-monitor DPI awareness must be set BEFORE the cursor capture below, not just
@@ -263,6 +272,34 @@ public partial class App : Application
         var logger = _services.GetRequiredService<ILogger<App>>();
         logger.LogInformation("Launcher starting for group {GroupId}.", groupId);
 
+        // Files after the group id come from Explorer's "Taskbar Groups" menu.
+        var filesToAdd = CommandLineParser.ParseFilesToAdd(e.Args);
+
+        // This click on the tile is the one that just closed the group's popup: a toggle.
+        if (filesToAdd.Count == 0 && TileToggle.TryConsume(groupId))
+        {
+            logger.LogInformation("Popup for {GroupId} was closed by this tile click; not reopening.", groupId);
+            Shutdown(0);
+            return;
+        }
+
+        // Claimed before anything is added, so of several launchers started together for one
+        // group (a multi-selection sent from Explorer) exactly one shows the popup.
+        _presence = PopupPresence.Claim(groupId);
+
+        // Add the files first, so the popup opens already showing them.
+        if (filesToAdd.Count > 0)
+        {
+            await _services.GetRequiredService<CommandLineAppAdder>().AddAsync(filesToAdd).ConfigureAwait(true);
+            if (!_presence.IsFirst)
+            {
+                logger.LogInformation("A popup for {GroupId} is already open; asked it to reload.", groupId);
+                _presence.SignalReload();
+                Shutdown(0);
+                return;
+            }
+        }
+
         // Apply the persisted theme before the window is built so DynamicResource bindings
         // paint correctly on the first frame.
         LauncherThemeApplier.Apply(this, settings.Theme);
@@ -275,36 +312,76 @@ public partial class App : Application
         var tVm = Stopwatch.GetTimestamp();
 
         var popup = _services.GetRequiredService<Views.PopupWindow>();
+        var tWindow = Stopwatch.GetTimestamp();
         MainWindow = popup;
 
-        // Single timing summary, emitted from the Loaded handler so we also capture the
-        // "from process start to user-visible first paint" wall-clock (tLoaded), not just
-        // up to Show(). `processAge` is the time from Process.StartTime to tStart —
-        // captures the .NET runtime cold-start cost (native-lib extraction, JIT, WPF
-        // assembly load) that happens BEFORE RunPopupModeAsync is even called. Without
-        // this, the log would mislead into chasing later phases when the dominant cost
-        // is often runtime bootstrap.
+        // Timing summary, emitted from the Loaded handler. `processAge` is the wall-clock
+        // from Process.StartTime to the moment the handler runs — not to tStart. What
+        // elapsed before RunPopupModeAsync was entered (host start-up, runtime init, WPF
+        // assembly load) is therefore processAge minus the last checkpoint; the
+        // ContentRendered line below reports it explicitly as `runtime`. Loaded is not a
+        // paint: layout is done, nothing has been rendered yet.
         //
         // Subscribe BEFORE Show(): a Window raises Loaded synchronously inside Show(), so
         // a handler attached afterwards never runs (v0.4.1/v0.4.2 emitted no timing line
         // at all because of this). tShown is still captured after Show() returns; if
         // Loaded ran inside Show() the checkpoint falls back to tLoaded to stay monotonic.
         var processStart = Process.GetCurrentProcess().StartTime;
+        long tPlaced = 0;
         long tShown = 0;
+        long tActivated = 0;
+        long tIcons = 0;
+
+        // Attached after the constructor, so it runs after the window's own
+        // SourceInitialized handler: the HWND exists and size + placement are computed.
+        popup.SourceInitialized += (_, _) => tPlaced = Stopwatch.GetTimestamp();
+
         popup.Loaded += (_, _) =>
         {
             var tLoaded = Stopwatch.GetTimestamp();
             var processAge = (DateTime.Now - processStart).TotalMilliseconds;
             logger.LogInformation(
-                "Startup timing (ms from tStart, processAge={ProcAge:F0}): aumid={Aumid:F0} settings={Settings:F0} di={Di:F0} theme={Theme:F0} vm={Vm:F0} show={Show:F0} loaded={Loaded:F0}",
+                "Startup timing (ms from tStart, processAge={ProcAge:F0}): aumid={Aumid:F0} settings={Settings:F0} di={Di:F0} theme={Theme:F0} vm={Vm:F0} window={Window:F0} placed={Placed:F0} show={Show:F0} loaded={Loaded:F0}",
                 processAge,
                 ToMs(tStart, tAumid),
                 ToMs(tStart, tSettings),
                 ToMs(tStart, tDi),
                 ToMs(tStart, tTheme),
                 ToMs(tStart, tVm),
+                ToMs(tStart, tWindow),
+                ToMs(tStart, tPlaced != 0 ? tPlaced : tLoaded),
                 ToMs(tStart, tShown != 0 ? tShown : tLoaded),
                 ToMs(tStart, tLoaded));
+        };
+
+        // Second line, kept separate so the Loaded line survives if this one never comes.
+        // ContentRendered is queued at Input priority and so runs once the UI thread's
+        // render queue has drained: it marks the first frame being handed to the render
+        // thread, not its arrival on screen. The checkpoints between Show() and here are
+        // the synchronous work that stands between Loaded and that first frame.
+        popup.ContentRendered += (_, _) =>
+        {
+            var rendered = ToMs(tStart, Stopwatch.GetTimestamp());
+            var processAge = (DateTime.Now - processStart).TotalMilliseconds;
+            logger.LogInformation(
+                "First render (ms from tStart, processAge={ProcAge:F0}, runtime={Runtime:F0}): shown={Shown:F0} activated={Activated:F0} icons={Icons:F0} rendered={Rendered:F0}",
+                processAge,
+                processAge - rendered,
+                ToMs(tStart, tShown),
+                ToMs(tStart, tActivated),
+                ToMs(tStart, tIcons),
+                rendered);
+        };
+
+        // A press on the tile that opened the popup is also the click that starts the next
+        // launcher; leave it the marker that tells it to stay hidden.
+        popup.OutsidePress += (_, press) =>
+        {
+            if (TileToggle.IsOnOpeningTile(anchor, (int)press.Position.X, (int)press.Position.Y, VisualTreeHelper.GetDpi(popup).DpiScaleX))
+            {
+                press.IsOnOpeningTile = true;
+                _tileToggle ??= TileToggle.MarkDismissed(groupId);
+            }
         };
 
         popup.Show();
@@ -314,8 +391,13 @@ public partial class App : Application
         // reliably take foreground when Explorer still owns it from the tile click, and
         // dismiss-on-focus-loss depends on the popup having been activated once.
         popup.Activate();
+        tActivated = Stopwatch.GetTimestamp();
 
         viewModel.StartIconLoad();
+        tIcons = Stopwatch.GetTimestamp();
+
+        // Later launchers that add files to this group ask this popup to show them.
+        _presence.ListenForReload(() => Dispatcher.BeginInvoke(new Func<Task>(viewModel.ReloadAsync)));
 
         // Deferred startup IO: prune stale icon-cache PNGs and old log files in the background
         // so the first paint of the popup is not blocked by ~10-70 ms of enumerate-and-delete.
@@ -334,6 +416,17 @@ public partial class App : Application
     {
         ArgumentNullException.ThrowIfNull(e);
 
+        if (_tileToggle is not null)
+        {
+            // The window is gone; the process stays only until the tile click's launcher has
+            // seen the marker, which also ends the wait early.
+            _tileToggle.WaitForNextLaunch(TileToggle.Window);
+            _tileToggle.Dispose();
+            _tileToggle = null;
+        }
+
+        _presence?.Dispose();
+        _presence = null;
         _services?.Dispose();
         _services = null;
 

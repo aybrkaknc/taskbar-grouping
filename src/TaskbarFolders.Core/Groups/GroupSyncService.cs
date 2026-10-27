@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Extensions.Logging;
 using TaskbarFolders.Core.Icons;
@@ -12,7 +14,7 @@ using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
 
-namespace TaskbarFolders.Manager.Services;
+namespace TaskbarFolders.Core.Groups;
 
 /// <summary>
 /// Default <see cref="IGroupSyncService"/>. Pipelines the icon engine and the shortcut writer
@@ -32,6 +34,8 @@ public sealed class GroupSyncService : IGroupSyncService
     private readonly IShortcutGenerator _shortcutGenerator;
     private readonly ILauncherPathResolver _launcherResolver;
     private readonly IShellChangeNotifier _shellChangeNotifier;
+    private readonly IShortcutReader _shortcutReader;
+    private readonly ICustomGroupIconStore _customIcons;
     private readonly ILogger<GroupSyncService>? _logger;
 
     /// <summary>Initializes a new instance.</summary>
@@ -44,6 +48,8 @@ public sealed class GroupSyncService : IGroupSyncService
         IShortcutGenerator shortcutGenerator,
         ILauncherPathResolver launcherResolver,
         IShellChangeNotifier shellChangeNotifier,
+        IShortcutReader shortcutReader,
+        ICustomGroupIconStore customIcons,
         ILogger<GroupSyncService>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(paths);
@@ -54,6 +60,8 @@ public sealed class GroupSyncService : IGroupSyncService
         ArgumentNullException.ThrowIfNull(shortcutGenerator);
         ArgumentNullException.ThrowIfNull(launcherResolver);
         ArgumentNullException.ThrowIfNull(shellChangeNotifier);
+        ArgumentNullException.ThrowIfNull(shortcutReader);
+        ArgumentNullException.ThrowIfNull(customIcons);
 
         _paths = paths;
         _extractor = extractor;
@@ -63,6 +71,8 @@ public sealed class GroupSyncService : IGroupSyncService
         _shortcutGenerator = shortcutGenerator;
         _launcherResolver = launcherResolver;
         _shellChangeNotifier = shellChangeNotifier;
+        _shortcutReader = shortcutReader;
+        _customIcons = customIcons;
         _logger = logger;
     }
 
@@ -89,18 +99,14 @@ public sealed class GroupSyncService : IGroupSyncService
             return;
         }
 
-        var icons = CollectSourceIcons(config);
-        if (icons.Count == 0)
-        {
-            _logger?.LogWarning(
-                "None of the apps in {GroupId} produced an extractable icon; shortcut not regenerated.",
-                config.Id);
-            return;
-        }
+        // An icon the user chose replaces the composite; everything after this treats the two
+        // alike, so a changed choice reaches the pinned tile the same way changed apps do.
+        var composite = _customIcons.TryLoad(config.Id)
+            ?? _composer.GenerateComposite(CollectSourceIcons(config));
 
-        var composite = _composer.GenerateComposite(icons);
-
-        var iconPath = _paths.GetGroupIconFile(config.Id);
+        // A new file name for every new image: Windows caches a shortcut's icon by path, so a
+        // file rewritten in place kept showing the old apps on the pinned tile.
+        var iconPath = _paths.GetGroupIconFile(config.Id, IconVersion(composite));
         await _icoWriter.WriteAsync(composite, iconPath, cancellationToken).ConfigureAwait(false);
 
         _shortcutGenerator.Generate(new GroupShortcutRequest(
@@ -114,6 +120,12 @@ public sealed class GroupSyncService : IGroupSyncService
         // RequestPinCurrentAppAsync can persist the pin. The pin API silently fails to
         // anchor a pinned tile when no Start Menu entry with the matching AUMID exists.
         WriteStartMenuShortcut(config, launcher, iconPath);
+
+        // The taskbar's pinned copy is Windows' own file and keeps the icon path it was
+        // pinned with; point it at the new file too, then drop the old versions — in that
+        // order, so the pin never refers to a file that is gone.
+        RepointPinnedCopies(config.Id, iconPath);
+        DeleteGroupIcons(config.Id, keepPath: iconPath);
     }
 
     /// <inheritdoc/>
@@ -122,9 +134,60 @@ public sealed class GroupSyncService : IGroupSyncService
         ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
-        TryDelete(_paths.GetGroupIconFile(groupId));
+        DeleteGroupIcons(groupId, keepPath: null);
+        _customIcons.Delete(groupId);
         TryDelete(_paths.GetGroupShortcutFile(groupId));
         TryDelete(_paths.GetStartMenuShortcutFile(SanitizeForFilename(displayName, fallback: groupId)));
+
+        // The name-derived path above misses an anchor written under an earlier display
+        // name, so also sweep by identity.
+        RemoveStartMenuAnchorsFor(groupId, keepPath: null);
+    }
+
+    /// <inheritdoc/>
+    public int RemoveOrphanedStartMenuAnchors()
+    {
+        // Known ids come from the group file names rather than from the loaded configs: the
+        // id is reconstructed from the file name on load anyway, and a group whose JSON fails
+        // to parse is skipped by LoadAllAsync but still owns its pinned tile. Deleting its
+        // anchor would break that pin over a file the user may yet repair.
+        var knownIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (Directory.Exists(_paths.GroupsDirectory))
+            {
+                foreach (var file in Directory.EnumerateFiles(_paths.GroupsDirectory, "*.json"))
+                {
+                    knownIds.Add(Path.GetFileNameWithoutExtension(file));
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Without a reliable list of groups every anchor would look orphaned.
+            _logger?.LogWarning(ex, "Could not enumerate group files; Start Menu anchor reconcile skipped.");
+            return 0;
+        }
+
+        var removed = 0;
+        foreach (var anchor in EnumerateStartMenuAnchors())
+        {
+            var aumid = _shortcutReader.TryReadAumid(anchor);
+            if (!GroupAumid.TryExtractGroupId(aumid, out var groupId) || knownIds.Contains(groupId))
+            {
+                // Not ours, unreadable, or still owned by a group — leave it alone.
+                continue;
+            }
+
+            if (TryDelete(anchor))
+            {
+                _logger?.LogInformation(
+                    "Removed orphaned Start Menu anchor {Path} for missing group {GroupId}.",
+                    anchor, groupId);
+                removed++;
+            }
+        }
+        return removed;
     }
 
     /// <inheritdoc/>
@@ -139,12 +202,12 @@ public sealed class GroupSyncService : IGroupSyncService
             return false;
         }
 
-        var iconPath = _paths.GetGroupIconFile(config.Id);
-        if (!File.Exists(iconPath))
+        var iconPath = GroupIconFiles.FindCurrent(_paths, config.Id);
+        if (iconPath is null)
         {
             _logger?.LogDebug(
-                "EnsureStartMenuShortcut: per-group icon {Path} missing — group needs full Sync first.",
-                iconPath);
+                "EnsureStartMenuShortcut: no icon for {GroupId} yet — group needs full Sync first.",
+                config.Id);
             return false;
         }
 
@@ -180,6 +243,11 @@ public sealed class GroupSyncService : IGroupSyncService
             // racing the AppsFolder background indexer. Notify-failures inside the wrapper
             // are swallowed there; this try/catch covers the surrounding sync flow only.
             _shellChangeNotifier.NotifyCreate(startMenuPath);
+
+            // The file name follows the display name while the AUMID follows the id, so a
+            // rename writes a second anchor carrying the same identity. Drop the old one
+            // only after the new one is in place: until then it is what keeps a pin working.
+            RemoveStartMenuAnchorsFor(config.Id, keepPath: startMenuPath);
         }
         catch (Exception ex)
         {
@@ -232,11 +300,10 @@ public sealed class GroupSyncService : IGroupSyncService
         var icons = new List<BitmapSource>(Math.Min(config.Apps.Count, CompositeIconGenerator.MaxTiles));
         foreach (var app in config.Apps.Take(CompositeIconGenerator.MaxTiles))
         {
-            var icon = LoadIcon(app.Path);
-            if (icon is not null)
-            {
-                icons.Add(icon);
-            }
+            // An app without an icon still takes its place in the composite, so a group made
+            // only of such apps gets a tile like any other.
+            icons.Add(LoadIcon(app.Path)
+                ?? PlaceholderIcon.Render(CompositeSourceIconSize, PlaceholderIcon.NeutralColor));
         }
         return icons;
     }
@@ -261,18 +328,118 @@ public sealed class GroupSyncService : IGroupSyncService
         return icon;
     }
 
-    private void TryDelete(string path)
+    /// <summary>
+    /// Deletes every Start Menu anchor stamped with <paramref name="groupId"/>'s AUMID except
+    /// <paramref name="keepPath"/>. Matching by AUMID rather than by file name is what finds
+    /// an anchor left under a display name the group no longer has.
+    /// </summary>
+    private void RemoveStartMenuAnchorsFor(string groupId, string? keepPath)
+    {
+        var aumid = GroupAumid.For(groupId);
+        var keep = keepPath is null ? null : Path.GetFullPath(keepPath);
+
+        foreach (var anchor in EnumerateStartMenuAnchors())
+        {
+            if (keep is not null && string.Equals(Path.GetFullPath(anchor), keep, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (string.Equals(_shortcutReader.TryReadAumid(anchor), aumid, StringComparison.OrdinalIgnoreCase)
+                && TryDelete(anchor))
+            {
+                _logger?.LogInformation("Removed stale Start Menu anchor {Path} for {GroupId}.", anchor, groupId);
+            }
+        }
+    }
+
+    private List<string> EnumerateStartMenuAnchors() => EnumerateFiles(_paths.StartMenuDirectory, "*.lnk");
+
+    private List<string> EnumerateFiles(string directory, string pattern)
+    {
+        // Materialised so callers can delete while iterating.
+        try
+        {
+            return Directory.Exists(directory)
+                ? Directory.EnumerateFiles(directory, pattern).ToList()
+                : [];
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger?.LogWarning(ex, "Could not enumerate {Directory}.", directory);
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Points every pinned copy carrying the group's AUMID at <paramref name="iconPath"/> and
+    /// tells the shell it changed. Only the icon location of our own pins is touched; nothing
+    /// in the pinned folder is created or deleted.
+    /// </summary>
+    private void RepointPinnedCopies(string groupId, string iconPath)
+    {
+        var aumid = GroupAumid.For(groupId);
+        foreach (var pinned in EnumerateFiles(_paths.PinnedTaskbarDirectory, "*.lnk"))
+        {
+            if (!string.Equals(_shortcutReader.TryReadAumid(pinned), aumid, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (_shortcutGenerator.TryUpdateIcon(pinned, iconPath))
+            {
+                _shellChangeNotifier.NotifyUpdate(pinned);
+            }
+        }
+    }
+
+    /// <summary>Deletes the group's icon files — legacy and versioned — except <paramref name="keepPath"/>.</summary>
+    private void DeleteGroupIcons(string groupId, string? keepPath)
+    {
+        var keep = keepPath is null ? null : Path.GetFullPath(keepPath);
+        foreach (var icon in EnumerateFiles(_paths.IconsDirectory, "*.ico"))
+        {
+            if (_paths.IsGroupIconFile(groupId, icon) &&
+                !string.Equals(Path.GetFullPath(icon), keep, StringComparison.OrdinalIgnoreCase))
+            {
+                TryDelete(icon);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Eight hex digits derived from the image's pixels: the same image keeps its file name,
+    /// a different one gets a new name.
+    /// </summary>
+    internal static string IconVersion(BitmapSource image)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+
+        BitmapSource pixels = image.Format == PixelFormats.Pbgra32
+            ? image
+            : new FormatConvertedBitmap(image, PixelFormats.Pbgra32, null, 0);
+        var stride = pixels.PixelWidth * 4;
+        var buffer = new byte[stride * pixels.PixelHeight];
+        pixels.CopyPixels(buffer, stride, 0);
+
+        var hash = SHA256.HashData(buffer);
+        return Convert.ToHexString(hash, 0, 4).ToLowerInvariant();
+    }
+
+    private bool TryDelete(string path)
     {
         try
         {
             if (File.Exists(path))
             {
                 File.Delete(path);
+                return true;
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
             _logger?.LogWarning(ex, "Could not delete {Path}.", path);
         }
+        return false;
     }
 }

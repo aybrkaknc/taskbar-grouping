@@ -62,7 +62,7 @@ Two features degrade gracefully on older builds rather than failing:
 ### Installer
 
 1. Download `TaskbarFolders-Setup.exe` from [Releases](https://github.com/gianluca-schwekendiek/taskbar-grouping/releases).
-2. Run it. The installer requires administrator rights because it writes to Program Files, and offers to start TaskbarFolders with Windows (this option is pre-selected).
+2. Run it. It installs for your user account into `%LOCALAPPDATA%\Programs\TaskbarFolders`, needs no administrator rights, and offers to start TaskbarFolders with Windows (this option is pre-selected).
 3. Launch **TaskbarFolders Manager** from the Start menu.
 
 ### Portable
@@ -137,7 +137,7 @@ Everything is under `%APPDATA%\TaskbarFolders\`:
 
 A per-group `columns` value (1–6, default 3) controls the popup grid width. There is no UI for it yet — edit the group's JSON to change it.
 
-Uninstalling does **not** remove this folder. Delete `%APPDATA%\TaskbarFolders` by hand if you want the configuration gone, and unpin any group tiles first — deleting a group in the Manager does not unpin it.
+Uninstalling — through *Installed apps*, the portable `Uninstall.cmd`, or *Settings → Uninstall TaskbarFolders…* — deletes this folder too, along with the group tiles, the Explorer menu entry, the Start menu entries and the autostart entry. Back up `groups\` first if you want to keep your groups.
 
 ## Troubleshooting
 

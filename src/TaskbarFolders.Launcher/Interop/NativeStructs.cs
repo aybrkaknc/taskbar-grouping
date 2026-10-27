@@ -34,6 +34,16 @@ internal struct APPBARDATA
 }
 
 [StructLayout(LayoutKind.Sequential)]
+internal struct MSLLHOOKSTRUCT
+{
+    public POINT pt;
+    public uint mouseData;
+    public uint flags;
+    public uint time;
+    public IntPtr dwExtraInfo;
+}
+
+[StructLayout(LayoutKind.Sequential)]
 internal struct MONITORINFO
 {
     public int cbSize;

@@ -54,6 +54,21 @@ public sealed class FileLoggerProviderTests : IDisposable
         Directory.Exists(_tempDir).Should().BeTrue();
     }
 
+    // An uninstall deletes the logs folder while the Manager still runs; its last lines used
+    // to throw from the host's shutdown.
+    [Fact]
+    public void Logger_DropsTheLine_WhenTheFolderHasBeenDeleted()
+    {
+        using var provider = new FileLoggerProvider(Options(_tempDir, "gone"));
+        var logger = provider.CreateLogger("Uninstall");
+        Directory.Delete(_tempDir, recursive: true);
+
+        var log = () => logger.LogInformation("after the uninstall");
+
+        log.Should().NotThrow();
+        Directory.Exists(_tempDir).Should().BeFalse("logging must not bring the deleted folder back");
+    }
+
     [Fact]
     public void Logger_WritesAppendedLineToTodayFile()
     {

@@ -88,6 +88,8 @@ Most tests run headless: no WPF `Application`, view models exercised directly. A
 
 Two classes go further and drive WPF itself, because what they cover *is* WPF behaviour rather than arithmetic. `ControlStyleTests` realises control templates so a malformed one fails the build instead of the Settings dialog. `PopupWindowSizingTests` constructs the real popup and shows it off-screen: an `ItemsControl` only builds its containers inside a live layout pass, and `UpdateLayout` on a window with no `PresentationSource` does nothing, so there is no headless way to measure the tile grid. Both marshal their body onto a short-lived STA thread via a local `OnStaThread` helper, since xUnit runs MTA.
 
+Every test class that constructs a `PopupWindow` — currently the sizing, theme and animation tests — belongs to the `PopupWindowTestGroup` xUnit collection, so they run one after another. On Windows 11 22H2+ the popup attaches a `WindowChrome`, whose worker registers a handler in a process-wide WPF dictionary that has no lock; two popups constructed at once on parallel STA threads corrupt it and fail a test at random.
+
 If you add another of these, set `ShowActivated = false` before `Show()`. An activated popup receives a `Deactivated` from the window manager while the test tears it down, `PopupWindow.OnDeactivated` calls `Close()` on a window that is already closing, and the resulting exception escapes a `WndProc` and crashes the entire test host rather than failing one test.
 
 Some tests are timing-sensitive (cache pruning, log rotation, debounced preview refresh) and have already been hardened once against slow CI runners. If you add one, poll with a generous deadline and exit early on success rather than sleeping a fixed interval.

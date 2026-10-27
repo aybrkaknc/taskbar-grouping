@@ -19,9 +19,17 @@ namespace TaskbarFolders.Core.Icons;
 /// targets via <c>IShellLinkW</c> before extraction so the popup shows the target
 /// application's icon rather than the shortcut overlay.
 /// </summary>
+/// <remarks>
+/// Safe to call from several threads at once: the shell calls are serialised, because
+/// <c>SHGetFileInfo</c> and the system image lists, called concurrently from thread-pool
+/// threads, returned no icon for most of a popup's apps.
+/// </remarks>
 [SupportedOSPlatform("windows")]
 public sealed class ShellIconExtractor : IIconExtractor
 {
+    // Process-wide: the state the concurrent calls trip over is the shell's, not this instance's.
+    private static readonly object _shellLock = new();
+
     private readonly ILogger<ShellIconExtractor>? _logger;
 
     /// <summary>Initializes a new instance.</summary>
@@ -46,7 +54,10 @@ public sealed class ShellIconExtractor : IIconExtractor
                 return ExtractFromIcoFile(resolved, size);
             }
 
-            return ExtractFromShell(resolved, size);
+            lock (_shellLock)
+            {
+                return ExtractFromShell(resolved, size);
+            }
         }
         catch (Exception ex) when (ex is COMException or IOException or UnauthorizedAccessException)
         {

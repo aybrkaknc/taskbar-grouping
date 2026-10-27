@@ -38,4 +38,12 @@ public sealed partial class PopupAppViewModel : ObservableObject
     /// <summary>Extracted icon shown in the grid tile.</summary>
     [ObservableProperty]
     private BitmapSource? _icon;
+
+    /// <summary>
+    /// Whether the app turned out to have no icon. Kept apart from a <c>null</c>
+    /// <see cref="Icon"/>, which also means "still loading", so the placeholder only appears
+    /// once extraction has finished without one.
+    /// </summary>
+    [ObservableProperty]
+    private bool _iconMissing;
 }

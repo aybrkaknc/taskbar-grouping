@@ -28,7 +28,12 @@ public sealed class ShellChangeNotifier : IShellChangeNotifier
     }
 
     /// <inheritdoc/>
-    public void NotifyCreate(string path)
+    public void NotifyCreate(string path) => Notify(NativeMethods.SHCNE_CREATE, "SHCNE_CREATE", path);
+
+    /// <inheritdoc/>
+    public void NotifyUpdate(string path) => Notify(NativeMethods.SHCNE_UPDATEITEM, "SHCNE_UPDATEITEM", path);
+
+    private void Notify(int eventId, string eventName, string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
@@ -37,7 +42,7 @@ public sealed class ShellChangeNotifier : IShellChangeNotifier
         {
             pathPtr = Marshal.StringToHGlobalUni(path);
             NativeMethods.SHChangeNotify(
-                NativeMethods.SHCNE_CREATE,
+                eventId,
                 NativeMethods.SHCNF_PATHW | NativeMethods.SHCNF_FLUSH,
                 pathPtr,
                 IntPtr.Zero);
@@ -47,7 +52,7 @@ public sealed class ShellChangeNotifier : IShellChangeNotifier
             // Shell-notify failure must never break the calling sync flow — the .lnk is
             // already on disk and will be picked up by the background indexer eventually.
             // Logged at Warning so support logs surface a repeating failure pattern.
-            _logger?.LogWarning(ex, "SHChangeNotify(SHCNE_CREATE, {Path}) threw.", path);
+            _logger?.LogWarning(ex, "SHChangeNotify({Event}, {Path}) threw.", eventName, path);
         }
         finally
         {

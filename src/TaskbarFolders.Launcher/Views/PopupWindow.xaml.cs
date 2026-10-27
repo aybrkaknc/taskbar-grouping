@@ -1,10 +1,16 @@
 ﻿using System;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Shell;
 using System.Windows.Threading;
+using Microsoft.Win32;
+using TaskbarFolders.Core.Interop;
 using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Shared.Configuration;
@@ -25,7 +31,7 @@ namespace TaskbarFolders.Launcher.Views;
 /// <see cref="IAppSettingsStore"/>; App.OnStartup loads once and registers the instance as a
 /// singleton.
 /// </remarks>
-public partial class PopupWindow : Window
+public sealed partial class PopupWindow : Window, IDisposable
 {
     /// <summary>Tile width + height in DIPs. Mirrors the Image width in the data template.</summary>
     private const int TilePx = 96;
@@ -43,9 +49,32 @@ public partial class PopupWindow : Window
     private readonly PopupViewModel _viewModel;
     private readonly ITaskbarPositionHelper _positionHelper;
     private readonly AppSettings _settings;
+    private readonly bool _useSystemBackdrop;
+    private OutsideClickWatcher? _outsideClicks;
+
+    // True while a dialog owned by the popup (the add-apps picker) is open. Clicks in it land
+    // outside the popup and it takes the focus, so every dismissal trigger has to stand down.
+    private bool _dismissSuspended;
+    private DispatcherTimer? _closeSafetyTimer;
+    private bool _closeAnimating;
+    private bool _closeConfirmed;
     private DispatcherTimer? _safetyTimer;
     private DispatcherTimer? _activationFallbackTimer;
     private bool _wasActivated;
+
+    /// <summary>
+    /// Raised on the UI thread for every press outside the popup while it may be dismissed,
+    /// with the press position in device pixels. <see cref="App"/> sets
+    /// <see cref="OutsidePressEventArgs.IsOnOpeningTile"/> for a press on the group's own tile
+    /// (see <see cref="TileToggle"/>), which closes the popup even while it is pinned.
+    /// </summary>
+    public event EventHandler<OutsidePressEventArgs>? OutsidePress;
+
+    /// <summary>
+    /// Whether a click elsewhere, losing the focus or the never-activated fallback may close
+    /// the popup: not while a dialog it owns is open, and not while it is pinned.
+    /// </summary>
+    public bool DismissesOnOutsideInteraction => !_dismissSuspended && !_viewModel.IsPinned;
 
     /// <summary>Initializes a new instance of the <see cref="PopupWindow"/> class.</summary>
     public PopupWindow(
@@ -63,17 +92,174 @@ public partial class PopupWindow : Window
         _settings = settings;
         DataContext = viewModel;
 
+        // A system backdrop is composed by DWM behind the window, and DWM never paints one
+        // behind a layered window — AllowsTransparency=True is exactly that. So the window
+        // mode has to be chosen here, before the HWND exists. Where the backdrop is
+        // available the popup becomes an ordinary window whose frame covers the whole
+        // client area (the WindowChrome below), and DWM fills it with acrylic. Elsewhere it
+        // stays layered and ChromeRoot paints a translucent fallback panel instead.
+        _useSystemBackdrop = WindowBackdrop.IsSupported;
+        if (_useSystemBackdrop)
+        {
+            AllowsTransparency = false;
+            ResizeMode = ResizeMode.NoResize;
+            WindowChrome.SetWindowChrome(this, new WindowChrome
+            {
+                GlassFrameThickness = new Thickness(-1),
+                CaptionHeight = 0,
+                ResizeBorderThickness = new Thickness(0),
+                CornerRadius = default,
+                UseAeroCaptionButtons = false,
+            });
+        }
+        else
+        {
+            ChromeRoot.SetResourceReference(Border.BackgroundProperty, "PopupFallbackBackground");
+            ChromeRoot.CornerRadius = new CornerRadius(8);
+        }
+
         _viewModel.LaunchSucceeded += OnLaunchSucceeded;
+        _viewModel.CloseRequested += OnCloseRequested;
         // LastError toggles the docked strip after open; height must grow/shrink with it
         // or the strip clips the fixed 96 px tiles (issue #24).
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _viewModel.Apps.CollectionChanged += OnAppsChanged;
         Activated += OnActivated;
+        Closing += OnClosing;
         Closed += OnClosed;
+        KeyDown += OnKeyDown;
+        ContentRendered += OnContentRendered;
         SourceInitialized += OnSourceInitialized;
+    }
+
+    /// <summary>
+    /// Starts watching for clicks outside the popup once it is on screen. Not earlier: a
+    /// low-level hook on a thread that does not pump messages stalls every mouse event on the
+    /// desktop, and ContentRendered is the first point the dispatcher is known to be running
+    /// (it never fires in the windowed tests, which have no message loop).
+    /// </summary>
+    private void OnContentRendered(object? sender, EventArgs e)
+    {
+        ContentRendered -= OnContentRendered;
+        if (_closeAnimating || _closeConfirmed)
+        {
+            return;
+        }
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        _outsideClicks = new OutsideClickWatcher(hwnd, (x, y) =>
+        {
+            if (_dismissSuspended)
+            {
+                return;
+            }
+
+            // Synchronous: the marker has to exist before the shell starts the launcher that
+            // the same click on the tile triggers.
+            var press = new OutsidePressEventArgs(new Point(x, y));
+            OutsidePress?.Invoke(this, press);
+            if (DismissesOnOutsideInteraction || press.IsOnOpeningTile)
+            {
+                Dispatcher.BeginInvoke(new Action(Close));
+            }
+        });
+    }
+
+    private void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+
+            // Escape backs out one level: out of edit mode first, then out of the popup.
+            if (_viewModel.IsEditing)
+            {
+                _viewModel.IsEditing = false;
+                return;
+            }
+
+            Close();
+        }
+    }
+
+    /// <summary>
+    /// Every way the popup closes — X, Escape, a click outside, focus loss, a launch, the
+    /// fallback timer, even Alt+F4 — arrives here as a Close(), so this is the one place the
+    /// fade-out is applied. The first request is cancelled and replaced by the animation,
+    /// which calls Close() again once it has finished.
+    /// </summary>
+    private void OnClosing(object? sender, CancelEventArgs e)
+    {
+        if (_closeConfirmed)
+        {
+            return;
+        }
+
+        if (!_settings.EnableAnimations || !IsVisible || TryFindResource("CloseAnimation") is not Storyboard storyboard)
+        {
+            _closeConfirmed = true;
+            return;
+        }
+
+        e.Cancel = true;
+        if (_closeAnimating)
+        {
+            return;
+        }
+
+        _closeAnimating = true;
+        _outsideClicks?.Dispose();
+        _outsideClicks = null;
+        _safetyTimer?.Stop();
+        PlayCloseAnimation(storyboard);
+    }
+
+
+    private void PlayCloseAnimation(Storyboard template)
+    {
+        var storyboard = template.Clone();
+        foreach (var animation in storyboard.Children)
+        {
+            if (Storyboard.GetTargetName(animation) == "ChromeRoot")
+            {
+                Storyboard.SetTarget(animation, ChromeRoot);
+            }
+        }
+
+        storyboard.Completed += (_, _) => FinishClose();
+        storyboard.Begin(this);
+
+        // Same reasoning as the open animation's safety net: if the composition pass is
+        // skipped, Completed may never come, and a popup that cannot close is worse than one
+        // that closes without its fade.
+        _closeSafetyTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(300),
+        };
+        _closeSafetyTimer.Tick += (_, _) => FinishClose();
+        _closeSafetyTimer.Start();
+    }
+
+    private void FinishClose()
+    {
+        if (_closeConfirmed)
+        {
+            return;
+        }
+
+        _closeConfirmed = true;
+        _closeSafetyTimer?.Stop();
+        _closeSafetyTimer = null;
+        Close();
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
+        if (_useSystemBackdrop)
+        {
+            ApplySystemBackdrop();
+        }
+
         ApplySizeAndPlacement();
 
         if (_settings.EnableAnimations && TryFindResource("OpenAnimation") is Storyboard storyboard)
@@ -83,9 +269,9 @@ public partial class PopupWindow : Window
         else
         {
             // Either animations are disabled OR the storyboard resource was not found.
-            // The XAML defaults Opacity=0 + ScaleX/Y=0.5 mean a missing storyboard would
-            // leave the popup permanently invisible — snap to the end state so the user
-            // always sees the popup, regardless of resource lookup outcome.
+            // The XAML defaults Opacity=0.5 + ScaleX/Y=0.9 mean a missing storyboard would
+            // leave the popup permanently faded and undersized — snap to the end state so
+            // the user always sees the finished popup, regardless of resource lookup outcome.
             SnapToEndState();
         }
 
@@ -101,7 +287,7 @@ public partial class PopupWindow : Window
         };
         _activationFallbackTimer.Tick += (_, _) =>
         {
-            if (_wasActivated || IsMouseOver)
+            if (_wasActivated || IsMouseOver || !DismissesOnOutsideInteraction)
             {
                 return;
             }
@@ -112,9 +298,38 @@ public partial class PopupWindow : Window
         _activationFallbackTimer.Start();
     }
 
+    /// <summary>
+    /// Puts DWM's acrylic behind the popup, tinted to match the theme, with rounded corners.
+    /// With Windows' transparency effects switched off DWM substitutes a solid tint itself.
+    /// </summary>
+    private void ApplySystemBackdrop()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+
+        // WPF clears the client area to the window background before drawing. Transparent
+        // lets the DWM backdrop through; any other colour would cover it.
+        if (HwndSource.FromHwnd(hwnd)?.CompositionTarget is { } target)
+        {
+            target.BackgroundColor = Colors.Transparent;
+        }
+
+        // The immersive dark-mode flag is what picks the dark acrylic tint, not just the
+        // caption colour — the popup has no caption, so this is its only effect here.
+        var dark = LauncherThemeApplier.Resolve(_settings.Theme) == ThemePreference.Dark;
+        _ = WindowBackdrop.TrySetDarkTitleBar(hwnd, dark);
+        _ = WindowBackdrop.TrySetRoundedCorners(hwnd);
+
+        if (!WindowBackdrop.TryApply(hwnd, WindowBackdropKind.Acrylic))
+        {
+            // The window is no longer layered, so a transparent client area would render
+            // black. Paint the fallback panel instead; it is near-opaque in this mode.
+            ChromeRoot.SetResourceReference(Border.BackgroundProperty, "PopupFallbackBackground");
+        }
+    }
+
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(PopupViewModel.LastError))
+        if (e.PropertyName is not (nameof(PopupViewModel.LastError) or nameof(PopupViewModel.IsUnavailable)))
         {
             return;
         }
@@ -163,8 +378,21 @@ public partial class PopupWindow : Window
         ChromeRoot.Measure(new Size(Width, double.PositiveInfinity));
         Height = Math.Clamp(ChromeRoot.DesiredSize.Height, MinHeight, MaxHeight);
 
+
         // Second pass so hit-test / DesiredSize match the new explicit size before placement.
         UpdateLayout();
+
+        // Past MaxHeight the tile grid scrolls (issue #32), and the vertical bar takes its width
+        // out of the viewport, which would squeeze the fixed 96 px tiles; widen the window by
+        // exactly that much instead (the bar's width and margin, PopupScrollBar). Asked of the
+        // laid-out scroller rather than worked out from DesiredSize, which does not yet carry the
+        // tiles on the first pass. MaxWidth leaves room for the bar at six columns.
+        if (TileScroller.ComputedVerticalScrollBarVisibility == Visibility.Visible)
+        {
+            var barWidth = TileScroller.ActualWidth - TileScroller.ViewportWidth;
+            Width = Math.Clamp(Width + barWidth, MinWidth, MaxWidth);
+            UpdateLayout();
+        }
 
         var placement = _positionHelper.ComputePlacement(new Size(Width, Height), _settings.PopupPosition);
         Left = placement.Left;
@@ -211,7 +439,7 @@ public partial class PopupWindow : Window
     /// <summary>
     /// Schedules <see cref="Storyboard.Begin(System.Windows.FrameworkElement)"/> on the next
     /// dispatcher Render cycle and arms a 500 ms safety-net that force-snaps to the end state
-    /// if the popup is still invisible. v0.4.1 used <see cref="CompositionTarget.Rendering"/>,
+    /// if the popup has not reached it. v0.4.1 used <see cref="CompositionTarget.Rendering"/>,
     /// but Win11 24H2 can skip the composition pass entirely for fully-transparent windows —
     /// <c>Rendering</c> never fires and the popup stays invisible forever. A
     /// <see cref="Dispatcher.BeginInvoke(DispatcherPriority, Delegate)"/> at Render priority
@@ -255,7 +483,11 @@ public partial class PopupWindow : Window
         _safetyTimer.Tick += (_, _) =>
         {
             _safetyTimer?.Stop();
-            if (chrome.Opacity < 0.5)
+
+            // The start state is half-opaque, so "still below 0.5" can no longer tell a
+            // stuck animation from a finished one. Anything short of the end state after
+            // 500 ms means the storyboard never ran to completion.
+            if (chrome.Opacity < 1)
             {
                 SnapToEndState();
             }
@@ -268,13 +500,73 @@ public partial class PopupWindow : Window
         // Only dismiss after the window has genuinely held activation once. A spurious
         // deactivation before first activation would otherwise close the popup before
         // the user ever saw it.
-        if (_wasActivated)
+        if (_wasActivated && DismissesOnOutsideInteraction)
         {
             Close();
         }
     }
 
-    private void OnLaunchSucceeded(object? sender, EventArgs e) => Close();
+    private void OnLaunchSucceeded(object? sender, EventArgs e)
+    {
+        if (!_viewModel.IsPinned)
+        {
+            Close();
+        }
+    }
+
+    private void OnCloseRequested(object? sender, EventArgs e) => Close();
+
+    // Tiles added or removed from inside the popup change the grid's height. Deferred to
+    // Loaded priority: this handler can run before the ItemsControl has seen the change, and a
+    // measure taken then sized the window for the old tile count — a tile that opened a new
+    // row was cut off, label first, until the popup was reopened.
+    private void OnAppsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (!IsLoaded || _closeAnimating)
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            if (!_closeAnimating && !_closeConfirmed)
+            {
+                ApplySizeAndPlacement();
+            }
+        }));
+    }
+
+    /// <summary>
+    /// Opens the file picker for the + button. Input routing only: the picked files go to the
+    /// view model, which applies the add rule and saves the group.
+    /// </summary>
+    private async void AddApps_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Applications and shortcuts|*.exe;*.lnk|Executables (*.exe)|*.exe|Shortcuts (*.lnk)|*.lnk",
+            Multiselect = true,
+            Title = $"Add apps to \"{_viewModel.GroupName}\"",
+        };
+
+        bool? picked;
+        _dismissSuspended = true;
+        try
+        {
+            picked = dialog.ShowDialog(this);
+        }
+        finally
+        {
+            _dismissSuspended = false;
+            // The dialog had the focus; give it back so dismiss-on-focus-loss works again.
+            Activate();
+        }
+
+        if (picked == true && dialog.FileNames.Length > 0)
+        {
+            await _viewModel.AddAppsAsync(dialog.FileNames).ConfigureAwait(true);
+        }
+    }
 
     private void OnClosed(object? sender, EventArgs e)
     {
@@ -289,9 +581,26 @@ public partial class PopupWindow : Window
         _activationFallbackTimer?.Stop();
         _activationFallbackTimer = null;
         _viewModel.LaunchSucceeded -= OnLaunchSucceeded;
+        _viewModel.CloseRequested -= OnCloseRequested;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _viewModel.Apps.CollectionChanged -= OnAppsChanged;
         Activated -= OnActivated;
+        Closing -= OnClosing;
         Closed -= OnClosed;
+        KeyDown -= OnKeyDown;
+        ContentRendered -= OnContentRendered;
         SourceInitialized -= OnSourceInitialized;
+        _closeSafetyTimer?.Stop();
+        _closeSafetyTimer = null;
+        Dispose();
+    }
+
+    /// <summary>
+    /// Removes the outside-click hook. Called from <c>Closed</c>; safe to call more than once.
+    /// </summary>
+    public void Dispose()
+    {
+        _outsideClicks?.Dispose();
+        _outsideClicks = null;
     }
 }

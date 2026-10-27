@@ -85,4 +85,38 @@ public class CommandLineParserTests
     {
         CommandLineParser.HasPinMode(System.Array.Empty<string>()).Should().BeFalse();
     }
+
+    [Fact]
+    public void ParseFilesToAdd_ReturnsThePositionalArguments()
+    {
+        // What Explorer's menu verb produces: --group-id "<id>" "%1".
+        var args = new[] { "--group-id", "abc", @"C:\Tools\App.lnk" };
+
+        CommandLineParser.ParseFilesToAdd(args).Should().Equal(@"C:\Tools\App.lnk");
+    }
+
+    [Fact]
+    public void ParseFilesToAdd_FindsFilesOnEitherSideOfTheFlags()
+    {
+        var args = new[] { @"C:\a.exe", "--group-id", "abc", "--some-flag", @"C:\b.lnk" };
+
+        CommandLineParser.ParseFilesToAdd(args).Should().Equal(@"C:\a.exe", @"C:\b.lnk");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("--group-id abc")]
+    [InlineData("--pin-mode --group-id abc")]
+    public void ParseFilesToAdd_ReturnsNothing_ForAPlainLaunch(string commandLine)
+    {
+        var args = commandLine.Split(' ', System.StringSplitOptions.RemoveEmptyEntries);
+
+        CommandLineParser.ParseFilesToAdd(args).Should().BeEmpty("the group id is not a file and flags are not files");
+    }
+
+    [Fact]
+    public void ParseFilesToAdd_IgnoresBlankArguments()
+    {
+        CommandLineParser.ParseFilesToAdd(["--group-id", "abc", "  "]).Should().BeEmpty();
+    }
 }

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Manager.ViewModels;
@@ -57,6 +59,14 @@ public partial class App : Application
 
         await _host.StartAsync().ConfigureAwait(true);
 
+        // Uninstall mode, run by the installer's uninstaller and by Uninstall.cmd: no main
+        // window, and nothing that would write the integration back (no heal-up, no menu refresh).
+        if (UninstallArguments.IsUninstall(e.Args))
+        {
+            Shutdown(await RunUninstallAsync(UninstallArguments.IsNoConfirm(e.Args)).ConfigureAwait(true));
+            return;
+        }
+
         // Apply the persisted theme before any window is built so DynamicResource
         // bindings paint with the correct brushes on first render.
         var settingsStore = _host.Services.GetRequiredService<IAppSettingsStore>();
@@ -83,6 +93,20 @@ public partial class App : Application
             sync.EnsureStartMenuShortcut(groupVm.Config);
         }
 
+        // Then the reverse direction: anchors left behind by deleted groups. Only adding
+        // here was how a stale anchor could outlive its group indefinitely.
+        sync.RemoveOrphanedStartMenuAnchors();
+
+        // Explorer's "Taskbar Groups" menu follows the group list and the setting; rewritten
+        // now (heals an install whose groups changed while the Manager was closed) and on
+        // every change after.
+        var explorerMenu = _host.Services.GetRequiredService<ExplorerContextMenuService>();
+        await explorerMenu.RefreshAsync().ConfigureAwait(true);
+        viewModel.GroupListChanged += async (_, _) => await explorerMenu.RefreshAsync().ConfigureAwait(true);
+        var settingsViewModel = _host.Services.GetRequiredService<SettingsViewModel>();
+        settingsViewModel.Saved += async (_, _) => await explorerMenu.RefreshAsync().ConfigureAwait(true);
+        settingsViewModel.UninstallStarted += (_, _) => Shutdown();
+
         // Deferred startup IO: prune stale icon-cache PNGs and old log files in the background
         // so the first paint of MainWindow is not blocked by ~10-70 ms of enumerate-and-delete.
         _host.Services.GetRequiredService<IIconCache>().StartBackgroundPrune();
@@ -91,6 +115,26 @@ public partial class App : Application
             .FirstOrDefault()?.StartBackgroundPrune();
 
         base.OnStartup(e);
+    }
+
+    private async Task<int> RunUninstallAsync(bool noConfirm)
+    {
+        var dialogs = _host.Services.GetRequiredService<IUserConfirmation>();
+        if (!noConfirm && !dialogs.Confirm("Uninstall TaskbarFolders", UninstallArguments.ConfirmMessage))
+        {
+            return UninstallArguments.ExitCancelled;
+        }
+
+        var report = await _host.Services.GetRequiredService<IUninstaller>().RunAsync().ConfigureAwait(true);
+
+        // An unattended uninstall (/VERYSILENT) must not stop on a dialog unless something
+        // needs the user's hands.
+        if (!noConfirm || !report.Complete)
+        {
+            dialogs.Notify("Uninstall TaskbarFolders", UninstallArguments.ResultMessage(report));
+        }
+
+        return report.Complete ? UninstallArguments.ExitComplete : UninstallArguments.ExitIncomplete;
     }
 
     /// <inheritdoc/>

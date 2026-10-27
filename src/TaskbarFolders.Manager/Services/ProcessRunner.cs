@@ -34,4 +34,19 @@ public sealed class ProcessRunner : IProcessRunner
 
         return process.ExitCode;
     }
+
+    /// <inheritdoc/>
+    public bool TryStart(ProcessStartInfo psi)
+    {
+        ArgumentNullException.ThrowIfNull(psi);
+        try
+        {
+            using var process = Process.Start(psi);
+            return process is not null;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return false;
+        }
+    }
 }

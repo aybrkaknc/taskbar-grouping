@@ -1,4 +1,7 @@
-﻿using System.Threading;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
@@ -30,7 +33,79 @@ public class SettingsViewModelTests
 
         themeMock = new Mock<IThemeService>();
 
-        return new SettingsViewModel(storeMock.Object, autoMock.Object, themeMock.Object);
+        return new SettingsViewModel(
+            storeMock.Object, autoMock.Object, themeMock.Object, new InstallLocation(Path.GetTempPath()), Mock.Of<IProcessRunner>(), Mock.Of<IUserConfirmation>());
+    }
+
+    private static SettingsViewModel CreateUninstallSut(
+        string installRoot, out Mock<IProcessRunner> processes, out Mock<IUserConfirmation> confirmation)
+    {
+        processes = new Mock<IProcessRunner>();
+        processes.Setup(p => p.TryStart(It.IsAny<ProcessStartInfo>())).Returns(true);
+        confirmation = new Mock<IUserConfirmation>();
+
+        return new SettingsViewModel(
+            Mock.Of<IAppSettingsStore>(), Mock.Of<IAutoStartService>(), Mock.Of<IThemeService>(),
+            new InstallLocation(installRoot), processes.Object, confirmation.Object);
+    }
+
+    private static string NewInstallRoot(string? withFile)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "tf-settings-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(root);
+        if (withFile is not null)
+        {
+            File.WriteAllText(Path.Combine(root, withFile), "");
+        }
+        return root;
+    }
+
+    [Theory]
+    [InlineData(InstallLocation.InstallerUninstallerName, false)]
+    [InlineData(InstallLocation.PortableUninstallerName, true)]
+    public void Uninstall_StartsTheUninstallerOfThisCopy_AndClosesTheManager(string uninstaller, bool viaCmd)
+    {
+        var root = NewInstallRoot(uninstaller);
+        try
+        {
+            var sut = CreateUninstallSut(root, out var processes, out _);
+            var closing = false;
+            sut.UninstallStarted += (_, _) => closing = true;
+
+            sut.UninstallCommand.Execute(null);
+
+            var expected = Path.Combine(root, uninstaller);
+            processes.Verify(p => p.TryStart(It.Is<ProcessStartInfo>(psi => viaCmd
+                ? psi.FileName == "cmd.exe" && psi.Arguments.Contains(expected, StringComparison.Ordinal)
+                : psi.FileName == expected)), Times.Once);
+            closing.Should().BeTrue("the Manager's own files cannot be deleted while it runs");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Uninstall_ExplainsAndStaysOpen_WhenThisCopyHasNoUninstaller()
+    {
+        var root = NewInstallRoot(withFile: null);
+        try
+        {
+            var sut = CreateUninstallSut(root, out var processes, out var confirmation);
+            var closing = false;
+            sut.UninstallStarted += (_, _) => closing = true;
+
+            sut.UninstallCommand.Execute(null);
+
+            processes.Verify(p => p.TryStart(It.IsAny<ProcessStartInfo>()), Times.Never);
+            confirmation.Verify(c => c.Notify(It.IsAny<string>(), It.Is<string>(m => m.Contains("--uninstall"))), Times.Once);
+            closing.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]
@@ -124,5 +199,22 @@ public class SettingsViewModelTests
         await sut.SaveCommand.ExecuteAsync(null);
 
         sut.HasUnsavedChanges.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ShowInExplorerMenu_IsLoaded_Saved_AndAnnounced()
+    {
+        var sut = CreateSut(new AppSettings { ShowInExplorerMenu = false }, autoStartEnabled: false, out var store, out _, out _);
+        await sut.LoadAsync();
+        sut.ShowInExplorerMenu.Should().BeFalse();
+        var saved = 0;
+        sut.Saved += (_, _) => saved++;
+
+        sut.ShowInExplorerMenu = true;
+        sut.HasUnsavedChanges.Should().BeTrue();
+        await sut.SaveCommand.ExecuteAsync(null);
+
+        store.Verify(s => s.SaveAsync(It.Is<AppSettings>(a => a.ShowInExplorerMenu), It.IsAny<CancellationToken>()), Times.Once);
+        saved.Should().Be(1, "the Explorer menu is rewritten when the settings are saved");
     }
 }

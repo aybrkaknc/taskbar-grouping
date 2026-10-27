@@ -1,5 +1,6 @@
 ﻿using System.Runtime.Versioning;
 using Microsoft.Extensions.DependencyInjection;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Manager.Services;
@@ -36,18 +37,27 @@ public static class ManagerServiceCollectionExtensions
         services.AddSingleton<ICompositeIconGenerator, CompositeIconGenerator>();
         services.AddSingleton<IIcoFileWriter, IcoFileWriter>();
         services.AddSingleton<IIconCache, FileSystemIconCache>();
+        services.AddSingleton<ICustomGroupIconStore, CustomGroupIconStore>();
 
         // Manager-side services.
         services.AddSingleton<IAutoStartService, RegistryAutoStartService>();
+        services.AddSingleton<IRegistryWriter, CurrentUserRegistryWriter>();
+        services.AddSingleton<ExplorerContextMenuService>();
+        services.AddSingleton(InstallLocation.OfRunningManager());
+        services.AddSingleton<IInstanceCloser, ProcessInstanceCloser>();
+        services.AddSingleton<ITaskbarUnpinner, ShellTaskbarUnpinner>();
+        services.AddSingleton<IUninstaller, Uninstaller>();
         services.AddSingleton<ISystemThemeProbe, RegistrySystemThemeProbe>();
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IShortcutGenerator, ShortcutGenerator>();
+        services.AddSingleton<IShortcutReader, ShortcutReader>();
         services.AddSingleton<IShellChangeNotifier, ShellChangeNotifier>();
         services.AddSingleton<ILauncherPathResolver, LauncherPathResolver>();
         services.AddSingleton<IGroupSyncService, GroupSyncService>();
         services.AddSingleton<IUserConfirmation, MessageBoxUserConfirmation>();
         services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddSingleton<IPinToTaskbarService, LauncherProcessPinService>();
+        services.AddSingleton<IGroupIconReader, GroupIconReader>();
 
         // View models — MainWindow is itself a singleton conceptually (one main window per
         // process), so the backing VM is singleton too. App.OnStartup loads groups into it

@@ -8,7 +8,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Settings"
-        Width="480" Height="420"
+        Width="480" Height="500"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
@@ -54,12 +54,23 @@
                       Margin="0,0,0,16" />
 
             <CheckBox IsChecked="{Binding EnableAnimations}" Content="Enable popup animations" Margin="0,0,0,12" />
-            <CheckBox IsChecked="{Binding AutoStart}" Content="Start TaskbarFolders Manager when Windows starts" />
+            <CheckBox IsChecked="{Binding AutoStart}" Content="Start TaskbarFolders Manager when Windows starts" Margin="0,0,0,12" />
+            <CheckBox IsChecked="{Binding ShowInExplorerMenu}" Content="Show &quot;Taskbar Groups&quot; in Explorer's right-click menu" />
 
             <TextBlock Margin="0,16,0,0" Foreground="{DynamicResource ForegroundSubtle}" FontSize="11" TextWrapping="Wrap">
                 Auto-start writes a per-user entry to
                 HKCU\Software\Microsoft\Windows\CurrentVersion\Run — no administrator rights required.
             </TextBlock>
+
+            <Separator Margin="0,16,0,12" />
+            <TextBlock Text="Uninstall" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <TextBlock Margin="0,0,0,8" Foreground="{DynamicResource ForegroundSubtle}" FontSize="11" TextWrapping="Wrap">
+                Removes TaskbarFolders and everything it added to Windows — taskbar tiles, the Explorer
+                menu, Start menu entries, your groups and settings. Asks before it starts.
+            </TextBlock>
+            <Button Content="Uninstall TaskbarFolders…" HorizontalAlignment="Left" Padding="12,4"
+                    Command="{Binding UninstallCommand}" />
+
         </StackPanel>
     </DockPanel>
 </Window>

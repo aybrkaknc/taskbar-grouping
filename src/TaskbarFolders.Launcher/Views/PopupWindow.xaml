@@ -1,13 +1,14 @@
-<Window x:Class="TaskbarFolders.Launcher.Views.PopupWindow"
+﻿<Window x:Class="TaskbarFolders.Launcher.Views.PopupWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:TaskbarFolders.Launcher.ViewModels"
+        xmlns:icons="clr-namespace:TaskbarFolders.Core.Icons;assembly=TaskbarFolders.Core"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="{Binding GroupName}"
         MinWidth="220"
-        MaxWidth="600"
+        MaxWidth="640"
         MinHeight="120"
         MaxHeight="800"
         WindowStyle="None"
@@ -19,8 +20,11 @@
         Deactivated="OnDeactivated"
         d:DataContext="{d:DesignInstance Type=vm:PopupViewModel}">
     <Window.Resources>
-        <!-- Scale 0.5→1.0 with QuinticEase over 200 ms makes the popup grow up out of the
-             clicked tile. ScaleTransform origin set in code-behind (Width/2, Height) =
+        <!-- Scale 0.9→1.0 with QuinticEase over 110 ms makes the popup settle up out of the
+             clicked tile. The animation starts half-opaque rather than from nothing: the
+             popup's first frame arrives several hundred ms after the click, and a fade from
+             zero spent that frame, and most of the following 200 ms, showing the user
+             nothing at all. ScaleTransform origin set in code-behind (Width/2, Height) =
              bottom-centre of the popup, directly above the clicked tile per
              TaskbarPositionHelper. Every animation targets the inner ChromeRoot Border, and
              the ScaleTransform lives on ChromeRoot, NOT the Window: WPF Windows only accept
@@ -29,32 +33,71 @@
              ScaleX/Y=0.5 default killed InitializeComponent before the popup ever existed.
              (The Opacity animation also avoids Window.Opacity because Win11 24H2 has a
              render-skip path for `AllowsTransparency=True + Window.Opacity` that misses the
-             first frame.) XAML defaults below set ChromeRoot ScaleX/Y=0.5 + Opacity=0 so
-             the first paint already shows the From state; code-behind kicks
-             Storyboard.Begin via Dispatcher.BeginInvoke at Render priority and arms a
-             500 ms safety-net that snaps to the end state if the popup is still
-             invisible. -->
+             first frame.) XAML defaults below set ChromeRoot ScaleX/Y=0.9 + Opacity=0.5 so
+             the first paint already shows the From state — the two must stay equal, or the
+             popup jumps between its first frame and the first animation tick. Code-behind
+             kicks Storyboard.Begin via Dispatcher.BeginInvoke at Render priority and arms a
+             500 ms safety-net that snaps to the end state if the popup has not reached
+             it. -->
         <Storyboard x:Key="OpenAnimation">
             <DoubleAnimation Storyboard.TargetName="ChromeRoot"
                              Storyboard.TargetProperty="Opacity"
-                             From="0" To="1" Duration="0:0:0.2" />
+                             From="0.5" To="1" Duration="0:0:0.11" />
             <DoubleAnimation Storyboard.TargetName="ChromeRoot"
                              Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                             From="0.5" To="1" Duration="0:0:0.2">
+                             From="0.9" To="1" Duration="0:0:0.11">
                 <DoubleAnimation.EasingFunction>
                     <QuinticEase EasingMode="EaseOut" />
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
             <DoubleAnimation Storyboard.TargetName="ChromeRoot"
                              Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
-                             From="0.5" To="1" Duration="0:0:0.2">
+                             From="0.9" To="1" Duration="0:0:0.11">
                 <DoubleAnimation.EasingFunction>
                     <QuinticEase EasingMode="EaseOut" />
                 </DoubleAnimation.EasingFunction>
             </DoubleAnimation>
         </Storyboard>
 
+        <!-- Close: a quick fade and slight shrink of ChromeRoot, run from OnClosing for every
+             way the popup closes. No From values, so it starts from wherever the open
+             animation got to. EaseOut, not EaseIn: an ease-in fade stays nearly opaque for most
+             of its run and then the window vanishes, which reads as no animation at all
+             (measured: ~0.8 opacity two thirds of the way through).
+             Only ChromeRoot fades. On Windows 11 22H2+ the acrylic behind it is drawn by DWM,
+             which cannot be faded from WPF and does not animate Hide() for this window
+             (measured: gone within one frame), so the glass disappears when the window closes,
+             right after the content. On the layered fallback the whole popup fades. -->
+        <Storyboard x:Key="CloseAnimation">
+            <DoubleAnimation Storyboard.TargetName="ChromeRoot"
+                             Storyboard.TargetProperty="Opacity"
+                             To="0" Duration="0:0:0.12">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="ChromeRoot"
+                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                             To="0.96" Duration="0:0:0.12">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="ChromeRoot"
+                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                             To="0.96" Duration="0:0:0.12">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
         <Style x:Key="AppTileButton" TargetType="Button">
+            <!-- Required, not redundant: WPF's built-in Button theme style sets Foreground to
+                 the system control-text colour (black), and a theme-style setter outranks the
+                 ForegroundDefault inherited from ChromeRoot. Without this the labels were
+                 black in both themes. Pinned by PopupWindowThemeTests. -->
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="8" />
@@ -77,91 +120,293 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Small glyph button for the header (the close X). Sets Foreground itself for the
+             same reason AppTileButton does. -->
+        <Style x:Key="PopupIconButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource TileHoverBackground}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Round remove badge on a tile in edit mode. Sets Foreground itself, like the other
+             popup buttons. -->
+        <Style x:Key="PopupBadgeButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
+            <Setter Property="Background" Value="{DynamicResource BadgeBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ForegroundSubtle}" />
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="8" />
+            <Setter Property="Content" Value="&#xE711;" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#CCC42B1C" />
+                                <Setter Property="Foreground" Value="{DynamicResource ErrorForeground}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Thin, theme-coloured bar for TileScroller. The system bar is light grey with arrow
+             buttons and reads as a foreign object on the glass. Only a thumb on an empty track;
+             the wheel and dragging the thumb scroll. -->
+        <Style x:Key="PopupScrollBar" TargetType="ScrollBar">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="MinWidth" Value="8" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Track x:Name="PART_Track" IsDirectionReversed="True">
+                            <Track.Thumb>
+                                <Thumb>
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="Thumb">
+                                            <Border x:Name="ThumbRoot"
+                                                    Background="{DynamicResource ForegroundSubtle}"
+                                                    Opacity="0.5"
+                                                    CornerRadius="3"
+                                                    Margin="1,2" />
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="ThumbRoot" Property="Opacity" Value="0.85" />
+                                                </Trigger>
+                                                <Trigger Property="IsDragging" Value="True">
+                                                    <Setter TargetName="ThumbRoot" Property="Opacity" Value="1" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Track.Thumb>
+                        </Track>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
-    <!-- Layout-only Border: keeps Padding + TextElement.Foreground inheritance but paints nothing.
-         AllowsTransparency on the Window plus Brushes.Transparent here means only the icons (and
-         the per-tile hover highlight) are visible — the popup chrome disappears entirely.
-         x:Name="ChromeRoot" + Opacity="0" default: storyboard fades the *element* in instead
+    <!-- Layout Border: keeps Padding + TextElement.Foreground inheritance. It paints nothing on
+         Windows 11 22H2+, where PopupWindow swaps the window to a non-layered one and DWM draws
+         acrylic behind it; elsewhere code-behind gives it the PopupFallbackBackground panel.
+         AllowsTransparency="True" above is that fallback mode's setting and is switched off in
+         code when the backdrop is used.
+         x:Name="ChromeRoot" + Opacity="0.5" default: storyboard fades the *element* in instead
          of Window.Opacity to dodge the Win11 24H2 paint-skip bug noted above.
-         The open-animation ScaleTransform lives here (ScaleX/Y=0.5 default = the animation's
+         The open-animation ScaleTransform lives here (ScaleX/Y=0.9 default = the animation's
          From state on first paint) because a Window rejects non-identity RenderTransforms —
          see the OpenAnimation comment. CenterX/CenterY are set in code-behind (bottom-centre)
          once Width/Height are computed in OnSourceInitialized. -->
     <Border x:Name="ChromeRoot"
             Background="Transparent"
             Padding="12"
-            Opacity="0"
+            Opacity="0.5"
             TextElement.Foreground="{DynamicResource ForegroundDefault}">
         <Border.RenderTransform>
-            <ScaleTransform ScaleX="0.5" ScaleY="0.5" CenterX="0" CenterY="0" />
+            <ScaleTransform ScaleX="0.9" ScaleY="0.9" CenterX="0" CenterY="0" />
         </Border.RenderTransform>
-        <Grid>
-            <!-- Inline error state for missing/empty group — gets its own backdrop so the text
-                 stays readable against any wallpaper now that the popup chrome is gone. -->
-            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Padding="16,12"
-                    CornerRadius="6"
-                    Background="{DynamicResource ErrorBackdropBrush}"
-                    Visibility="{Binding IsUnavailable, Converter={x:Static vm:LauncherBoolToVisibilityConverter.Instance}}">
-                <TextBlock Foreground="{DynamicResource ForegroundSubtle}">
-                    <Run Text="{Binding GroupName}" FontWeight="SemiBold" /><LineBreak />
-                    <Run Text="No apps to launch." />
-                </TextBlock>
-            </Border>
+        <DockPanel>
+            <!-- Header: group name and close button, in every state. Part of ChromeRoot, so
+                 the measured window height includes it with no sizing code of its own. -->
+            <DockPanel x:Name="HeaderBar" DockPanel.Dock="Top" Margin="8,0,0,6">
+                <Button x:Name="CloseButton"
+                        DockPanel.Dock="Right"
+                        Style="{StaticResource PopupIconButton}"
+                        Content="&#xE8BB;"
+                        ToolTip="Close"
+                        AutomationProperties.Name="Close"
+                        Command="{Binding CloseCommand}" />
+                <!-- Pin toggle: keeps the popup open across clicks elsewhere and launches;
+                     tinted plate while on, like the edit toggle. -->
+                <Button x:Name="PinButton"
+                        DockPanel.Dock="Right"
+                        Margin="0,0,4,0"
+                        Command="{Binding TogglePinCommand}"
+                        AutomationProperties.Name="Keep open">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource PopupIconButton}">
+                            <Setter Property="Content" Value="&#xE718;" />
+                            <Setter Property="ToolTip" Value="Keep open" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                    <Setter Property="Content" Value="&#xE840;" />
+                                    <Setter Property="ToolTip" Value="Close when I click elsewhere" />
+                                    <Setter Property="Background" Value="{DynamicResource EditActiveBackground}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button x:Name="AddAppsButton"
+                        DockPanel.Dock="Right"
+                        Margin="0,0,4,0"
+                        Style="{StaticResource PopupIconButton}"
+                        Content="&#xE710;"
+                        ToolTip="Add apps to this group"
+                        AutomationProperties.Name="Add apps"
+                        IsEnabled="{Binding CanEditGroup}"
+                        Click="AddApps_Click" />
+                <!-- Edit toggle: pencil while off; a check mark on a tinted plate while on,
+                     so the way out of edit mode is the same button. -->
+                <Button x:Name="EditButton"
+                        DockPanel.Dock="Right"
+                        Margin="0,0,4,0"
+                        Command="{Binding ToggleEditCommand}"
+                        IsEnabled="{Binding CanEditGroup}"
+                        AutomationProperties.Name="Edit apps">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource PopupIconButton}">
+                            <Setter Property="Content" Value="&#xE70F;" />
+                            <Setter Property="ToolTip" Value="Remove apps from this group" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                    <Setter Property="Content" Value="&#xE73E;" />
+                                    <Setter Property="ToolTip" Value="Done" />
+                                    <Setter Property="Background" Value="{DynamicResource EditActiveBackground}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <TextBlock x:Name="GroupNameText"
+                           Text="{Binding GroupName}"
+                           VerticalAlignment="Center"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis" />
+            </DockPanel>
 
-            <!-- App grid + transient launch-failure banner -->
-            <DockPanel Visibility="{Binding IsUnavailable, Converter={x:Static vm:LauncherInverseBoolToVisibilityConverter.Instance}}">
-                <!-- Docks Bottom in a fill-last DockPanel, so at a grid-only window height it
-                     takes its space out of the fixed 96 px tiles. PopupWindow sizes the window
-                     from ChromeRoot's DesiredSize instead, which already accounts for it.
-                     Visibility must stay a plain binding and must never be written from code:
-                     a local value discards a OneWay binding permanently, and the property then
-                     defaults back to Visible. x:Name is what the regression test binds to. -->
-                <Border x:Name="ErrorStrip"
-                        DockPanel.Dock="Bottom"
-                        Margin="0,8,0,0"
-                        Padding="10,6"
+            <Grid>
+                <!-- Inline error state for missing/empty group — gets its own backdrop so the text
+                     stays readable on the fallback panel. The header already names the group. -->
+                <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Padding="16,12"
                         CornerRadius="6"
-                        Background="#CCC42B1C"
-                        BorderBrush="#88C42B1C"
-                        BorderThickness="1"
-                        Visibility="{Binding LastError, Converter={x:Static vm:LauncherNullToCollapsedConverter.Instance}}">
-                    <TextBlock Text="{Binding LastError}"
-                               Foreground="{DynamicResource ErrorForeground}"
-                               FontSize="11"
-                               TextWrapping="Wrap" />
+                        Background="{DynamicResource ErrorBackdropBrush}"
+                        Visibility="{Binding IsUnavailable, Converter={x:Static vm:LauncherBoolToVisibilityConverter.Instance}}">
+                    <TextBlock Foreground="{DynamicResource ForegroundSubtle}" Text="No apps to launch." />
                 </Border>
 
-                <ItemsControl ItemsSource="{Binding Apps}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <UniformGrid Columns="{Binding Columns}" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:PopupAppViewModel}">
-                            <Button Style="{StaticResource AppTileButton}"
-                                    Width="96" Height="96"
-                                    ToolTip="{Binding Name}"
-                                    Command="{Binding DataContext.LaunchAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                    CommandParameter="{Binding}">
-                                <StackPanel>
-                                    <Image Source="{Binding Icon}" Width="48" Height="48" Stretch="Uniform" />
-                                    <TextBlock Text="{Binding Name}"
-                                               HorizontalAlignment="Center"
-                                               Margin="0,6,0,0"
-                                               FontSize="11"
-                                               FontWeight="SemiBold"
-                                               TextTrimming="CharacterEllipsis"
-                                               MaxWidth="80"
-                                               Effect="{DynamicResource LabelShadow}" />
-                                </StackPanel>
-                            </Button>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </DockPanel>
-        </Grid>
+                <!-- App grid + transient launch-failure banner -->
+                <DockPanel Visibility="{Binding IsUnavailable, Converter={x:Static vm:LauncherInverseBoolToVisibilityConverter.Instance}}">
+                    <!-- Docks Bottom in a fill-last DockPanel, so at a grid-only window height it
+                         takes its space out of the fixed 96 px tiles. PopupWindow sizes the window
+                         from ChromeRoot's DesiredSize instead, which already accounts for it.
+                         Visibility must stay a plain binding and must never be written from code:
+                         a local value discards a OneWay binding permanently, and the property then
+                         defaults back to Visible. x:Name is what the regression test binds to. -->
+                    <Border x:Name="ErrorStrip"
+                            DockPanel.Dock="Bottom"
+                            Margin="0,8,0,0"
+                            Padding="10,6"
+                            CornerRadius="6"
+                            Background="#CCC42B1C"
+                            BorderBrush="#88C42B1C"
+                            BorderThickness="1"
+                            Visibility="{Binding LastError, Converter={x:Static vm:LauncherNullToCollapsedConverter.Instance}}">
+                        <TextBlock Text="{Binding LastError}"
+                                   Foreground="{DynamicResource ErrorForeground}"
+                                   FontSize="11"
+                                   TextWrapping="Wrap" />
+                    </Border>
+
+                    <!-- Issue #32: a group taller than MaxHeight scrolls instead of losing its last
+                         rows. Auto shows no bar for a group that fits; PopupWindow widens the window
+                         by the bar's width when one is needed, so the 96 px tiles are not squeezed. -->
+                    <ScrollViewer x:Name="TileScroller"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Focusable="False">
+                        <ScrollViewer.Resources>
+                            <Style TargetType="ScrollBar" BasedOn="{StaticResource PopupScrollBar}" />
+                        </ScrollViewer.Resources>
+                        <ItemsControl ItemsSource="{Binding Apps}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="{Binding Columns}" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:PopupAppViewModel}">
+                                    <!-- The badge overlays the tile rather than sitting inside its
+                                         Button, so it is its own click target and the tile keeps its
+                                         fixed 96 px. -->
+                                    <Grid Width="96" Height="96">
+                                        <Button Style="{StaticResource AppTileButton}"
+                                                ToolTip="{Binding Name}"
+                                                Command="{Binding DataContext.LaunchAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}">
+                                            <StackPanel>
+                                                <Grid Width="48" Height="48">
+                                                    <Image Source="{Binding Icon}" Stretch="Uniform" />
+                                                    <Viewbox
+                                                             Visibility="{Binding IconMissing, Converter={x:Static vm:LauncherBoolToVisibilityConverter.Instance}}">
+                                                        <Path Width="{x:Static icons:PlaceholderIcon.DesignSize}"
+                                                              Height="{x:Static icons:PlaceholderIcon.DesignSize}"
+                                                              Data="{x:Static icons:PlaceholderIcon.Shape}"
+                                                              Stroke="{DynamicResource ForegroundSubtle}"
+                                                              StrokeThickness="{x:Static icons:PlaceholderIcon.StrokeThickness}" />
+                                                    </Viewbox>
+                                                </Grid>
+                                                <TextBlock Text="{Binding Name}"
+                                                           HorizontalAlignment="Center"
+                                                           Margin="0,6,0,0"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           MaxWidth="80"
+                                                           Effect="{DynamicResource LabelShadow}" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button x:Name="RemoveBadge"
+                                                Style="{StaticResource PopupBadgeButton}"
+                                                HorizontalAlignment="Right"
+                                                VerticalAlignment="Top"
+                                                Margin="0,4,10,0"
+                                                ToolTip="Remove from this group"
+                                                AutomationProperties.Name="{Binding Name, StringFormat='Remove {0}'}"
+                                                Visibility="{Binding DataContext.IsEditing, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={x:Static vm:LauncherBoolToVisibilityConverter.Instance}}"
+                                                Command="{Binding DataContext.RemoveAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Grid>
+        </DockPanel>
     </Border>
 </Window>

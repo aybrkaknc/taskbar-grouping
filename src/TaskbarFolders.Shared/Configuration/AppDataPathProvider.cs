@@ -20,6 +20,9 @@ public sealed partial class AppDataPathProvider : IAppDataPathProvider
     /// <summary>Sub-folder containing generated icon files.</summary>
     public const string IconsFolderName = "icons";
 
+    /// <summary>Sub-folder of <see cref="IconsFolderName"/> holding the images users chose as group icons.</summary>
+    public const string CustomIconsFolderName = "custom";
+
     /// <summary>Sub-folder containing rotated log files.</summary>
     public const string LogsFolderName = "logs";
 
@@ -48,6 +51,10 @@ public sealed partial class AppDataPathProvider : IAppDataPathProvider
     [GeneratedRegex(@"^[A-Za-z0-9._-]{1,96}$", RegexOptions.CultureInvariant)]
     private static partial Regex GroupIdPattern();
 
+    /// <summary>Version suffix of a group icon file: 8 hex digits taken from the image's hash.</summary>
+    [GeneratedRegex(@"^[0-9a-f]{8}$", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase)]
+    private static partial Regex IconVersionPattern();
+
     /// <summary>
     /// Initializes a new instance using <see cref="Environment.SpecialFolder.ApplicationData"/>
     /// for app data and <see cref="Environment.SpecialFolder.Programs"/> for the per-user
@@ -56,7 +63,10 @@ public sealed partial class AppDataPathProvider : IAppDataPathProvider
     public AppDataPathProvider()
         : this(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            Environment.GetFolderPath(Environment.SpecialFolder.Programs))
+            Environment.GetFolderPath(Environment.SpecialFolder.Programs),
+            Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "Microsoft", "Internet Explorer", "Quick Launch", "User Pinned", "TaskBar"))
     {
     }
 
@@ -78,14 +88,32 @@ public sealed partial class AppDataPathProvider : IAppDataPathProvider
     /// </summary>
     /// <param name="baseDirectory">Directory under which the <c>TaskbarFolders</c> AppData folder is created.</param>
     /// <param name="startMenuProgramsDirectory">Directory under which the <c>TaskbarFolders</c> Start Menu sub-folder is created.</param>
+    /// <remarks>
+    /// The pinned-taskbar folder is placed under <paramref name="baseDirectory"/> as well, so
+    /// a test can never touch the real taskbar pins. Production uses the no-arg form.
+    /// </remarks>
     public AppDataPathProvider(string baseDirectory, string startMenuProgramsDirectory)
+        : this(baseDirectory, startMenuProgramsDirectory, Path.Combine(baseDirectory, "PinnedTaskbar"))
+    {
+    }
+
+    /// <summary>Initializes a new instance with every root given explicitly.</summary>
+    /// <param name="baseDirectory">Directory under which the <c>TaskbarFolders</c> AppData folder is created.</param>
+    /// <param name="startMenuProgramsDirectory">Directory under which the <c>TaskbarFolders</c> Start Menu sub-folder is created.</param>
+    /// <param name="pinnedTaskbarDirectory">Folder holding the shell's copies of taskbar pins.</param>
+    public AppDataPathProvider(string baseDirectory, string startMenuProgramsDirectory, string pinnedTaskbarDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(baseDirectory);
         ArgumentException.ThrowIfNullOrWhiteSpace(startMenuProgramsDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(pinnedTaskbarDirectory);
 
         AppDataRoot = Path.Combine(baseDirectory, AppFolderName);
         StartMenuDirectory = Path.Combine(startMenuProgramsDirectory, StartMenuSubFolderName);
+        PinnedTaskbarDirectory = pinnedTaskbarDirectory;
     }
+
+    /// <inheritdoc/>
+    public string PinnedTaskbarDirectory { get; }
 
     /// <inheritdoc/>
     public string AppDataRoot { get; }
@@ -120,6 +148,49 @@ public sealed partial class AppDataPathProvider : IAppDataPathProvider
     {
         ValidateGroupId(groupId);
         return Path.Combine(IconsDirectory, $"{groupId}.ico");
+    }
+
+    /// <inheritdoc/>
+    public string GetGroupIconFile(string groupId, string version)
+    {
+        ValidateGroupId(groupId);
+        if (version is null || !IconVersionPattern().IsMatch(version))
+        {
+            throw new ArgumentException($"Invalid icon version '{version}'. Must be 8 hex digits.", nameof(version));
+        }
+
+        return Path.Combine(IconsDirectory, $"{groupId}-{version}.ico");
+    }
+
+    /// <inheritdoc/>
+    public bool IsGroupIconFile(string groupId, string path)
+    {
+        ValidateGroupId(groupId);
+        var name = Path.GetFileName(path);
+        if (string.IsNullOrEmpty(name))
+        {
+            return false;
+        }
+
+        if (string.Equals(name, $"{groupId}.ico", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Exactly "<id>-<8 hex>.ico": a looser "<id>-*" would also claim the icons of a group
+        // whose id merely starts with this one followed by a hyphen.
+        var prefix = groupId + "-";
+        return name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            && name.EndsWith(".ico", StringComparison.OrdinalIgnoreCase)
+            && name.Length == prefix.Length + 8 + 4
+            && IconVersionPattern().IsMatch(name.AsSpan(prefix.Length, 8));
+    }
+
+    /// <inheritdoc/>
+    public string GetGroupCustomIconFile(string groupId)
+    {
+        ValidateGroupId(groupId);
+        return Path.Combine(IconsDirectory, CustomIconsFolderName, $"{groupId}.png");
     }
 
     /// <inheritdoc/>

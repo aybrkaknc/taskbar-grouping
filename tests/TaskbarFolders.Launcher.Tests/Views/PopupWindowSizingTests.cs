@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -6,6 +7,7 @@ using System.Windows.Data;
 using System.Windows.Media.Imaging;
 using FluentAssertions;
 using Moq;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
@@ -34,6 +36,7 @@ namespace TaskbarFolders.Launcher.Tests.Views;
 /// short-lived STA thread. The window is never shown: sizing runs off the LastError
 /// PropertyChanged handler wired in the constructor, and Measure needs no HWND.
 /// </remarks>
+[Collection(PopupWindowTestGroup.Name)]
 public sealed class PopupWindowSizingTests
 {
     private const int TilePx = 96;
@@ -42,17 +45,25 @@ public sealed class PopupWindowSizingTests
     /// <summary>Six apps over three columns: two rows of tiles plus the outer padding.</summary>
     private const double TwoRowGridHeight = (2 * TilePx) + (2 * PaddingPx);
 
+    /// <summary>
+    /// The window height with no error strip: the grid, its padding and the header row. The
+    /// header is measured rather than hard-coded, so a restyled header does not break these
+    /// tests while a header that stops being counted still does.
+    /// </summary>
+    private static double ExpectedHeight(PopupWindow window) =>
+        TwoRowGridHeight + ((FrameworkElement)window.FindName("HeaderBar")).DesiredSize.Height;
+
     [Fact]
     public void LastError_GrowsTheWindowSoTheTilesKeepTheirFullHeight()
     {
         WithPopup(appCount: 6, columns: 3, (window, viewModel, _) =>
         {
-            window.Height.Should().Be(TwoRowGridHeight, "no error yet, so the window is grid plus padding");
+            window.Height.Should().Be(ExpectedHeight(window), "no error yet, so the window is header, grid and padding");
 
             viewModel.LastError = "Could not launch \"Broken App\".";
 
             window.Height.Should().BeGreaterThan(
-                TwoRowGridHeight,
+                ExpectedHeight(window),
                 "the strip docks below the tiles, so its height has to be added to the window "
                 + "rather than taken out of the fixed 96 px rows");
         });
@@ -75,7 +86,7 @@ public sealed class PopupWindowSizingTests
                 Visibility.Collapsed,
                 "clearing LastError has to hide the strip again; a window that shrinks while "
                 + "the strip stays visible clips the tiles exactly as issue #24 described");
-            window.Height.Should().Be(TwoRowGridHeight, "with no strip the window is the grid plus its padding");
+            window.Height.Should().Be(ExpectedHeight(window), "with no strip the window is header, grid and padding");
             withStrip.Should().BeGreaterThan(window.Height);
         });
     }
@@ -95,6 +106,113 @@ public sealed class PopupWindowSizingTests
                     + "OneWay binding for good, ClearValue does not bring it back, and the "
                     + "property then falls back to its default, which is Visible");
             strip.Visibility.Should().Be(Visibility.Visible);
+        });
+    }
+
+    [Fact]
+    public void AddingATileThatStartsANewRow_GrowsTheWindowByAFullRow()
+    {
+        // A tile added from the popup used to arrive with its name cut off: the window was
+        // resized before the ItemsControl had laid the new tile out, so the new row only got
+        // as much height as the old layout had, and the label at the bottom of the tile fell
+        // outside the window until the popup was reopened.
+        WithPopup(appCount: 3, columns: 3, (window, viewModel, _) =>
+        {
+            var oneRow = window.Height;
+
+            viewModel.AddAppsAsync([@"C:\does\not\exist\app4.exe"]).GetAwaiter().GetResult();
+            PumpDispatcher(TimeSpan.FromMilliseconds(300));
+
+            window.Height.Should().Be(oneRow + TilePx, "the fourth tile opens a second row of 96 px");
+        });
+    }
+
+    [Fact]
+    public void AddingATileToTheSameRow_ShowsItsLabelInsideTheWindow()
+    {
+        WithPopup(appCount: 1, columns: 3, (window, viewModel, _) =>
+        {
+            viewModel.AddAppsAsync([@"C:\does\not\exist\Second.exe"]).GetAwaiter().GetResult();
+            PumpDispatcher(TimeSpan.FromMilliseconds(300));
+
+            var label = FindDescendants<TextBlock>(window).Single(t => t.Text == "Second");
+            label.IsVisible.Should().BeTrue();
+            label.ActualHeight.Should().BeGreaterThan(0, "the label must have been laid out");
+            var bottom = label.TranslatePoint(new Point(0, label.ActualHeight), window).Y;
+            bottom.Should().BeLessOrEqualTo(window.Height, "the label has to be inside the window, not cut off");
+        });
+    }
+
+    private static System.Collections.Generic.IEnumerable<T> FindDescendants<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var nested in FindDescendants<T>(child))
+            {
+                yield return nested;
+            }
+        }
+    }
+
+    /// <summary>Runs the dispatcher for a while, so deferred layout and sizing work can happen.</summary>
+    private static void PumpDispatcher(TimeSpan duration)
+    {
+        var frame = new System.Windows.Threading.DispatcherFrame();
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = duration };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            frame.Continue = false;
+        };
+        timer.Start();
+        System.Windows.Threading.Dispatcher.PushFrame(frame);
+    }
+
+    // Issue #32: past eight rows the grid used to be clipped at MaxHeight with nothing to show
+    // that more apps existed.
+    [Theory]
+    [InlineData(30, 3, false)]
+    [InlineData(30, 3, true)]   // the strip is where the last row went missing first
+    [InlineData(60, 6, false)]  // widest grid: the scroll bar must not squeeze six columns
+    public void LargeGroup_ScrollsToEveryTile_InsideMaxHeight(int appCount, int columns, bool withError)
+    {
+        WithPopup(appCount, columns, (window, viewModel, _) =>
+        {
+            if (withError)
+            {
+                viewModel.LastError = "Could not launch \"Broken App\".";
+            }
+
+            // Let the layout the real popup gets from its dispatcher catch up with the size.
+            PumpDispatcher(TimeSpan.FromMilliseconds(200));
+            var rows = (appCount + columns - 1) / columns;
+            var scroller = (ScrollViewer)window.FindName("TileScroller");
+
+            window.Height.Should().Be(window.MaxHeight, "the popup must not grow past its ceiling");
+            scroller.Should().NotBeNull("tiles past the ceiling have to be reachable");
+            scroller.ExtentHeight.Should().BeGreaterOrEqualTo(rows * TilePx, "every row is in the scrollable content");
+            scroller.ScrollableHeight.Should().BeGreaterThan(0);
+            scroller.ViewportWidth.Should().BeGreaterOrEqualTo(columns * TilePx, "the scroll bar must not cut into the tiles");
+        });
+    }
+
+    [Fact]
+    public void GroupThatFits_ShowsNoScrollBar_AndKeepsItsWidth()
+    {
+        WithPopup(appCount: 6, columns: 3, (window, _, _) =>
+        {
+            var scroller = (ScrollViewer)window.FindName("TileScroller");
+
+            scroller.Should().NotBeNull();
+            scroller.ComputedVerticalScrollBarVisibility.Should().Be(Visibility.Collapsed);
+            window.Width.Should().Be((3 * TilePx) + (2 * PaddingPx));
         });
     }
 
@@ -161,6 +279,7 @@ public sealed class PopupWindowSizingTests
             extractor.Object,
             cache.Object,
             launcher.Object,
+            Mock.Of<IGroupSyncService>(),
             new LauncherOptions("g1"));
         viewModel.LoadAsync().GetAwaiter().GetResult();
 

@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Text.Json.Serialization;
 
 namespace TaskbarFolders.Shared.Models;
 
@@ -31,4 +33,35 @@ public sealed class AppEntry
     /// </summary>
     [JsonPropertyName("arguments")]
     public string? Arguments { get; set; }
+
+    /// <summary>
+    /// Builds an entry for a file the user picked or dropped, applying the one rule both the
+    /// Manager and the popup use: only <c>.exe</c> and <c>.lnk</c> files are accepted (any
+    /// case), and the display name is the file name without its extension.
+    /// </summary>
+    /// <param name="path">Path of the picked file.</param>
+    /// <param name="entry">The new entry, or <see langword="null"/> when the file is not accepted.</param>
+    /// <returns><see langword="true"/> when an entry was created.</returns>
+    public static bool TryCreateFromPath(string? path, [NotNullWhen(true)] out AppEntry? entry)
+    {
+        entry = null;
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        var ext = System.IO.Path.GetExtension(path);
+        if (!string.Equals(ext, ".exe", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(ext, ".lnk", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        entry = new AppEntry
+        {
+            Name = System.IO.Path.GetFileNameWithoutExtension(path),
+            Path = path,
+        };
+        return true;
+    }
 }

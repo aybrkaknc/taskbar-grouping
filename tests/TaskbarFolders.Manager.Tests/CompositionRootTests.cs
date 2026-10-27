@@ -3,6 +3,7 @@ using System.IO;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Manager;

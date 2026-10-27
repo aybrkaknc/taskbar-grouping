@@ -37,7 +37,8 @@ graph TB
     Manager -->|generates| Icons
     Manager -->|generates| Shortcuts
     Manager -->|anchors| StartMenu
-    Launcher -->|reads| Groups
+    Launcher -->|reads, edits own group| Groups
+    Launcher -->|regenerates| Icons
     Shortcuts --> Taskbar
     Taskbar -->|click| Launcher
 ```
@@ -47,7 +48,7 @@ graph TB
 | Project | Role | Constraint |
 |---|---|---|
 | `TaskbarFolders.Shared` | Models, JSON persistence with atomic writes, path provider, file logging | No Windows-only APIs — kept portable |
-| `TaskbarFolders.Core` | Icon extraction and composition, Win32/COM interop, shortcut generation, shell change notification, window backdrop | `[SupportedOSPlatform("windows")]` |
+| `TaskbarFolders.Core` | Icon extraction and composition, Win32/COM interop, shortcut generation, shell change notification, window backdrop, group sync (`GroupSyncService`) | `[SupportedOSPlatform("windows")]` |
 | `TaskbarFolders.Manager` | WPF application for group CRUD, settings, pinning | DI graph in `ManagerServiceCollectionExtensions` |
 | `TaskbarFolders.Launcher` | Short-lived popup process, one per tile click; also the pin runner | DI graph in `LauncherServiceCollectionExtensions` |
 
@@ -74,18 +75,43 @@ A second copy of each shortcut is written to `%APPDATA%\Microsoft\Windows\Start 
 
 This is not decoration. `TaskbarManager.RequestPinCurrentAppAsync` trusts the calling AUMID and can report success while persisting nothing if the shell's AppsFolder index has not yet seen a matching shortcut. The anchor plus the change notification is what makes a programmatic pin stick. `GroupSyncService` also re-checks every group's anchor on Manager startup, so configurations written by older versions heal themselves.
 
+The anchor's file name follows the group's display name, but its identity is the AUMID, which follows the id. Anchors are therefore located by reading their AUMID back, never by name: writing a group's anchor removes any other anchor with the same AUMID (the one left by a rename), deleting a group removes every anchor with its AUMID, and on startup anchors whose AUMID names no `groups\<id>.json` are deleted. The known ids come from the group file names rather than the loaded configs, so a group whose JSON fails to parse keeps its anchor and its pin. Duplicate anchors for one AUMID are a plausible cause of a pin that reports success but leaves no tile.
+
 ## Data flow
 
 ### Creating and syncing a group
 
 1. The Manager creates a `GroupConfig` with a GUID id and writes `groups/<id>.json`. Writes go to a `.tmp` file and are then moved over the target, so a crash mid-write cannot truncate a config.
 2. Adding apps triggers a sync. Sync **returns early for an empty group** — no apps means no icon and no shortcut, and therefore nothing to pin.
-3. Icons for the first four apps are extracted at 128 px through the icon cache. `.lnk` inputs are resolved to their targets first.
-4. Those icons are composed into one image: one centred, two side by side, three in an iOS-style arrangement, four as a 2×2 grid.
-5. The composite is written as a multi-resolution PNG-in-ICO container (16/32/48/256 px) to `icons/<id>.ico`, again atomically.
+3. Icons for the first four apps are extracted at 128 px through the icon cache. `.lnk` inputs are resolved to their targets first. An app with no icon contributes `PlaceholderIcon` in its neutral grey; the placeholder is not cached, so an icon that becomes available later replaces it.
+4. Those icons are composed into one image: one centred, two side by side, three in an iOS-style arrangement, four as a 2×2 grid. If the user chose an image for the group (`ICustomGroupIconStore`, `icons/custom/<id>.png`), that image replaces the composite and steps 3–4 are skipped; everything after treats the two alike, so changing the choice reaches a pinned tile the same way changed apps do.
+5. The composite is written as a multi-resolution PNG-in-ICO container (16/32/48/256 px) to `icons/<id>-<v>.ico`, again atomically. `<v>` is eight hex digits of a hash over the image: Windows caches a shortcut's icon by path, so a changed image needs a new file name or the pinned tile keeps the old one ([ADR-006](adr/006-versioned-group-icons.md)).
 6. The `.lnk` is generated with the AUMID and icon reference described above, and the Start menu anchor is written and announced.
+7. The taskbar's pinned copies of the group (the `.lnk` files in `User Pinned\TaskBar` carrying its AUMID) get their icon location — only that — pointed at the new file, with `SHCNE_UPDATEITEM`. Then the group's older icon files are deleted.
 
-If every icon extraction fails, sync stops before writing a shortcut rather than producing a group tile with no icon.
+`IIconExtractor` keeps returning `null` for an app without an icon; the placeholder is substituted only where an icon is shown or composed (upstream #27). The popup and the Manager's list stroke the same `PlaceholderIcon.Shape` with the theme's `ForegroundSubtle`. The popup shows it only once extraction has finished without an icon (`PopupAppViewModel.IconMissing`), since a `null` icon there also means "still loading".
+
+The popup is the second writer ([ADR-005](adr/005-popup-edits-its-group.md)): adding apps with its **+** or removing them in its edit mode saves the group through the same store and runs the same GroupSyncService, which lives in Core for that reason. The launcher resolves the shortcut target as its own executable (SelfLauncherPathResolver). While the file picker it opens is up, the popup's dismissal triggers — outside click, focus loss, the never-activated fallback — are suspended, or it would close under its own dialog.
+
+Files can also reach a group on the launcher's command line — `--group-id <id> <file>…`, which is what Explorer's *Taskbar Groups* menu runs. `CommandLineAppAdder` adds them inside a per-group, machine-wide lock (a named semaphore, since the work awaits), skipping files already in the group, then saves and syncs. Explorer starts one launcher per selected file, so a multi-selection is many launchers at once: each claims the group's `PopupPresence` event before adding anything, the one that created it shows the popup, and the others add their file, signal the event and exit; the open popup reloads its tiles on that signal.
+
+Explorer's *Taskbar Groups* menu ([ADR-007](adr/007-explorer-menu-registry-verbs.md)) is a set of per-user static verbs under `HKCU\Software\Classes\{exefile,lnkfile}\shell\TaskbarFolders.Groups`, one entry per group, each running the launcher with `--group-id <id> "%1"`. `ExplorerContextMenuService` in the Manager deletes and rewrites the whole submenu on startup, whenever the group list changes (`MainWindowViewModel.GroupListChanged`) and when settings are saved; the *Show "Taskbar Groups"* setting removes it.
+
+### Uninstalling
+
+Every trace outside the program folder is removed in one place, `Uninstaller` in the Manager, run as `TaskbarFolders.Manager.exe --uninstall` ([ADR-008](adr/008-per-user-install-and-complete-uninstall.md)). Order matters:
+
+1. End the other Manager and Launcher processes of this session (`IInstanceCloser`), so nothing writes back and no file is locked.
+2. Unpin every taskbar tile whose pinned shortcut carries a group AppUserModelID, through the shell's own `taskbarunpin` verb (`ITaskbarUnpinner`), while the shortcuts still resolve.
+3. Switch the menu and autostart settings off, remove the Run entry and Explorer's menu, and each group's icons, shortcut and Start menu anchor.
+4. Delete the values Windows keeps about the program — MuiCache, FeatureUsage, the Compatibility Assistant store — that name a path inside this copy or a group AppUserModelID.
+5. Delete `%APPDATA%\TaskbarFolders`, then sweep the Start menu anchors left (all orphans now) and the Start menu folder if empty. Nothing is logged after the data folder is gone; the file logger drops lines it cannot write instead of re-creating the folder.
+
+Two callers run it. The Inno Setup uninstaller passes `--no-confirm` (it has asked already) and afterwards deletes, through `[UninstallDelete]`, what the running Manager could not: its last log lines and `%TEMP%\.net\TaskbarFolders.*`, where .NET unpacks the native parts of the single-file executables. The portable `Uninstall.cmd` lets the Manager ask, continues only on exit code 0 or 1, and then deletes the same leftovers, the `Manager` and `Launcher` folders and itself. *Settings → Uninstall TaskbarFolders…* starts whichever of the two ships with the copy and closes the Manager.
+
+The installer is per user (`PrivilegesRequired=lowest`): everything the app touches is the user's, and Inno Setup cannot run a step as the original user while uninstalling, so an elevated uninstaller could neither unpin the user's tiles reliably nor be sure whose `HKCU` and `%APPDATA%` it was cleaning.
+
+The Manager keeps every group in memory, so it re-reads the store whenever its window is activated and rebuilds the list — reselecting the previous group by id — only if some group differs from the copy in memory. Without that, a change made outside the Manager while it was open would be overwritten by its next save of the same group. The re-read is skipped while the editor is saving an add or remove (`GroupEditorViewModel.IsSaving`), checked before and after reading: then memory is ahead of the disk, and closing the add-apps picker activates the window exactly then.
 
 ### Pinning
 
@@ -101,7 +127,9 @@ Two paths, both offered in the UI.
 | 3 | Unexpected failure |
 | 5 | Reported as pinned, but no pinned shortcut carrying the group's AUMID was found |
 
-On codes 2 and 3 the Manager opens the shortcut folder so the user can pin manually.
+On codes 2, 3 and 5 the Manager opens the shortcut folder so the user can pin manually.
+
+Because the exit code *is* the result, pin mode runs with `ShutdownMode.OnExplicitShutdown`. Under WPF's default, closing the host window — the last window — starts a shutdown with code 0, and a `Shutdown(exitCode)` issued afterwards is ignored. Until that was fixed the Manager received 0 for every outcome and reported "Pinned" even when pinning was unavailable, declined or unverified.
 
 **Manual.** **Show shortcut…** opens Explorer with the group's `.lnk` selected, for a right-click → *Pin to taskbar*.
 
@@ -117,9 +145,15 @@ The taskbar starts the launcher. Startup order matters and is deliberate:
 
 Names appear immediately; icons stream in afterwards on the thread pool. Each `BitmapSource` is frozen inside the producer before the continuation crosses back to the UI thread — an unfrozen bitmap carries the wrong dispatcher affinity and the WPF binding throws.
 
-The popup closes on focus loss, after a successful launch, or via a three-second fallback if Windows never granted it activation. A *failed* launch keeps it open and shows an inline error strip.
+The popup closes on a click outside it, Escape, its ✕ button, focus loss, a successful launch, or via a three-second fallback if Windows never granted it activation. A *failed* launch keeps it open and shows an inline error strip. While `PopupViewModel.IsPinned`, `PopupWindow.DismissesOnOutsideInteraction` is false and a successful launch does not close either; a press on the group's own tile (`OutsidePressEventArgs.IsOnOpeningTile`) still does.
 
-Popup width comes from the column count, but height is *measured*, not calculated: the strip docks to the bottom of a fill-last `DockPanel`, so at a height derived from tile rows alone it takes its space out of the fixed 96 px tiles and clips the last row. Sizing therefore measures `ChromeRoot` and clamps its `DesiredSize` between `MinHeight` and `MaxHeight`, which accounts for the strip without any code knowing it exists. Every time `LastError` appears or clears, the window is resized and placement recomputed so the popup still clears the taskbar.
+All of these end in `Window.Close()`, and `OnClosing` is the single place that applies the fade-out: with animations on it cancels the first request, plays `CloseAnimation` on `ChromeRoot` (about 120 ms), and closes for real on `Completed` or after a 300 ms safety net. Clicks outside are detected by `OutsideClickWatcher`, a process-local `WH_MOUSE_LL` hook installed on `ContentRendered` and removed when the popup closes, because `Deactivated` only fires for a popup that was activated in the first place.
+
+Clicking the group's tile while its popup is open closes it and opens nothing. The hook sees the press on the tile first; when it lies within 40 DIP of the click that opened the popup, the launcher leaves a per-group marker (`TileToggle`, a named event) and, after the window has closed, keeps its process alive for up to 1.5 s. The launcher the shell starts for that same click finds the marker, signals it and exits without a window.
+
+The popup has two window modes, chosen in its constructor before the HWND exists. On Windows 11 22H2+ it is a non-layered window whose `WindowChrome` glass frame covers the client area, with DWM acrylic behind it, tinted by the theme, and rounded corners. Elsewhere it stays a layered (`AllowsTransparency`) window and paints a translucent fallback panel, because DWM never draws a backdrop behind a layered window. See [ADR-004](adr/004-popup-acrylic-backdrop.md).
+
+Popup width comes from the column count, but height is *measured*, not calculated: the strip docks to the bottom of a fill-last `DockPanel`, so at a height derived from tile rows alone it takes its space out of the fixed 96 px tiles and clips the last row. Sizing therefore measures `ChromeRoot` and clamps its `DesiredSize` between `MinHeight` and `MaxHeight`, which accounts for the strip without any code knowing it exists. Every time `LastError` appears or clears, the window is resized and placement recomputed so the popup still clears the taskbar. Past `MaxHeight` the tiles scroll inside `TileScroller` (issue #32); when its bar is visible after layout, the window is widened by the bar's width so the tiles keep their 96 px.
 
 The strip's `Visibility` is a plain `OneWay` binding and must stay one. Writing that property from code — to force the strip visible for a measure pass, say — replaces the binding with a local value and discards the expression permanently; `ClearValue` then removes only the local value, and `Visibility` falls back to its default, `Visible`. The strip survives as an empty red bar and clips the tiles again on the next click, because `LaunchApp` clears `LastError` before every attempt. Where the binding's timing matters, `BindingExpression.UpdateTarget()` pushes the current source value through without taking the property over.
 
@@ -150,6 +184,7 @@ Placement itself: find the taskbar edge and rectangle, find the monitor under th
 | `groups\<id>.json` | Group configuration. The **file name is authoritative** for the id; a mismatched `id` field inside the JSON is ignored on load. |
 | `icons\<id>.ico` | Generated composite icon. |
 | `icons\cache\<sha256>.png` | Extracted source icons, keyed by source path, last-write time and size. Pruned after 30 days. |
+| `icons\custom\<id>.png` | Image the user chose as the group's icon, normalised to a 256 px square on import. Deleted with the group. |
 | `shortcuts\<id>.lnk` | The pinnable shortcut. |
 | `settings.json` | Global settings. |
 | `logs\manager-<date>.log`, `logs\launcher-<date>.log` | One file per day per process kind, retained 14 days. |

@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using FluentAssertions;
 using Moq;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
@@ -36,7 +37,7 @@ public class PopupViewModelTests
                     Mock<IGroupConfigStore> store,
                     Mock<IIconExtractor> extractor,
                     Mock<IIconCache> cache,
-                    Mock<IProcessLauncher> launcher) CreateSut(string groupId = "g1", GroupConfig? config = null)
+                    Mock<IProcessLauncher> launcher) CreateSut(string groupId = "g1", GroupConfig? config = null, Mock<IGroupSyncService>? sync = null)
     {
         var store = new Mock<IGroupConfigStore>();
         store.Setup(s => s.LoadAsync(groupId, It.IsAny<CancellationToken>())).ReturnsAsync(config);
@@ -56,6 +57,7 @@ public class PopupViewModelTests
             extractor.Object,
             cache.Object,
             launcher.Object,
+            (sync ?? new Mock<IGroupSyncService>()).Object,
             new LauncherOptions(groupId));
 
         return (sut, store, extractor, cache, launcher);
@@ -203,6 +205,50 @@ public class PopupViewModelTests
     }
 
     [Fact]
+    public async Task StartIconLoad_MarksTheIconMissing_WhenTheAppHasNone()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, _, cache, _) = CreateSut("g", config);
+
+        await sut.LoadAsync();
+        sut.Apps[0].IconMissing.Should().BeFalse("nothing is known before extraction runs");
+        sut.StartIconLoad();
+        await Task.Delay(100);
+
+        sut.Apps[0].IconMissing.Should().BeTrue();
+        sut.Apps[0].Icon.Should().BeNull("the extractor's null stays visible to callers");
+        cache.Verify(c => c.Set(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<BitmapSource>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task StartIconLoad_MarksTheIconMissing_WhenExtractionThrows()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, extractor, _, _) = CreateSut("g", config);
+        extractor.Setup(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize)).Throws(new InvalidOperationException("shell"));
+
+        await sut.LoadAsync();
+        sut.StartIconLoad();
+        await Task.Delay(100);
+
+        sut.Apps[0].IconMissing.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StartIconLoad_LeavesIconMissingFalse_WhenAnIconIsFound()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, extractor, _, _) = CreateSut("g", config);
+        extractor.Setup(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize)).Returns(StubIcon());
+
+        await sut.LoadAsync();
+        sut.StartIconLoad();
+        await Task.Delay(100);
+
+        sut.Apps[0].IconMissing.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task CancelIconLoad_AfterStart_PreventsFurtherExtractorAssignment()
     {
         // Hard-gate the extractor on a manually completed TCS so the test controls timing.
@@ -255,6 +301,241 @@ public class PopupViewModelTests
 
         launcher.Verify(l => l.Launch("a.exe", "-x"), Times.Once);
         succeeded.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AddAppsAsync_AddsAcceptedFiles_SavesAndResyncsTheGroup()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var sync = new Mock<IGroupSyncService>();
+        var (sut, store, _, _, _) = CreateSut("g", config, sync);
+        await sut.LoadAsync();
+
+        var added = await sut.AddAppsAsync([@"C:\Tools\New.exe", @"C:\Docs\notes.txt", @"C:\Links\Other.lnk"]);
+
+        added.Should().Be(2, "the .txt is not an app and is skipped");
+        sut.Apps.Select(a => a.Name).Should().Equal("a", "New", "Other");
+        store.Verify(s => s.SaveAsync(
+            It.Is<GroupConfig>(c => c.Apps.Select(a => a.Path).SequenceEqual(new[] { "a.exe", @"C:\Tools\New.exe", @"C:\Links\Other.lnk" })),
+            It.IsAny<CancellationToken>()), Times.Once);
+        sync.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once,
+            "the taskbar icon and shortcuts have to follow the new app list");
+        sut.LastError.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AddAppsAsync_DoesNothing_WhenNoPickedFileIsAnApp()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var sync = new Mock<IGroupSyncService>();
+        var (sut, store, _, _, _) = CreateSut("g", config, sync);
+        await sut.LoadAsync();
+
+        var added = await sut.AddAppsAsync([@"C:\Docs\notes.txt"]);
+
+        added.Should().Be(0);
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+        sync.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task AddAppsAsync_MakesAnEmptyGroupAvailable()
+    {
+        var config = new GroupConfig { Id = "empty", GroupName = "Empty" };
+        var (sut, _, _, _, _) = CreateSut("empty", config);
+        await sut.LoadAsync();
+        sut.IsUnavailable.Should().BeTrue();
+        sut.CanEditGroup.Should().BeTrue("an empty group exists and can be filled from the popup");
+
+        await sut.AddAppsAsync([@"C:\Tools\First.exe"]);
+
+        sut.IsUnavailable.Should().BeFalse();
+        sut.Apps.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AddAppsAsync_IsRefused_ForAGroupThatDoesNotExist()
+    {
+        var (sut, store, _, _, _) = CreateSut("missing", config: null);
+        await sut.LoadAsync();
+
+        sut.CanEditGroup.Should().BeFalse();
+        (await sut.AddAppsAsync([@"C:\Tools\New.exe"])).Should().Be(0);
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AddAppsAsync_ShowsAnError_WhenTheGroupCannotBeSaved()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var sync = new Mock<IGroupSyncService>();
+        var (sut, store, _, _, _) = CreateSut("g", config, sync);
+        store.Setup(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()))
+             .ThrowsAsync(new System.IO.IOException("locked"));
+        await sut.LoadAsync();
+
+        var act = () => sut.AddAppsAsync([@"C:\Tools\New.exe"]);
+
+        await act.Should().NotThrowAsync("the popup has nobody above it to catch an exception");
+        sut.LastError.Should().NotBeNullOrEmpty();
+        sync.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task ReloadAsync_RebuildsTheTilesFromTheStoredGroup()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, store, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+
+        // Another launcher added an app and saved the group.
+        store.Setup(s => s.LoadAsync("g", It.IsAny<CancellationToken>())).ReturnsAsync(new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.lnk" } },
+        });
+
+        await sut.ReloadAsync();
+
+        sut.Apps.Select(a => a.Name).Should().Equal("a", "b");
+        sut.IsUnavailable.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ReloadAsync_ThenRemove_RemovesFromTheReloadedGroup()
+    {
+        // After a reload the tiles must refer to the reloaded entries, or removing one would
+        // look for an object the saved group no longer contains.
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, store, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+        var reloaded = new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.lnk" } },
+        };
+        store.Setup(s => s.LoadAsync("g", It.IsAny<CancellationToken>())).ReturnsAsync(reloaded);
+        await sut.ReloadAsync();
+        sut.ToggleEditCommand.Execute(null);
+
+        await sut.RemoveAppCommand.ExecuteAsync(sut.Apps[0]);
+
+        reloaded.Apps.Select(a => a.Path).Should().Equal("b.lnk");
+    }
+
+    [Fact]
+    public async Task TogglePinCommand_StartsOff_AndSwitchesOnAndOff()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+        sut.IsPinned.Should().BeFalse("every popup opens unpinned");
+
+        sut.TogglePinCommand.Execute(null);
+        sut.IsPinned.Should().BeTrue();
+
+        sut.TogglePinCommand.Execute(null);
+        sut.IsPinned.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ToggleEditCommand_SwitchesEditModeOnAndOff()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+
+        sut.ToggleEditCommand.Execute(null);
+        sut.IsEditing.Should().BeTrue();
+
+        sut.ToggleEditCommand.Execute(null);
+        sut.IsEditing.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ToggleEditCommand_StaysOff_WhenThereIsNothingToEdit()
+    {
+        var (missing, _, _, _, _) = CreateSut("missing", config: null);
+        await missing.LoadAsync();
+        missing.ToggleEditCommand.Execute(null);
+        missing.IsEditing.Should().BeFalse("a group that could not be loaded cannot be edited");
+
+        var (empty, _, _, _, _) = CreateSut("empty", new GroupConfig { Id = "empty", GroupName = "Empty" });
+        await empty.LoadAsync();
+        empty.ToggleEditCommand.Execute(null);
+        empty.IsEditing.Should().BeFalse("an empty group has no tile to remove");
+    }
+
+    [Fact]
+    public async Task RemoveAppCommand_RemovesTheEntry_SavesAndResyncs()
+    {
+        var config = new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.exe" } },
+        };
+        var sync = new Mock<IGroupSyncService>();
+        var (sut, store, _, _, _) = CreateSut("g", config, sync);
+        await sut.LoadAsync();
+        sut.ToggleEditCommand.Execute(null);
+
+        await sut.RemoveAppCommand.ExecuteAsync(sut.Apps[0]);
+
+        sut.Apps.Select(a => a.Name).Should().Equal("b");
+        store.Verify(s => s.SaveAsync(
+            It.Is<GroupConfig>(c => c.Apps.Count == 1 && c.Apps[0].Path == "b.exe"),
+            It.IsAny<CancellationToken>()), Times.Once);
+        sync.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        sut.IsEditing.Should().BeTrue("removing one of several apps keeps the user in edit mode");
+        sut.IsUnavailable.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemoveAppCommand_LeavesEditMode_WhenTheLastAppGoes()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+        sut.ToggleEditCommand.Execute(null);
+
+        await sut.RemoveAppCommand.ExecuteAsync(sut.Apps[0]);
+
+        sut.Apps.Should().BeEmpty();
+        sut.IsUnavailable.Should().BeTrue("the popup shows the empty state, with + still available");
+        sut.IsEditing.Should().BeFalse();
+        config.Apps.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task LaunchAppCommand_DoesNothing_InEditMode()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, _, _, launcher) = CreateSut("g", config);
+        await sut.LoadAsync();
+        sut.ToggleEditCommand.Execute(null);
+        var succeeded = false;
+        sut.LaunchSucceeded += (_, _) => succeeded = true;
+
+        sut.LaunchAppCommand.Execute(sut.Apps[0]);
+
+        launcher.Verify(l => l.Launch(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
+        succeeded.Should().BeFalse("a click on a tile being edited must not start the app");
+    }
+
+    [Fact]
+    public void CloseCommand_RaisesCloseRequested_WithoutLaunchingAnything()
+    {
+        var (sut, _, _, _, launcher) = CreateSut();
+        var requested = 0;
+        sut.CloseRequested += (_, _) => requested++;
+
+        sut.CloseCommand.Execute(null);
+
+        requested.Should().Be(1);
+        launcher.Verify(l => l.Launch(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
     }
 
     [Fact]

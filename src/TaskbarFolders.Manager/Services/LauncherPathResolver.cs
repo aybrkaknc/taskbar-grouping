@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Extensions.Logging;
+using TaskbarFolders.Core.Groups;
 
 namespace TaskbarFolders.Manager.Services;
 

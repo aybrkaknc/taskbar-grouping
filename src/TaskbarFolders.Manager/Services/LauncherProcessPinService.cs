@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using TaskbarFolders.Core.Groups;
 
 namespace TaskbarFolders.Manager.Services;
 

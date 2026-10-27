@@ -161,6 +161,50 @@ public sealed class ShortcutGeneratorTests : IDisposable
         }
     }
 
+    [Fact]
+    public void TryUpdateIcon_ChangesOnlyTheIcon_OfARealShortcut()
+    {
+        // The taskbar's pinned copy is rewritten through this; anything besides the icon
+        // changing — target, arguments, and above all the AUMID — would break the pin.
+        var sut = new ShortcutGenerator();
+        var shortcutPath = Path.Combine(_tempDir, "pinned.lnk");
+        sut.Generate(new GroupShortcutRequest("pin-id", "Pinned", _targetExe, _iconFile, shortcutPath));
+        var newIcon = Path.Combine(_tempDir, "pin-id-abcdef12.ico");
+        File.Copy(_iconFile, newIcon);
+
+        sut.TryUpdateIcon(shortcutPath, newIcon).Should().BeTrue();
+
+        var link = new ShellLink();
+        try
+        {
+            ((IPersistFile)link).Load(shortcutPath, 0);
+
+            var iconBuffer = new StringBuilder(260);
+            ((IShellLinkW)link).GetIconLocation(iconBuffer, 260, out _);
+            iconBuffer.ToString().Should().Be(newIcon);
+
+            var pathBuffer = new StringBuilder(260);
+            ((IShellLinkW)link).GetPath(pathBuffer, 260, IntPtr.Zero, 0);
+            pathBuffer.ToString().Should().Be(_targetExe);
+
+            var argsBuffer = new StringBuilder(260);
+            ((IShellLinkW)link).GetArguments(argsBuffer, 260);
+            argsBuffer.ToString().Should().Be("--group-id \"pin-id\"");
+        }
+        finally
+        {
+            Marshal.FinalReleaseComObject(link);
+        }
+
+        new ShortcutReader().TryReadAumid(shortcutPath).Should().Be(GroupAumid.For("pin-id"));
+    }
+
+    [Fact]
+    public void TryUpdateIcon_ReturnsFalse_ForAMissingShortcut()
+    {
+        new ShortcutGenerator().TryUpdateIcon(Path.Combine(_tempDir, "nope.lnk"), _iconFile).Should().BeFalse();
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

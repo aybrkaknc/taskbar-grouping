@@ -94,6 +94,40 @@ public sealed class ShortcutGenerator : IShortcutGenerator
         }
     }
 
+    /// <inheritdoc/>
+    public bool TryUpdateIcon(string shortcutPath, string iconPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(iconPath);
+        if (string.IsNullOrWhiteSpace(shortcutPath) || !File.Exists(shortcutPath))
+        {
+            return false;
+        }
+
+        var link = new ShellLink();
+        try
+        {
+            // Saved in place rather than through a .tmp: the file belongs to Windows' pinned
+            // folder, and replacing it with a new file could break the pin's tracking.
+            ((IPersistFile)link).Load(shortcutPath, StgmReadWrite);
+            ((IShellLinkW)link).SetIconLocation(iconPath, 0);
+            ((IPersistFile)link).Save(shortcutPath, fRemember: true);
+            _logger?.LogInformation("Pointed {Path} at icon {Icon}.", shortcutPath, iconPath);
+            return true;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidCastException or IOException or UnauthorizedAccessException)
+        {
+            _logger?.LogWarning(ex, "Could not update the icon of {Path}.", shortcutPath);
+            return false;
+        }
+        finally
+        {
+            Marshal.FinalReleaseComObject(link);
+        }
+    }
+
+    /// <summary>STGM_READWRITE: the pinned copy is loaded to be saved back in place.</summary>
+    private const uint StgmReadWrite = 0x00000002;
+
     private static void StampAumid(object link, string aumid)
     {
         var store = (IPropertyStore)link;

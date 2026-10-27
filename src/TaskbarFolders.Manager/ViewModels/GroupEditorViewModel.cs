@@ -9,6 +9,7 @@ using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Shared.Configuration;
@@ -38,11 +39,13 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     private readonly IAppDataPathProvider _paths;
     private readonly IUserConfirmation _userConfirmation;
     private readonly IPinToTaskbarService _pinService;
+    private readonly ICustomGroupIconStore _customIcons;
     private readonly ILogger<GroupEditorViewModel>? _logger;
 
     private GroupListItemViewModel? _boundItem;
     private CancellationTokenSource? _previewCts;
     private readonly object _previewCtsLock = new();
+    private int _pendingSaves;
     private bool _disposed;
 
     /// <summary>Initializes a new instance with the dependencies it needs to render previews and persist edits.</summary>
@@ -55,6 +58,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         IAppDataPathProvider paths,
         IUserConfirmation userConfirmation,
         IPinToTaskbarService pinService,
+        ICustomGroupIconStore customIcons,
         ILogger<GroupEditorViewModel>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(extractor);
@@ -65,6 +69,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(userConfirmation);
         ArgumentNullException.ThrowIfNull(pinService);
+        ArgumentNullException.ThrowIfNull(customIcons);
 
         _extractor = extractor;
         _composer = composer;
@@ -74,8 +79,15 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         _paths = paths;
         _userConfirmation = userConfirmation;
         _pinService = pinService;
+        _customIcons = customIcons;
         _logger = logger;
     }
+
+    /// <summary>
+    /// Raised after the editor has synced a group, which may have given it a new icon file.
+    /// The argument is the group synced, which need not be the one bound by then.
+    /// </summary>
+    public event EventHandler<GroupListItemViewModel>? GroupSynced;
 
     /// <summary>Apps currently bound to the editor — empty when no group is selected.</summary>
     public ObservableCollection<AppEntryViewModel> Apps { get; } = [];
@@ -91,6 +103,14 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private BitmapSource? _compositeIconPreview;
 
+    /// <summary>
+    /// Whether the bound group uses an image the user chose instead of the composite of its
+    /// apps' icons. <see cref="CompositeIconPreview"/> then shows that image.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ResetGroupIconCommand))]
+    private bool _hasCustomIcon;
+
     /// <summary>Re-routes the editor to a new group selection.</summary>
     /// <param name="item">The new selection, or <see langword="null"/> to clear.</param>
     public void Bind(GroupListItemViewModel? item)
@@ -104,6 +124,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         Apps.Clear();
 
         BoundItem = item;
+        HasCustomIcon = item is not null && _customIcons.Exists(item.Config.Id);
         if (item is null)
         {
             CompositeIconPreview = null;
@@ -128,10 +149,19 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// True while an add or remove is saving and syncing its group. A re-read of the store in
+    /// that window sees the file from before the save, so the Manager must not reload then.
+    /// </summary>
+    public bool IsSaving => _pendingSaves > 0;
+
     [RelayCommand]
     private async Task AddAppsAsync(IEnumerable<string>? paths)
     {
-        if (paths is null || _boundItem is null)
+        // Held in a local: the editor can be rebound while the save is awaited (closing the
+        // file picker re-activates the window, which may reload the groups).
+        var item = _boundItem;
+        if (paths is null || item is null)
         {
             return;
         }
@@ -139,25 +169,13 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         var added = 0;
         foreach (var raw in paths)
         {
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                continue;
-            }
-
-            var ext = Path.GetExtension(raw);
-            if (!string.Equals(ext, ".exe", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(ext, ".lnk", StringComparison.OrdinalIgnoreCase))
+            if (!AppEntry.TryCreateFromPath(raw, out var entry))
             {
                 _logger?.LogDebug("Ignored non-executable drop {Path}", raw);
                 continue;
             }
 
-            var entry = new AppEntry
-            {
-                Name = Path.GetFileNameWithoutExtension(raw),
-                Path = raw,
-            };
-            _boundItem.Config.Apps.Add(entry);
+            item.Config.Apps.Add(entry);
 
             var appVm = new AppEntryViewModel(entry);
             Apps.Add(appVm);
@@ -167,26 +185,101 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
 
         if (added > 0)
         {
-            await _store.SaveAsync(_boundItem.Config).ConfigureAwait(true);
-            await _syncService.SyncAsync(_boundItem.Config).ConfigureAwait(true);
-            _boundItem.NotifyAppCountChanged();
+            await SaveAndSyncAsync(item).ConfigureAwait(true);
         }
     }
 
     [RelayCommand]
     private async Task RemoveAppAsync(AppEntryViewModel? app)
     {
-        if (app is null || _boundItem is null)
+        var item = _boundItem;
+        if (app is null || item is null)
         {
             return;
         }
 
-        _boundItem.Config.Apps.Remove(app.Entry);
+        item.Config.Apps.Remove(app.Entry);
         Apps.Remove(app);
 
-        await _store.SaveAsync(_boundItem.Config).ConfigureAwait(true);
-        await _syncService.SyncAsync(_boundItem.Config).ConfigureAwait(true);
-        _boundItem.NotifyAppCountChanged();
+        await SaveAndSyncAsync(item).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Makes a copy of the image at <paramref name="path"/> the bound group's icon, in place of
+    /// the composite of its apps' icons, and regenerates the group's icon files.
+    /// </summary>
+    [RelayCommand]
+    private async Task ChooseGroupIconAsync(string? path)
+    {
+        var item = _boundItem;
+        if (item is null || string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        if (!await _customIcons.TryImportAsync(item.Config.Id, path).ConfigureAwait(true))
+        {
+            _userConfirmation.Notify(
+                "Group icon",
+                $"This file could not be read as an image, so the group's icon is unchanged:\n{path}");
+            return;
+        }
+
+        await GroupIconChangedAsync(item, custom: true).ConfigureAwait(true);
+    }
+
+    /// <summary>Drops the bound group's chosen icon, so its icon is composed from its apps again.</summary>
+    [RelayCommand(CanExecute = nameof(HasCustomIcon))]
+    private async Task ResetGroupIconAsync()
+    {
+        var item = _boundItem;
+        if (item is null)
+        {
+            return;
+        }
+
+        _customIcons.Delete(item.Config.Id);
+        await GroupIconChangedAsync(item, custom: false).ConfigureAwait(true);
+    }
+
+    private async Task GroupIconChangedAsync(GroupListItemViewModel item, bool custom)
+    {
+        if (ReferenceEquals(_boundItem, item))
+        {
+            HasCustomIcon = custom;
+            RegeneratePreview();
+        }
+
+        // Counted like a save: sync writes the icon files the activation re-read would race.
+        _pendingSaves++;
+        try
+        {
+            await _syncService.SyncAsync(item.Config).ConfigureAwait(true);
+        }
+        finally
+        {
+            _pendingSaves--;
+        }
+
+        GroupSynced?.Invoke(this, item);
+    }
+
+    private async Task SaveAndSyncAsync(GroupListItemViewModel item)
+    {
+        // Every await here resumes on the UI thread, so a plain counter is enough.
+        _pendingSaves++;
+        try
+        {
+            await _store.SaveAsync(item.Config).ConfigureAwait(true);
+            await _syncService.SyncAsync(item.Config).ConfigureAwait(true);
+        }
+        finally
+        {
+            _pendingSaves--;
+        }
+
+        item.NotifyAppCountChanged();
+        GroupSynced?.Invoke(this, item);
     }
 
     [RelayCommand]
@@ -380,6 +473,12 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
 
     private void RegeneratePreview()
     {
+        if (_boundItem is { } item && _customIcons.TryLoad(item.Config.Id) is { } custom)
+        {
+            CompositeIconPreview = custom;
+            return;
+        }
+
         if (Apps.Count == 0)
         {
             CompositeIconPreview = null;
@@ -394,17 +493,10 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
                 break;
             }
 
-            var icon = app.Icon ?? ExtractAndCache(app.Path, PreviewSize);
-            if (icon is not null)
-            {
-                icons.Add(icon);
-            }
-        }
-
-        if (icons.Count == 0)
-        {
-            CompositeIconPreview = null;
-            return;
+            // Same substitution as GroupSyncService, so the preview matches the pinned tile.
+            icons.Add(app.Icon
+                ?? ExtractAndCache(app.Path, PreviewSize)
+                ?? PlaceholderIcon.Render(PreviewSize, PlaceholderIcon.NeutralColor));
         }
 
         CompositeIconPreview = _composer.GenerateComposite(icons, PreviewSize);

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using TaskbarFolders.Shared.Models;
 
@@ -38,10 +39,24 @@ public sealed partial class GroupListItemViewModel : ObservableObject
     /// <summary>Convenience pass-through for sidebar item count badges.</summary>
     public int AppCount => Config.Apps.Count;
 
+    /// <summary><see cref="AppCount"/> as words: "1 app", "3 apps".</summary>
+    public string AppCountText => AppCount == 1 ? "1 app" : $"{AppCount} apps";
+
+    /// <summary>
+    /// The icon the group has on the taskbar, or <see langword="null"/> while it has none; the
+    /// list then draws a folder glyph.
+    /// </summary>
+    [ObservableProperty]
+    private BitmapSource? _icon;
+
     /// <summary>
     /// Raises <see cref="System.ComponentModel.INotifyPropertyChanged.PropertyChanged"/> for
-    /// <see cref="AppCount"/>. Called by the editor after it mutates <see cref="Config"/>.Apps
-    /// so the sidebar badge refreshes.
+    /// <see cref="AppCount"/> and <see cref="AppCountText"/>. Called by the editor after it
+    /// mutates <see cref="Config"/>.Apps so the sidebar badge refreshes.
     /// </summary>
-    public void NotifyAppCountChanged() => OnPropertyChanged(nameof(AppCount));
+    public void NotifyAppCountChanged()
+    {
+        OnPropertyChanged(nameof(AppCount));
+        OnPropertyChanged(nameof(AppCountText));
+    }
 }

@@ -138,6 +138,75 @@
         </Setter>
     </Style>
 
+    <!-- Sidebar group row: a light fill and a short accent bar at the left edge mark the
+         selection, as in Windows 11's own navigation lists, instead of a full-width block. -->
+    <Style x:Key="SidebarItem" TargetType="ListBoxItem">
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="12,8,10,8" />
+        <Setter Property="Margin" Value="0,1" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Grid>
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="{StaticResource ControlCornerRadius}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <Border x:Name="Indicator"
+                                Width="3" Height="16" CornerRadius="1.5"
+                                HorizontalAlignment="Left" VerticalAlignment="Center"
+                                Background="{DynamicResource AccentBrush}"
+                                Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource ItemHoverBackground}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource SelectionBackgroundInactive}" />
+                            <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Flat, full-width button for the foot of the sidebar. -->
+    <Style x:Key="SidebarFooterButton" TargetType="Button">
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
+                            CornerRadius="{StaticResource ControlCornerRadius}">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource ItemHoverBackground}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource SelectionBackgroundInactive}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- CheckBox. The default glyph box is drawn by the Aero2 template in its own colours,
          so it needs a template to follow the theme. -->
     <Style TargetType="CheckBox">
