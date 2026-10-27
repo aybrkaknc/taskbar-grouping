@@ -37,6 +37,7 @@ public static class ManagerServiceCollectionExtensions
         services.AddSingleton<ICompositeIconGenerator, CompositeIconGenerator>();
         services.AddSingleton<IIcoFileWriter, IcoFileWriter>();
         services.AddSingleton<IIconCache, FileSystemIconCache>();
+        services.AddSingleton<ICustomGroupIconStore, CustomGroupIconStore>();
 
         // Manager-side services.
         services.AddSingleton<IAutoStartService, RegistryAutoStartService>();

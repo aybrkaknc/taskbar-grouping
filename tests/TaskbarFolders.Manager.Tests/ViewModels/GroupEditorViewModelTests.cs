@@ -51,7 +51,7 @@ public class GroupEditorViewModelTests
                     Mock<IGroupSyncService> syncService,
                     Mock<IAppDataPathProvider> paths,
                     Mock<IUserConfirmation> userConfirmation,
-                    Mock<IPinToTaskbarService> pinService) CreateSutWithCollaborators()
+                    Mock<IPinToTaskbarService> pinService) CreateSutWithCollaborators(Mock<ICustomGroupIconStore>? customIcons = null)
     {
         var extractor = new Mock<IIconExtractor>();
         extractor.Setup(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>())).Returns(StubIcon());
@@ -83,7 +83,8 @@ public class GroupEditorViewModelTests
             syncService.Object,
             paths.Object,
             userConfirmation.Object,
-            pinService.Object);
+            pinService.Object,
+            (customIcons ?? new Mock<ICustomGroupIconStore>()).Object);
         return (sut, extractor, composer, cache, store, syncService, paths, userConfirmation, pinService);
     }
 
@@ -275,6 +276,70 @@ public class GroupEditorViewModelTests
         sut.Apps[0].Icon.Should().BeNull("the row draws its own themed placeholder");
         composed.Should().ContainSingle().Which.PixelWidth.Should().Be(GroupEditorViewModel.PreviewSize);
         sut.CompositeIconPreview.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task ChooseGroupIcon_StoresTheImage_ShowsIt_AndSyncs()
+    {
+        var customIcons = new Mock<ICustomGroupIconStore>();
+        var chosen = StubIcon();
+        customIcons.Setup(c => c.TryImportAsync("g", "pic.png", It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        customIcons.Setup(c => c.TryLoad("g")).Returns(chosen);
+        var (sut, _, _, _, _, syncService, _, _, _) = CreateSutWithCollaborators(customIcons);
+        var config = new GroupConfig { Id = "g", GroupName = "g" };
+        sut.Bind(new GroupListItemViewModel(config));
+
+        await sut.ChooseGroupIconCommand.ExecuteAsync("pic.png");
+
+        sut.HasCustomIcon.Should().BeTrue();
+        sut.CompositeIconPreview.Should().BeSameAs(chosen);
+        sut.ResetGroupIconCommand.CanExecute(null).Should().BeTrue();
+        syncService.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChooseGroupIcon_ExplainsAnUnreadableFile_AndChangesNothing()
+    {
+        var customIcons = new Mock<ICustomGroupIconStore>();
+        customIcons.Setup(c => c.TryImportAsync("g", "bad.png", It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var (sut, _, _, _, _, syncService, _, userConfirmation, _) = CreateSutWithCollaborators(customIcons);
+        sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g" }));
+
+        await sut.ChooseGroupIconCommand.ExecuteAsync("bad.png");
+
+        sut.HasCustomIcon.Should().BeFalse();
+        userConfirmation.Verify(u => u.Notify(It.IsAny<string>(), It.Is<string>(m => m.Contains("bad.png"))), Times.Once);
+        syncService.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ResetGroupIcon_DeletesTheChoice_RecomposesThePreview_AndSyncs()
+    {
+        var customIcons = new Mock<ICustomGroupIconStore>();
+        customIcons.Setup(c => c.Exists("g")).Returns(true);
+        var (sut, _, composer, _, _, syncService, _, _, _) = CreateSutWithCollaborators(customIcons);
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        sut.Bind(new GroupListItemViewModel(config));
+        sut.HasCustomIcon.Should().BeTrue("the editor reads the choice when a group is bound");
+
+        await sut.ResetGroupIconCommand.ExecuteAsync(null);
+
+        customIcons.Verify(c => c.Delete("g"), Times.Once);
+        sut.HasCustomIcon.Should().BeFalse();
+        sut.ResetGroupIconCommand.CanExecute(null).Should().BeFalse();
+        composer.Verify(c => c.GenerateComposite(It.IsAny<System.Collections.Generic.IReadOnlyList<BitmapSource>>(), GroupEditorViewModel.PreviewSize), Times.AtLeastOnce);
+        syncService.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void Bind_ReportsNoCustomIcon_ForAGroupWithoutOne()
+    {
+        var (sut, _, _, _, _) = CreateSut();
+
+        sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g" }));
+
+        sut.HasCustomIcon.Should().BeFalse();
+        sut.ResetGroupIconCommand.CanExecute(null).Should().BeFalse();
     }
 
     [Fact]

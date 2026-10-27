@@ -27,6 +27,7 @@ public sealed class GroupSyncServiceTests : IDisposable
     private readonly Mock<ILauncherPathResolver> _launcherResolver;
     private readonly Mock<IShellChangeNotifier> _shellChangeNotifier;
     private readonly Mock<IShortcutReader> _shortcutReader;
+    private readonly Mock<ICustomGroupIconStore> _customIcons;
 
     public GroupSyncServiceTests()
     {
@@ -54,6 +55,7 @@ public sealed class GroupSyncServiceTests : IDisposable
         _launcherResolver.Setup(r => r.TryResolve()).Returns("C:/install/Launcher.exe");
         _shellChangeNotifier = new Mock<IShellChangeNotifier>();
         _shortcutReader = new Mock<IShortcutReader>();
+        _customIcons = new Mock<ICustomGroupIconStore>();
     }
 
     public void Dispose()
@@ -87,7 +89,8 @@ public sealed class GroupSyncServiceTests : IDisposable
         _shortcutGenerator.Object,
         _launcherResolver.Object,
         _shellChangeNotifier.Object,
-        _shortcutReader.Object);
+        _shortcutReader.Object,
+        _customIcons.Object);
 
     /// <summary>
     /// Puts a placeholder anchor in the Start Menu folder and makes the reader report
@@ -415,6 +418,55 @@ public sealed class GroupSyncServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task SyncAsync_WritesTheChosenIcon_InPlaceOfTheComposite()
+    {
+        var chosen = StubIcon();
+        _customIcons.Setup(c => c.TryLoad("g")).Returns(chosen);
+        var sut = CreateSut();
+        var config = new GroupConfig
+        {
+            Id = "g",
+            GroupName = "Tools",
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" } },
+        };
+
+        await sut.SyncAsync(config);
+
+        _composer.Verify(c => c.GenerateComposite(It.IsAny<System.Collections.Generic.IReadOnlyList<BitmapSource>>(), It.IsAny<int>()), Times.Never);
+        _extractor.Verify(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
+        _icoWriter.Verify(w => w.WriteAsync(chosen, VersionedIconFor("g"), It.IsAny<CancellationToken>()), Times.Once);
+        _shortcutGenerator.Verify(g => g.Generate(It.Is<GroupShortcutRequest>(r =>
+            r.ShortcutPath == _paths.GetGroupShortcutFile("g") && r.IconPath == VersionedIconFor("g"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncAsync_ComposesAsBefore_WhenNoIconWasChosen()
+    {
+        _customIcons.Setup(c => c.TryLoad("g")).Returns((BitmapSource?)null);
+        var sut = CreateSut();
+        var config = new GroupConfig
+        {
+            Id = "g",
+            GroupName = "Tools",
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" } },
+        };
+
+        await sut.SyncAsync(config);
+
+        _composer.Verify(c => c.GenerateComposite(It.IsAny<System.Collections.Generic.IReadOnlyList<BitmapSource>>(), It.IsAny<int>()), Times.Once);
+    }
+
+    [Fact]
+    public void RemoveArtifacts_DeletesTheChosenIcon()
+    {
+        var sut = CreateSut();
+
+        sut.RemoveArtifacts("g", "My Group");
+
+        _customIcons.Verify(c => c.Delete("g"), Times.Once);
+    }
+
+    [Fact]
     public void RemoveArtifacts_IsNoOp_WhenFilesMissing()
     {
         var sut = CreateSut();
@@ -523,7 +575,8 @@ public sealed class GroupSyncServiceTests : IDisposable
             new ShortcutGenerator(),
             _launcherResolver.Object,
             _shellChangeNotifier.Object,
-            new ShortcutReader());
+            new ShortcutReader(),
+            _customIcons.Object);
         var config = SyncableGroup("g", "Before");
         var unrelated = SyncableGroup("h", "Unrelated");
 

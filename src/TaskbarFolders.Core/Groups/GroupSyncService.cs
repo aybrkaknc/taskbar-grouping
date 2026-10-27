@@ -35,6 +35,7 @@ public sealed class GroupSyncService : IGroupSyncService
     private readonly ILauncherPathResolver _launcherResolver;
     private readonly IShellChangeNotifier _shellChangeNotifier;
     private readonly IShortcutReader _shortcutReader;
+    private readonly ICustomGroupIconStore _customIcons;
     private readonly ILogger<GroupSyncService>? _logger;
 
     /// <summary>Initializes a new instance.</summary>
@@ -48,6 +49,7 @@ public sealed class GroupSyncService : IGroupSyncService
         ILauncherPathResolver launcherResolver,
         IShellChangeNotifier shellChangeNotifier,
         IShortcutReader shortcutReader,
+        ICustomGroupIconStore customIcons,
         ILogger<GroupSyncService>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(paths);
@@ -59,6 +61,7 @@ public sealed class GroupSyncService : IGroupSyncService
         ArgumentNullException.ThrowIfNull(launcherResolver);
         ArgumentNullException.ThrowIfNull(shellChangeNotifier);
         ArgumentNullException.ThrowIfNull(shortcutReader);
+        ArgumentNullException.ThrowIfNull(customIcons);
 
         _paths = paths;
         _extractor = extractor;
@@ -69,6 +72,7 @@ public sealed class GroupSyncService : IGroupSyncService
         _launcherResolver = launcherResolver;
         _shellChangeNotifier = shellChangeNotifier;
         _shortcutReader = shortcutReader;
+        _customIcons = customIcons;
         _logger = logger;
     }
 
@@ -95,8 +99,10 @@ public sealed class GroupSyncService : IGroupSyncService
             return;
         }
 
-        var icons = CollectSourceIcons(config);
-        var composite = _composer.GenerateComposite(icons);
+        // An icon the user chose replaces the composite; everything after this treats the two
+        // alike, so a changed choice reaches the pinned tile the same way changed apps do.
+        var composite = _customIcons.TryLoad(config.Id)
+            ?? _composer.GenerateComposite(CollectSourceIcons(config));
 
         // A new file name for every new image: Windows caches a shortcut's icon by path, so a
         // file rewritten in place kept showing the old apps on the pinned tile.
@@ -129,6 +135,7 @@ public sealed class GroupSyncService : IGroupSyncService
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
         DeleteGroupIcons(groupId, keepPath: null);
+        _customIcons.Delete(groupId);
         TryDelete(_paths.GetGroupShortcutFile(groupId));
         TryDelete(_paths.GetStartMenuShortcutFile(SanitizeForFilename(displayName, fallback: groupId)));
 

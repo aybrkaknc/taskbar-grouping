@@ -117,13 +117,23 @@
                         </DockPanel>
                         <TextBlock Text="{Binding BoundItem.Id}" FontSize="11" Foreground="{DynamicResource ForegroundSubtle}" Margin="0,4,0,0" />
                     </StackPanel>
-                    <Border Grid.Column="1"
-                            Width="96" Height="96"
-                            Background="{DynamicResource SurfaceMuted}"
-                            CornerRadius="12">
-                        <Image Source="{Binding CompositeIconPreview}"
-                               Stretch="Uniform" Margin="4" />
-                    </Border>
+                    <StackPanel Grid.Column="1">
+                        <Border Width="96" Height="96"
+                                Background="{DynamicResource SurfaceMuted}"
+                                CornerRadius="12">
+                            <Image Source="{Binding CompositeIconPreview}"
+                                   Stretch="Uniform" Margin="4" />
+                        </Border>
+                        <Button Content="Change icon..."
+                                Margin="0,8,0,0" Padding="8,2"
+                                ToolTip="Use an image (.ico, .png, .jpg, .bmp) as the group's icon instead of its apps' icons."
+                                Click="ChooseGroupIcon_Click" />
+                        <Button Content="Use app icons"
+                                Margin="0,4,0,0" Padding="8,2"
+                                ToolTip="Go back to the icon built from the group's first four apps. Available once an image was chosen."
+                                ToolTipService.ShowOnDisabled="True"
+                                Command="{Binding ResetGroupIconCommand}" />
+                    </StackPanel>
                 </Grid>
 
                 <!-- Drop zone hint + Add button -->

@@ -47,6 +47,7 @@ public static class LauncherServiceCollectionExtensions
         // Icon engine — needed for the popup tiles.
         services.AddSingleton<IIconExtractor, ShellIconExtractor>();
         services.AddSingleton<IIconCache, FileSystemIconCache>();
+        services.AddSingleton<ICustomGroupIconStore, CustomGroupIconStore>();
 
         // Group sync — regenerates the composite icon, shortcut and Start menu anchor after
         // the popup edits its group. The launcher is the shortcut target, hence the resolver.

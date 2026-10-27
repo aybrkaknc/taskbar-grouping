@@ -82,6 +82,15 @@ public class AppDataPathProviderTests
             .Should().Be(Path.Combine("C:/base", "TaskbarFolders", "shortcuts", "abc.lnk"));
     }
 
+    [Fact]
+    public void GetGroupCustomIconFile_IsAPngInTheCustomSubfolderOfIcons()
+    {
+        var sut = new AppDataPathProvider("C:/base");
+
+        sut.GetGroupCustomIconFile("abc")
+            .Should().Be(Path.Combine("C:/base", "TaskbarFolders", "icons", "custom", "abc.png"));
+    }
+
     [Theory]
     [InlineData("../escape")]
     [InlineData("..\\escape")]
@@ -99,6 +108,7 @@ public class AppDataPathProviderTests
         FluentActions.Invoking(() => sut.GetGroupFile(badId)).Should().Throw<System.ArgumentException>();
         FluentActions.Invoking(() => sut.GetGroupIconFile(badId)).Should().Throw<System.ArgumentException>();
         FluentActions.Invoking(() => sut.GetGroupShortcutFile(badId)).Should().Throw<System.ArgumentException>();
+        FluentActions.Invoking(() => sut.GetGroupCustomIconFile(badId)).Should().Throw<System.ArgumentException>();
     }
 
     [Theory]

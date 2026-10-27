@@ -58,6 +58,12 @@ Only the **first four** apps in the group contribute to the icon. The popup stil
 | 3 | iOS-style: two on top, one below |
 | 4 or more | The first four in a 2×2 grid |
 
+### Using your own image as the icon
+
+Click **Change icon…** under the preview and pick an `.ico`, `.png`, `.jpg` or `.bmp`. The group's icon — its shortcut, Start menu entry and pinned tile — then shows that image instead of its apps, whatever apps you add or remove. A copy is stored, fitted into a square with transparent edges, so moving or deleting the original file changes nothing. For an `.ico` the largest size it contains is used.
+
+**Use app icons** goes back to the icon built from the apps. If a pinned tile keeps the old picture, Windows has not refreshed its icon yet; signing out and in again, or restarting Explorer, makes it re-read.
+
 ### Removing an app
 
 Click **Remove** on its row. The group is saved and its icon regenerated immediately.
@@ -116,7 +122,7 @@ To delete: right-click the group in the sidebar → **Delete group** → confirm
 
 **Deleting a group does not remove its taskbar tile.** Right-click the tile and choose *Unpin from taskbar* yourself; the confirmation dialog reminds you.
 
-There is currently no way to reorder apps, set a custom icon, or give an app launch arguments from the interface.
+There is currently no way to reorder apps or give an app launch arguments from the interface.
 
 ## Settings
 
@@ -153,6 +159,7 @@ Everything lives under `%APPDATA%\TaskbarFolders\`. Paste that into Explorer's a
 | `groups\<id>.json` | One file per group — its name, its apps, its column count |
 | `icons\<id>.ico` | The generated composite icon |
 | `icons\cache\` | Cached source icons; safe to delete, they are re-extracted |
+| `icons\custom\<id>.png` | The image you chose as a group's icon, if any |
 | `shortcuts\<id>.lnk` | The shortcut you pin |
 | `settings.json` | Your settings |
 | `logs\` | One log file per day, kept for two weeks |

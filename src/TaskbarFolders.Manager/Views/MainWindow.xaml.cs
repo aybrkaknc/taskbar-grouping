@@ -138,6 +138,25 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ChooseGroupIcon_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Images|*.ico;*.png;*.jpg;*.jpeg;*.bmp|All files|*.*",
+            Title = "Choose the group's icon",
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            vm.Editor.ChooseGroupIconCommand.Execute(dialog.FileName);
+        }
+    }
+
     private void AddAppPicker_Click(object sender, RoutedEventArgs e)
     {
         if (DataContext is not MainWindowViewModel vm)

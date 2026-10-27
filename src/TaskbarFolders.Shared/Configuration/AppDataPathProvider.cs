@@ -20,6 +20,9 @@ public sealed partial class AppDataPathProvider : IAppDataPathProvider
     /// <summary>Sub-folder containing generated icon files.</summary>
     public const string IconsFolderName = "icons";
 
+    /// <summary>Sub-folder of <see cref="IconsFolderName"/> holding the images users chose as group icons.</summary>
+    public const string CustomIconsFolderName = "custom";
+
     /// <summary>Sub-folder containing rotated log files.</summary>
     public const string LogsFolderName = "logs";
 
@@ -181,6 +184,13 @@ public sealed partial class AppDataPathProvider : IAppDataPathProvider
             && name.EndsWith(".ico", StringComparison.OrdinalIgnoreCase)
             && name.Length == prefix.Length + 8 + 4
             && IconVersionPattern().IsMatch(name.AsSpan(prefix.Length, 8));
+    }
+
+    /// <inheritdoc/>
+    public string GetGroupCustomIconFile(string groupId)
+    {
+        ValidateGroupId(groupId);
+        return Path.Combine(IconsDirectory, CustomIconsFolderName, $"{groupId}.png");
     }
 
     /// <inheritdoc/>

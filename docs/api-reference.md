@@ -88,6 +88,7 @@ string GetGroupFile(string groupId);
 string GetGroupIconFile(string groupId);                  // legacy <id>.ico
 string GetGroupIconFile(string groupId, string version); // <id>-<8 hex>.ico
 bool IsGroupIconFile(string groupId, string path);
+string GetGroupCustomIconFile(string groupId);
 string GetGroupShortcutFile(string groupId);
 string GetStartMenuShortcutFile(string sanitizedFileName);
 ```
@@ -149,6 +150,17 @@ void StartBackgroundPrune() { }
 ```
 
 `TryGet`/`Set` are synchronous **on purpose** — they sit on the popup's hot path. `FileSystemIconCache` keys entries by source path, last-write time and size, and prunes after 30 days.
+
+#### [`ICustomGroupIconStore`](../src/TaskbarFolders.Core/Icons/ICustomGroupIconStore.cs)
+
+```csharp
+bool Exists(string groupId);
+BitmapSource? TryLoad(string groupId);
+Task<bool> TryImportAsync(string groupId, string sourcePath, CancellationToken cancellationToken = default);
+void Delete(string groupId);
+```
+
+The image a user chose as a group's icon; `GroupSyncService` uses it in place of the composite while it exists. `CustomGroupIconStore` decodes any WPF-readable image (an `.ico` gives its largest frame), fits it centred into a transparent 256 px square and writes it atomically as `GetGroupCustomIconFile(id)`. `TryImportAsync` returns `false` and leaves any previous choice in place for a file that is not a readable image; `TryLoad` returns `null` for a damaged stored file, so sync falls back to the composite.
 
 ### Shortcuts
 

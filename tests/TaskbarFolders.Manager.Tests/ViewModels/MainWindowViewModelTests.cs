@@ -39,7 +39,8 @@ public class MainWindowViewModelTests
             Mock.Of<IGroupSyncService>(),
             Mock.Of<IAppDataPathProvider>(),
             Mock.Of<IUserConfirmation>(),
-            Mock.Of<IPinToTaskbarService>());
+            Mock.Of<IPinToTaskbarService>(),
+            Mock.Of<ICustomGroupIconStore>());
     }
 
     private static MainWindowViewModel CreateSut(Mock<IGroupConfigStore> store) =>

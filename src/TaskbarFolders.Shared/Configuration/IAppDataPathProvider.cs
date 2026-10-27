@@ -67,6 +67,14 @@ public interface IAppDataPathProvider
     /// <param name="path">File path or name to test.</param>
     bool IsGroupIconFile(string groupId, string path);
 
+    /// <summary>
+    /// Builds the path of the image a user chose as the group's icon
+    /// (<c>icons/custom/&lt;id&gt;.png</c>). While it exists, sync uses it in place of the
+    /// composite of the apps' icons.
+    /// </summary>
+    /// <param name="groupId">Group identifier.</param>
+    string GetGroupCustomIconFile(string groupId);
+
     /// <summary>Builds the full path for a single group's pinnable shortcut (.lnk) file.</summary>
     /// <param name="groupId">Group identifier — used as the file name stem so distinct groups never collide regardless of display name.</param>
     string GetGroupShortcutFile(string groupId);

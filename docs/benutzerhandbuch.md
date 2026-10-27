@@ -117,6 +117,12 @@ Das Symbol der Gruppe wird aus den Symbolen der enthaltenen Programme zusammenge
 | 3 | Zwei oben, eines unten |
 | 4 oder mehr | Die ersten vier als 2×2-Raster |
 
+### Ein eigenes Bild als Symbol
+
+Ein Klick auf **Change icon…** unter der Vorschau öffnet die Dateiauswahl für ein `.ico`, `.png`, `.jpg` oder `.bmp`. Das Gruppensymbol — Verknüpfung, Startmenü-Eintrag und angeheftete Kachel — zeigt dann dieses Bild statt der Programme, ganz gleich, welche Programme Sie hinzufügen oder entfernen. Gespeichert wird eine Kopie, quadratisch eingepasst mit durchsichtigen Rändern; die Originaldatei darf also verschoben oder gelöscht werden. Bei einer `.ico`-Datei wird die größte enthaltene Größe verwendet.
+
+**Use app icons** kehrt zum aus den Programmen zusammengesetzten Symbol zurück. Zeigt eine angeheftete Kachel noch das alte Bild, hat Windows ihr Symbol noch nicht neu gelesen; Ab- und wieder Anmelden oder ein Neustart des Explorers hilft.
+
 Die Vorschau oben rechts aktualisiert sich kurz nachdem Sie mit dem Ändern fertig sind.
 
 ## An die Taskleiste anheften
@@ -206,6 +212,7 @@ Alles liegt unter `%APPDATA%\TaskbarFolders\`. Diesen Pfad können Sie in die Ad
 | `groups\<id>.json` | Eine Datei je Gruppe: Name, enthaltene Programme, Spaltenanzahl |
 | `icons\<id>.ico` | Das erzeugte Gruppensymbol |
 | `icons\cache\` | Zwischengespeicherte Programmsymbole. Kann gefahrlos gelöscht werden |
+| `icons\custom\<id>.png` | Das selbst gewählte Bild einer Gruppe, falls vorhanden |
 | `shortcuts\<id>.lnk` | Die Verknüpfung, die Sie anheften |
 | `settings.json` | Ihre Einstellungen |
 | `logs\` | Eine Protokolldatei je Tag, zwei Wochen aufbewahrt |
@@ -232,7 +239,7 @@ Ausführlicher, mit Zuordnung von Protokollzeilen zu Ursachen: [Troubleshooting]
 
 Keine Fehler, sondern bewusste oder noch offene Grenzen:
 
-- Programme lassen sich **nicht umsortieren**, Symbole nicht selbst wählen, Startparameter nicht setzen.
+- Programme lassen sich **nicht umsortieren**, Startparameter nicht setzen.
 - Das Aufklapp-Fenster lässt sich **nicht mit den Pfeiltasten** bedienen; nur `Esc` schließt es.
 - Der verschwommene Glas-Hintergrund des Aufklapp-Fensters braucht Windows 11 22H2 oder neuer. Sind in Windows die *Transparenzeffekte* ausgeschaltet, ist er eine einfarbige Fläche.
 - Es gibt **keine ARM64-Fassung**.
