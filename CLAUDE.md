@@ -48,6 +48,8 @@ New persistence code must follow this.
 
 **GroupId validation** — `AppDataPathProvider` enforces `^[A-Za-z0-9._-]{1,96}$`. Any path-derived storage code (groups, per-group shortcut dirs) must funnel through `GetGroupFile` / `GetGroupDirectory` so the validation isn't bypassed.
 
+**Group icons are versioned; the pinned copy is updated, never recreated** — `icons/<id>-<8 hex>.ico`, a new name per image, because the shell caches a shortcut's icon by path (ADR-006). Never assume a fixed icon path: ask for the newest file `IsGroupIconFile` accepts. Sync may rewrite the icon location of `.lnk` files in `PinnedTaskbarDirectory` that carry a group AUMID — nothing else there, and it never creates or deletes files in that folder. Delete old icon versions only after every shortcut points at the new one.
+
 **Start Menu anchors are found by AUMID, never by file name** — the anchor's file name is the sanitised *display name*, its identity the id-derived AUMID, so a name-based lookup misses every anchor written under an earlier name (that is how renames left duplicate anchors behind, issue #28). Anything that finds, replaces or deletes anchors goes through `IShortcutReader.TryReadAumid`. A new anchor removes its same-AUMID predecessor only *after* it has been written — until then the old one is what keeps a pin alive. The orphan sweep takes known ids from `groups/*.json` file names, not from `LoadAllAsync`, which skips unparsable configs whose tiles may still be pinned. Files without a `TaskbarFolders.Group.` AUMID in that folder are not ours: leave them.
 
 **JSON config** — `Id` in `GroupConfig` is always reconstructed from the file name on load (disk layout is the source of truth; JSON `id` field is ignored). See `JsonGroupConfigStore.LoadFromFileAsync`.

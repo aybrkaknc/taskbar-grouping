@@ -81,15 +81,18 @@ string IconsDirectory { get; }
 string LogsDirectory { get; }
 string ShortcutsDirectory { get; }
 string StartMenuDirectory { get; }
+string PinnedTaskbarDirectory { get; }
 string SettingsFile { get; }
 
 string GetGroupFile(string groupId);
-string GetGroupIconFile(string groupId);
+string GetGroupIconFile(string groupId);                  // legacy <id>.ico
+string GetGroupIconFile(string groupId, string version); // <id>-<8 hex>.ico
+bool IsGroupIconFile(string groupId, string path);
 string GetGroupShortcutFile(string groupId);
 string GetStartMenuShortcutFile(string sanitizedFileName);
 ```
 
-The four `Get…` methods validate the group id against `^[A-Za-z0-9._-]{1,96}$` and throw otherwise. Route anything path-derived through them so the validation cannot be bypassed — it blocks traversal and keeps AppUserModelIDs inside their length limit.
+`PinnedTaskbarDirectory` is the shell's `User Pinned\TaskBar` folder in production and a folder under the base directory in every test constructor. The `Get…` and `IsGroupIconFile` methods validate the group id against `^[A-Za-z0-9._-]{1,96}$` and throw otherwise. Route anything path-derived through them so the validation cannot be bypassed — it blocks traversal and keeps AppUserModelIDs inside their length limit.
 
 ### Logging
 
@@ -142,9 +145,10 @@ void StartBackgroundPrune() { }
 ```csharp
 string BuildAumid(string groupId);
 void Generate(GroupShortcutRequest request);
+bool TryUpdateIcon(string shortcutPath, string iconPath);
 ```
 
-Writes the `.lnk` through `IShellLinkW`/`IPersistFile` and stamps `PKEY_AppUserModel_ID` through `IPropertyStore`.
+Writes the `.lnk` through `IShellLinkW`/`IPersistFile` and stamps `PKEY_AppUserModel_ID` through `IPropertyStore`. `TryUpdateIcon` loads an existing shortcut, changes only its icon location and saves it in place — used on the taskbar's pinned copies; `false`, never an exception, when the file is missing or cannot be rewritten.
 
 #### [`GroupShortcutRequest`](../src/TaskbarFolders.Core/Shortcuts/GroupShortcutRequest.cs)
 
@@ -181,7 +185,7 @@ The read counterpart to `IShortcutGenerator`. Returns `null` — never throws �
 void NotifyCreate(string path);
 ```
 
-Wraps `SHChangeNotify` so the shell notices a newly written Start menu shortcut. Without it a programmatic pin can silently fail to persist. The interface exists so call sites stay testable without executing native code.
+Also `void NotifyUpdate(string path)` (`SHCNE_UPDATEITEM`, flushed), sent after a pinned copy's icon changes. Wraps `SHChangeNotify` so the shell notices a newly written Start menu shortcut. Without it a programmatic pin can silently fail to persist. The interface exists so call sites stay testable without executing native code.
 
 ### Groups
 

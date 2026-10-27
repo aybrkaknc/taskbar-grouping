@@ -20,4 +20,14 @@ public interface IShortcutGenerator
     /// Existing files are overwritten atomically.
     /// </summary>
     void Generate(GroupShortcutRequest request);
+
+    /// <summary>
+    /// Points an existing shortcut at a different icon, leaving its target, arguments and
+    /// AppUserModelID as they are. Used on the taskbar's pinned copy of a group shortcut, which
+    /// Windows owns and which keeps the icon path it was created with.
+    /// </summary>
+    /// <param name="shortcutPath">Existing <c>.lnk</c> to update in place.</param>
+    /// <param name="iconPath">New icon file.</param>
+    /// <returns><see langword="false"/> when the shortcut is missing or could not be rewritten; never throws for those.</returns>
+    bool TryUpdateIcon(string shortcutPath, string iconPath);
 }

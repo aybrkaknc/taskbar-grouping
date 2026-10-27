@@ -13,6 +13,7 @@ Write one when a decision constrains future work, when a plausible alternative w
 | [003](003-dpi-unit-contract.md) | Device pixels at the Win32 boundary | Accepted |
 | [004](004-popup-acrylic-backdrop.md) | Acrylic backdrop behind the popup | Accepted |
 | [005](005-popup-edits-its-group.md) | The popup may edit its own group | Accepted |
+| [006](006-versioned-group-icons.md) | Versioned group icons, and updating our own pinned shortcut | Accepted |
 
 ## Conventions
 

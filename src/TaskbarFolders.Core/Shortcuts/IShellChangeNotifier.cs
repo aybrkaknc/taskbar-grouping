@@ -19,4 +19,12 @@ public interface IShellChangeNotifier
     /// </summary>
     /// <param name="path">Absolute path of the newly created file.</param>
     void NotifyCreate(string path);
+
+    /// <summary>
+    /// Tells the Shell that the file at <paramref name="path"/> changed in place
+    /// (<c>SHCNE_UPDATEITEM</c>, flushed), so views showing it — the taskbar for a pinned
+    /// shortcut — re-read it.
+    /// </summary>
+    /// <param name="path">Absolute path of the changed file.</param>
+    void NotifyUpdate(string path);
 }

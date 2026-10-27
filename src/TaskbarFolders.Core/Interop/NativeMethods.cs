@@ -72,6 +72,7 @@ internal static class NativeMethods
 
     // SHChangeNotify event ids and flags. Only the subset we currently need.
     public const int SHCNE_CREATE = 0x00000002;
+    public const int SHCNE_UPDATEITEM = 0x00002000;
     public const uint SHCNF_PATHW = 0x00000005;
     public const uint SHCNF_FLUSH = 0x00001000;
 

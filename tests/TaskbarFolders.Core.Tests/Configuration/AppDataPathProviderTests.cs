@@ -116,4 +116,53 @@ public class AppDataPathProviderTests
         sut.GetGroupIconFile(okId);
         sut.GetGroupShortcutFile(okId);
     }
+
+    [Fact]
+    public void PinnedTaskbarDirectory_StaysUnderTheBase_InTheTestConstructors()
+    {
+        // A test must never be able to write into the real taskbar pins.
+        new AppDataPathProvider("C:/base").PinnedTaskbarDirectory
+            .Should().StartWith(Path.Combine("C:/base"));
+        new AppDataPathProvider("C:/base", "C:/menu").PinnedTaskbarDirectory
+            .Should().StartWith(Path.Combine("C:/base"));
+    }
+
+    [Fact]
+    public void GetGroupIconFile_WithVersion_AppendsItToTheId()
+    {
+        var sut = new AppDataPathProvider("C:/base");
+
+        sut.GetGroupIconFile("g1", "abcdef12")
+            .Should().Be(Path.Combine("C:/base", "TaskbarFolders", "icons", "g1-abcdef12.ico"));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("abc")]
+    [InlineData("abcdef123")]
+    [InlineData("ghijklmn")]
+    [InlineData("../../xx")]
+    public void GetGroupIconFile_RejectsAnythingButEightHexDigits(string version)
+    {
+        var sut = new AppDataPathProvider("C:/base");
+
+        var act = () => sut.GetGroupIconFile("g1", version);
+
+        act.Should().Throw<System.ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData("g1.ico", true)]
+    [InlineData("g1-abcdef12.ico", true)]
+    [InlineData("G1-ABCDEF12.ICO", true)]
+    [InlineData(@"C:\base\TaskbarFolders\icons\g1-00000000.ico", true)]
+    [InlineData("g1-x-abcdef12.ico", false)]
+    [InlineData("g1-notes.ico", false)]
+    [InlineData("g1-abcdef12.png", false)]
+    [InlineData("g10.ico", false)]
+    [InlineData("g1-abcdef123.ico", false)]
+    public void IsGroupIconFile_MatchesOnlyTheGroupsOwnIcons(string path, bool expected)
+    {
+        new AppDataPathProvider("C:/base").IsGroupIconFile("g1", path).Should().Be(expected);
+    }
 }

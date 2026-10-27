@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Extensions.Logging;
 using TaskbarFolders.Core.Icons;
@@ -104,7 +106,9 @@ public sealed class GroupSyncService : IGroupSyncService
 
         var composite = _composer.GenerateComposite(icons);
 
-        var iconPath = _paths.GetGroupIconFile(config.Id);
+        // A new file name for every new image: Windows caches a shortcut's icon by path, so a
+        // file rewritten in place kept showing the old apps on the pinned tile.
+        var iconPath = _paths.GetGroupIconFile(config.Id, IconVersion(composite));
         await _icoWriter.WriteAsync(composite, iconPath, cancellationToken).ConfigureAwait(false);
 
         _shortcutGenerator.Generate(new GroupShortcutRequest(
@@ -118,6 +122,12 @@ public sealed class GroupSyncService : IGroupSyncService
         // RequestPinCurrentAppAsync can persist the pin. The pin API silently fails to
         // anchor a pinned tile when no Start Menu entry with the matching AUMID exists.
         WriteStartMenuShortcut(config, launcher, iconPath);
+
+        // The taskbar's pinned copy is Windows' own file and keeps the icon path it was
+        // pinned with; point it at the new file too, then drop the old versions — in that
+        // order, so the pin never refers to a file that is gone.
+        RepointPinnedCopies(config.Id, iconPath);
+        DeleteGroupIcons(config.Id, keepPath: iconPath);
     }
 
     /// <inheritdoc/>
@@ -126,7 +136,7 @@ public sealed class GroupSyncService : IGroupSyncService
         ArgumentException.ThrowIfNullOrWhiteSpace(groupId);
         ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
 
-        TryDelete(_paths.GetGroupIconFile(groupId));
+        DeleteGroupIcons(groupId, keepPath: null);
         TryDelete(_paths.GetGroupShortcutFile(groupId));
         TryDelete(_paths.GetStartMenuShortcutFile(SanitizeForFilename(displayName, fallback: groupId)));
 
@@ -193,12 +203,12 @@ public sealed class GroupSyncService : IGroupSyncService
             return false;
         }
 
-        var iconPath = _paths.GetGroupIconFile(config.Id);
-        if (!File.Exists(iconPath))
+        var iconPath = FindCurrentGroupIcon(config.Id);
+        if (iconPath is null)
         {
             _logger?.LogDebug(
-                "EnsureStartMenuShortcut: per-group icon {Path} missing — group needs full Sync first.",
-                iconPath);
+                "EnsureStartMenuShortcut: no icon for {GroupId} yet — group needs full Sync first.",
+                config.Id);
             return false;
         }
 
@@ -345,20 +355,84 @@ public sealed class GroupSyncService : IGroupSyncService
         }
     }
 
-    private List<string> EnumerateStartMenuAnchors()
+    private List<string> EnumerateStartMenuAnchors() => EnumerateFiles(_paths.StartMenuDirectory, "*.lnk");
+
+    private List<string> EnumerateFiles(string directory, string pattern)
     {
         // Materialised so callers can delete while iterating.
         try
         {
-            return Directory.Exists(_paths.StartMenuDirectory)
-                ? Directory.EnumerateFiles(_paths.StartMenuDirectory, "*.lnk").ToList()
+            return Directory.Exists(directory)
+                ? Directory.EnumerateFiles(directory, pattern).ToList()
                 : [];
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _logger?.LogWarning(ex, "Could not enumerate {Directory}.", _paths.StartMenuDirectory);
+            _logger?.LogWarning(ex, "Could not enumerate {Directory}.", directory);
             return [];
         }
+    }
+
+    /// <summary>
+    /// Points every pinned copy carrying the group's AUMID at <paramref name="iconPath"/> and
+    /// tells the shell it changed. Only the icon location of our own pins is touched; nothing
+    /// in the pinned folder is created or deleted.
+    /// </summary>
+    private void RepointPinnedCopies(string groupId, string iconPath)
+    {
+        var aumid = GroupAumid.For(groupId);
+        foreach (var pinned in EnumerateFiles(_paths.PinnedTaskbarDirectory, "*.lnk"))
+        {
+            if (!string.Equals(_shortcutReader.TryReadAumid(pinned), aumid, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (_shortcutGenerator.TryUpdateIcon(pinned, iconPath))
+            {
+                _shellChangeNotifier.NotifyUpdate(pinned);
+            }
+        }
+    }
+
+    /// <summary>Deletes the group's icon files — legacy and versioned — except <paramref name="keepPath"/>.</summary>
+    private void DeleteGroupIcons(string groupId, string? keepPath)
+    {
+        var keep = keepPath is null ? null : Path.GetFullPath(keepPath);
+        foreach (var icon in EnumerateFiles(_paths.IconsDirectory, "*.ico"))
+        {
+            if (_paths.IsGroupIconFile(groupId, icon) &&
+                !string.Equals(Path.GetFullPath(icon), keep, StringComparison.OrdinalIgnoreCase))
+            {
+                TryDelete(icon);
+            }
+        }
+    }
+
+    /// <summary>The group's most recently written icon file, or <see langword="null"/> if it has none.</summary>
+    private string? FindCurrentGroupIcon(string groupId) =>
+        EnumerateFiles(_paths.IconsDirectory, "*.ico")
+            .Where(icon => _paths.IsGroupIconFile(groupId, icon))
+            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .FirstOrDefault();
+
+    /// <summary>
+    /// Eight hex digits derived from the image's pixels: the same image keeps its file name,
+    /// a different one gets a new name.
+    /// </summary>
+    internal static string IconVersion(BitmapSource image)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+
+        BitmapSource pixels = image.Format == PixelFormats.Pbgra32
+            ? image
+            : new FormatConvertedBitmap(image, PixelFormats.Pbgra32, null, 0);
+        var stride = pixels.PixelWidth * 4;
+        var buffer = new byte[stride * pixels.PixelHeight];
+        pixels.CopyPixels(buffer, stride, 0);
+
+        var hash = SHA256.HashData(buffer);
+        return Convert.ToHexString(hash, 0, 4).ToLowerInvariant();
     }
 
     private bool TryDelete(string path)

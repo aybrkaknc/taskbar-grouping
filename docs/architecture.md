@@ -85,8 +85,9 @@ The anchor's file name follows the group's display name, but its identity is the
 2. Adding apps triggers a sync. Sync **returns early for an empty group** — no apps means no icon and no shortcut, and therefore nothing to pin.
 3. Icons for the first four apps are extracted at 128 px through the icon cache. `.lnk` inputs are resolved to their targets first.
 4. Those icons are composed into one image: one centred, two side by side, three in an iOS-style arrangement, four as a 2×2 grid.
-5. The composite is written as a multi-resolution PNG-in-ICO container (16/32/48/256 px) to `icons/<id>.ico`, again atomically.
+5. The composite is written as a multi-resolution PNG-in-ICO container (16/32/48/256 px) to `icons/<id>-<v>.ico`, again atomically. `<v>` is eight hex digits of a hash over the image: Windows caches a shortcut's icon by path, so a changed image needs a new file name or the pinned tile keeps the old one ([ADR-006](adr/006-versioned-group-icons.md)).
 6. The `.lnk` is generated with the AUMID and icon reference described above, and the Start menu anchor is written and announced.
+7. The taskbar's pinned copies of the group (the `.lnk` files in `User Pinned\TaskBar` carrying its AUMID) get their icon location — only that — pointed at the new file, with `SHCNE_UPDATEITEM`. Then the group's older icon files are deleted.
 
 If every icon extraction fails, sync stops before writing a shortcut rather than producing a group tile with no icon.
 

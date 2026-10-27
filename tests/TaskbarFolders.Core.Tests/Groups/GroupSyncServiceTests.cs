@@ -105,6 +105,23 @@ public sealed class GroupSyncServiceTests : IDisposable
         return path;
     }
 
+    /// <summary>The versioned icon path sync writes for the composer stub's image.</summary>
+    private string VersionedIconFor(string groupId) =>
+        _paths.GetGroupIconFile(groupId, GroupSyncService.IconVersion(StubIcon()));
+
+    /// <summary>A placeholder pinned copy in the redirected pinned folder, with the reader set up like <see cref="StampAnchor"/>.</summary>
+    private string StampPinned(string fileStem, string? groupId)
+    {
+        Directory.CreateDirectory(_paths.PinnedTaskbarDirectory);
+        var path = Path.Combine(_paths.PinnedTaskbarDirectory, fileStem + ".lnk");
+        File.WriteAllBytes(path, [0]);
+        _shortcutReader
+            .Setup(r => r.TryReadAumid(It.Is<string>(p =>
+                string.Equals(Path.GetFullPath(p), Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase))))
+            .Returns(groupId is null ? null : GroupAumid.For(groupId));
+        return path;
+    }
+
     private GroupConfig SyncableGroup(string id, string name)
     {
         _extractor.Setup(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>())).Returns(StubIcon());
@@ -182,16 +199,17 @@ public sealed class GroupSyncServiceTests : IDisposable
 
         await sut.SyncAsync(config);
 
+        var iconPath = VersionedIconFor("g");
         _icoWriter.Verify(w => w.WriteAsync(
             It.IsAny<BitmapSource>(),
-            _paths.GetGroupIconFile("g"),
+            iconPath,
             It.IsAny<CancellationToken>()), Times.Once);
 
         _shortcutGenerator.Verify(g => g.Generate(It.Is<GroupShortcutRequest>(r =>
             r.GroupId == "g" &&
             r.DisplayName == "Tools" &&
             r.TargetExePath == "C:/install/Launcher.exe" &&
-            r.IconPath == _paths.GetGroupIconFile("g") &&
+            r.IconPath == iconPath &&
             r.ShortcutPath == _paths.GetGroupShortcutFile("g"))), Times.Once);
 
         // v0.4.1: also writes Start Menu anchor required by TaskbarManager.RequestPinCurrentAppAsync.
@@ -477,6 +495,105 @@ public sealed class GroupSyncServiceTests : IDisposable
         Directory.EnumerateFiles(_paths.StartMenuDirectory, "*.lnk")
             .Select(Path.GetFileName)
             .Should().BeEquivalentTo("Unrelated.lnk");
+    }
+
+    [Fact]
+    public async Task SyncAsync_DeletesOlderIconsOfTheGroup_ButNoOtherFiles()
+    {
+        // Windows caches a shortcut's icon by path, so each image gets its own file; the
+        // superseded ones — including the pre-versioning "<id>.ico" — have to go.
+        Directory.CreateDirectory(_paths.IconsDirectory);
+        var legacy = _paths.GetGroupIconFile("g");
+        var older = _paths.GetGroupIconFile("g", "00000000");
+        var otherGroup = _paths.GetGroupIconFile("g-x", "11111111");
+        var notAVersion = Path.Combine(_paths.IconsDirectory, "g-notes.ico");
+        foreach (var file in new[] { legacy, older, otherGroup, notAVersion })
+        {
+            File.WriteAllBytes(file, [0]);
+        }
+
+        var sut = CreateSut();
+        await sut.SyncAsync(SyncableGroup("g", "Tools"));
+
+        File.Exists(legacy).Should().BeFalse();
+        File.Exists(older).Should().BeFalse();
+        File.Exists(otherGroup).Should().BeTrue("\"g-x\" is a different group whose id starts with \"g-\"");
+        File.Exists(notAVersion).Should().BeTrue("only <id>.ico and <id>-<8 hex>.ico belong to the group");
+    }
+
+    [Fact]
+    public async Task SyncAsync_PointsThisGroupsPinnedCopiesAtTheNewIcon_AndOnlyThose()
+    {
+        var mine = StampPinned("mine", "g");
+        var otherGroup = StampPinned("other", "h");
+        var foreign = StampPinned("someone else", groupId: null);
+        _shortcutGenerator.Setup(g => g.TryUpdateIcon(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
+        var sut = CreateSut();
+
+        await sut.SyncAsync(SyncableGroup("g", "Tools"));
+
+        var iconPath = VersionedIconFor("g");
+        _shortcutGenerator.Verify(g => g.TryUpdateIcon(mine, iconPath), Times.Once);
+        _shortcutGenerator.Verify(g => g.TryUpdateIcon(otherGroup, It.IsAny<string>()), Times.Never);
+        _shortcutGenerator.Verify(g => g.TryUpdateIcon(foreign, It.IsAny<string>()), Times.Never);
+        _shellChangeNotifier.Verify(n => n.NotifyUpdate(mine), Times.Once);
+        File.Exists(otherGroup).Should().BeTrue();
+        File.Exists(foreign).Should().BeTrue("nothing in the pinned folder is ever deleted");
+    }
+
+    [Fact]
+    public async Task SyncAsync_DoesNotNotify_WhenAPinnedCopyCouldNotBeUpdated()
+    {
+        var mine = StampPinned("mine", "g");
+        _shortcutGenerator.Setup(g => g.TryUpdateIcon(It.IsAny<string>(), It.IsAny<string>())).Returns(false);
+        var sut = CreateSut();
+
+        await sut.SyncAsync(SyncableGroup("g", "Tools"));
+
+        _shellChangeNotifier.Verify(n => n.NotifyUpdate(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public void IconVersion_FollowsTheImage()
+    {
+        var first = GroupSyncService.IconVersion(StubIcon());
+        var again = GroupSyncService.IconVersion(StubIcon());
+        var different = GroupSyncService.IconVersion(new FormatConvertedBitmap(StubIcon(), System.Windows.Media.PixelFormats.Gray8, null, 0));
+
+        first.Should().MatchRegex("^[0-9a-f]{8}$");
+        again.Should().Be(first, "the same image keeps its file name, so an unchanged group causes no churn");
+        different.Should().NotBe(first);
+    }
+
+    [Fact]
+    public void EnsureStartMenuShortcut_UsesTheNewestIconVersion()
+    {
+        Directory.CreateDirectory(_paths.IconsDirectory);
+        var old = _paths.GetGroupIconFile("g", "00000000");
+        var current = _paths.GetGroupIconFile("g", "abcdef12");
+        File.WriteAllBytes(old, [0]);
+        File.SetLastWriteTimeUtc(old, DateTime.UtcNow.AddMinutes(-5));
+        File.WriteAllBytes(current, [0]);
+
+        var sut = CreateSut();
+        sut.EnsureStartMenuShortcut(new GroupConfig { Id = "g", GroupName = "Tools" }).Should().BeTrue();
+
+        _shortcutGenerator.Verify(g => g.Generate(It.Is<GroupShortcutRequest>(r => r.IconPath == current)), Times.Once);
+    }
+
+    [Fact]
+    public void RemoveArtifacts_DeletesEveryIconVersionOfTheGroup()
+    {
+        Directory.CreateDirectory(_paths.IconsDirectory);
+        var a = _paths.GetGroupIconFile("g", "00000000");
+        var b = _paths.GetGroupIconFile("g", "abcdef12");
+        File.WriteAllBytes(a, [0]);
+        File.WriteAllBytes(b, [0]);
+
+        CreateSut().RemoveArtifacts("g", "Tools");
+
+        File.Exists(a).Should().BeFalse();
+        File.Exists(b).Should().BeFalse();
     }
 
     [Fact]
