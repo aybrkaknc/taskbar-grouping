@@ -71,7 +71,15 @@ internal sealed class FileLogger : ILogger
 
         lock (_writeLock)
         {
-            File.AppendAllText(file, line);
+            try
+            {
+                File.AppendAllText(file, line);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Logging must never take the caller down. The folder is gone after an
+                // uninstall, and the line is dropped rather than the folder re-created.
+            }
         }
     }
 }

@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Logging can no longer fail the caller.** A log line whose folder had been deleted threw from the file logger; the Manager's shutdown then reported an error. Such lines are now dropped, and the folder is not re-created.
 - **A damaged group file no longer stops the Manager from starting.** One `groups\*.json` that was not valid JSON — a hand edit with a stray backslash is enough — threw out of loading the group list and crashed the Manager on every start. That file is now skipped and stays on disk to be repaired; the other groups load.
 - **Clicking a group's tile again closes its popup.** The click used to close the popup and then open a fresh one, because the press on the tile counts as a click outside the popup and the shell starts a new launcher for it. A popup closed by a press on the tile that opened it now leaves a short-lived per-group marker, and the launcher started by that click finds it and shows nothing.
 - **Adding an app in the Manager no longer closes it.** Closing the file picker re-activates the Manager, which re-reads the groups from disk; that re-read could land while the add was still saving, see the file from before the save, replace the group being edited and leave the editor with nothing bound — and the add then crashed the Manager on its next step, with the app already saved. The re-read now stands down while the editor is saving, and an add or remove finishes for the group it started on.
