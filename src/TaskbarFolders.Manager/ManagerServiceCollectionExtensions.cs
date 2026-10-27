@@ -42,6 +42,7 @@ public static class ManagerServiceCollectionExtensions
         services.AddSingleton<IAutoStartService, RegistryAutoStartService>();
         services.AddSingleton<IRegistryWriter, CurrentUserRegistryWriter>();
         services.AddSingleton<ExplorerContextMenuService>();
+        services.AddSingleton<IShellIntegrationRemover, ShellIntegrationRemover>();
         services.AddSingleton<ISystemThemeProbe, RegistrySystemThemeProbe>();
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IShortcutGenerator, ShortcutGenerator>();

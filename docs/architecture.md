@@ -97,6 +97,8 @@ Files can also reach a group on the launcher's command line — `--group-id <id>
 
 Explorer's *Taskbar Groups* menu ([ADR-007](adr/007-explorer-menu-registry-verbs.md)) is a set of per-user static verbs under `HKCU\Software\Classes\{exefile,lnkfile}\shell\TaskbarFolders.Groups`, one entry per group, each running the launcher with `--group-id <id> "%1"`. `ExplorerContextMenuService` in the Manager deletes and rewrites the whole submenu on startup, whenever the group list changes (`MainWindowViewModel.GroupListChanged`) and when settings are saved; the *Show "Taskbar Groups"* setting removes it.
 
+Everything the app registers outside its folder — that menu, the Run entry, the per-group shortcuts, icons and Start menu anchors — is undone in one place, `ShellIntegrationRemover`, reached from *Settings → Remove from this PC…* and from `TaskbarFolders.Manager.exe --remove-integration`, which the portable ZIP's `Uninstall.cmd` runs. It switches the menu and autostart settings off first so the next Manager start does not recreate them, keeps the group configs, and leaves pinned tiles alone.
+
 The Manager keeps every group in memory, so it re-reads the store whenever its window is activated and rebuilds the list — reselecting the previous group by id — only if some group differs from the copy in memory. Without that, a change made outside the Manager while it was open would be overwritten by its next save of the same group. The re-read is skipped while the editor is saving an add or remove (`GroupEditorViewModel.IsSaving`), checked before and after reading: then memory is ahead of the disk, and closing the add-apps picker activates the window exactly then.
 
 ### Pinning

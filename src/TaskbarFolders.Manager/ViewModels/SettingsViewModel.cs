@@ -20,6 +20,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly IAppSettingsStore _store;
     private readonly IAutoStartService _autoStartService;
     private readonly IThemeService _themeService;
+    private readonly IShellIntegrationRemover _remover;
+    private readonly IUserConfirmation _confirmation;
     private readonly ILogger<SettingsViewModel>? _logger;
 
     private bool _suppressDirtyTracking;
@@ -29,15 +31,21 @@ public sealed partial class SettingsViewModel : ObservableObject
         IAppSettingsStore store,
         IAutoStartService autoStart,
         IThemeService themeService,
+        IShellIntegrationRemover remover,
+        IUserConfirmation confirmation,
         ILogger<SettingsViewModel>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(autoStart);
         ArgumentNullException.ThrowIfNull(themeService);
+        ArgumentNullException.ThrowIfNull(remover);
+        ArgumentNullException.ThrowIfNull(confirmation);
 
         _store = store;
         _autoStartService = autoStart;
         _themeService = themeService;
+        _remover = remover;
+        _confirmation = confirmation;
         _logger = logger;
     }
 
@@ -59,6 +67,12 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>Raised after the settings have been written.</summary>
     public event EventHandler? Saved;
+
+    /// <summary>
+    /// Raised after <see cref="RemoveFromThisPcCommand"/> has run. The Manager closes then:
+    /// staying open, it would write the Start menu entries straight back on the next sync.
+    /// </summary>
+    public event EventHandler? RemovedFromThisPc;
 
     /// <summary>Whether any property has been mutated since the last load or save.</summary>
     [ObservableProperty]
@@ -117,6 +131,30 @@ public sealed partial class SettingsViewModel : ObservableObject
             Theme, AutoStart, EnableAnimations, PopupPosition);
         Saved?.Invoke(this, EventArgs.Empty);
     }
+
+    [RelayCommand]
+    private async Task RemoveFromThisPcAsync()
+    {
+        if (!_confirmation.Confirm(
+                "Remove from this PC",
+                "This removes the \"Taskbar Groups\" menu, the start-with-Windows entry, and every group's " +
+                "shortcuts, icons and Start menu entries, then closes the Manager. Your groups are kept. " +
+                "Pinned taskbar tiles stay until you unpin them.\n\nContinue?"))
+        {
+            return;
+        }
+
+        var complete = await _remover.RemoveAsync().ConfigureAwait(true);
+        _confirmation.Notify("Remove from this PC", RemovalResultMessage(complete));
+        RemovedFromThisPc?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>What to tell the user after a removal, from the Settings button or the command line.</summary>
+    /// <param name="complete">Result of <see cref="IShellIntegrationRemover.RemoveAsync"/>.</param>
+    public static string RemovalResultMessage(bool complete) => complete
+        ? "Done. Unpin the group tiles from the taskbar, then the TaskbarFolders folder can be deleted."
+        : "Some entries could not be removed; see %APPDATA%\\TaskbarFolders\\logs for details. " +
+          "Unpin the group tiles from the taskbar before deleting the folder.";
 
     partial void OnThemeChanged(ThemePreference value) => MarkDirty();
     partial void OnAutoStartChanged(bool value) => MarkDirty();

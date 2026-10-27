@@ -30,7 +30,48 @@ public class SettingsViewModelTests
 
         themeMock = new Mock<IThemeService>();
 
-        return new SettingsViewModel(storeMock.Object, autoMock.Object, themeMock.Object);
+        return new SettingsViewModel(
+            storeMock.Object, autoMock.Object, themeMock.Object, Mock.Of<IShellIntegrationRemover>(), Mock.Of<IUserConfirmation>());
+    }
+
+    private static SettingsViewModel CreateRemovalSut(bool confirm, bool complete, out Mock<IShellIntegrationRemover> remover, out Mock<IUserConfirmation> confirmation)
+    {
+        remover = new Mock<IShellIntegrationRemover>();
+        remover.Setup(r => r.RemoveAsync(It.IsAny<CancellationToken>())).ReturnsAsync(complete);
+        confirmation = new Mock<IUserConfirmation>();
+        confirmation.Setup(c => c.Confirm(It.IsAny<string>(), It.IsAny<string>())).Returns(confirm);
+
+        return new SettingsViewModel(
+            Mock.Of<IAppSettingsStore>(), Mock.Of<IAutoStartService>(), Mock.Of<IThemeService>(), remover.Object, confirmation.Object);
+    }
+
+    [Fact]
+    public async Task RemoveFromThisPc_DoesNothing_WhenTheUserCancels()
+    {
+        var sut = CreateRemovalSut(confirm: false, complete: true, out var remover, out _);
+        var closed = false;
+        sut.RemovedFromThisPc += (_, _) => closed = true;
+
+        await sut.RemoveFromThisPcCommand.ExecuteAsync(null);
+
+        remover.Verify(r => r.RemoveAsync(It.IsAny<CancellationToken>()), Times.Never);
+        closed.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData(true, "Done.")]
+    [InlineData(false, "could not be removed")]
+    public async Task RemoveFromThisPc_RemovesReportsAndClosesTheManager(bool complete, string expectedText)
+    {
+        var sut = CreateRemovalSut(confirm: true, complete, out var remover, out var confirmation);
+        var closed = false;
+        sut.RemovedFromThisPc += (_, _) => closed = true;
+
+        await sut.RemoveFromThisPcCommand.ExecuteAsync(null);
+
+        remover.Verify(r => r.RemoveAsync(It.IsAny<CancellationToken>()), Times.Once);
+        confirmation.Verify(c => c.Notify(It.IsAny<string>(), It.Is<string>(m => m.Contains(expectedText))), Times.Once);
+        closed.Should().BeTrue("left open, the Manager would write the Start menu entries back on the next sync");
     }
 
     [Fact]

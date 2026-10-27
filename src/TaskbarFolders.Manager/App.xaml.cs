@@ -19,6 +19,12 @@ namespace TaskbarFolders.Manager;
 /// </summary>
 public partial class App : Application
 {
+    /// <summary>
+    /// Command-line switch that runs <see cref="IShellIntegrationRemover"/> and exits: 0 when
+    /// everything was removed, 1 when something was left.
+    /// </summary>
+    public const string RemoveIntegrationArgument = "--remove-integration";
+
     private readonly IHost _host;
 
     /// <summary>
@@ -58,6 +64,16 @@ public partial class App : Application
 
         await _host.StartAsync().ConfigureAwait(true);
 
+        // Run by Uninstall.cmd in the portable ZIP: clean up and leave without a main window.
+        if (e.Args.Any(a => string.Equals(a, RemoveIntegrationArgument, StringComparison.OrdinalIgnoreCase)))
+        {
+            var complete = await _host.Services.GetRequiredService<IShellIntegrationRemover>().RemoveAsync().ConfigureAwait(true);
+            _host.Services.GetRequiredService<IUserConfirmation>()
+                .Notify("Remove from this PC", SettingsViewModel.RemovalResultMessage(complete));
+            Shutdown(complete ? 0 : 1);
+            return;
+        }
+
         // Apply the persisted theme before any window is built so DynamicResource
         // bindings paint with the correct brushes on first render.
         var settingsStore = _host.Services.GetRequiredService<IAppSettingsStore>();
@@ -94,7 +110,9 @@ public partial class App : Application
         var explorerMenu = _host.Services.GetRequiredService<ExplorerContextMenuService>();
         await explorerMenu.RefreshAsync().ConfigureAwait(true);
         viewModel.GroupListChanged += async (_, _) => await explorerMenu.RefreshAsync().ConfigureAwait(true);
-        _host.Services.GetRequiredService<SettingsViewModel>().Saved += async (_, _) => await explorerMenu.RefreshAsync().ConfigureAwait(true);
+        var settingsViewModel = _host.Services.GetRequiredService<SettingsViewModel>();
+        settingsViewModel.Saved += async (_, _) => await explorerMenu.RefreshAsync().ConfigureAwait(true);
+        settingsViewModel.RemovedFromThisPc += (_, _) => Shutdown();
 
         // Deferred startup IO: prune stale icon-cache PNGs and old log files in the background
         // so the first paint of MainWindow is not blocked by ~10-70 ms of enumerate-and-delete.

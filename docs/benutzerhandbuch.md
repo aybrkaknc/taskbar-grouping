@@ -190,6 +190,8 @@ Zu erreichen über den **⚙**-Knopf oben rechts.
 
 Der Autostart-Haken zeigt den tatsächlichen Zustand in der Windows-Registrierung. Wenn Sie den Eintrag von Hand entfernen, erscheint der Haken beim nächsten Öffnen ausgeschaltet.
 
+**Remove from this PC…** ganz unten ist für das Löschen einer portablen Fassung gedacht: Nach einer Rückfrage entfernt es alles, was TaskbarFolders außerhalb seines Ordners eingetragen hat (Explorer-Menü, Autostart-Eintrag, Verknüpfungen, Symbole und Startmenü-Einträge der Gruppen), schaltet Menü und Autostart in den Einstellungen aus und schließt den Manager. Ihre Gruppen bleiben in `%APPDATA%\TaskbarFolders\groups`, angeheftete Kacheln bleiben auf der Taskleiste, bis Sie sie lösen. Rückgängig machen: Manager öffnen, die Einstellungen wieder einschalten und in jeder Gruppe etwas ändern, damit ihre Verknüpfungen neu geschrieben werden.
+
 ### Spaltenanzahl des Aufklapp-Fensters
 
 Jede Gruppe hat einen Wert zwischen 1 und 6 für die Breite des Rasters, standardmäßig 3. Dafür gibt es noch keine Bedienoberfläche — Sie können ihn in der Konfigurationsdatei der Gruppe ändern (siehe nächster Abschnitt), Feld `columns`. Schließen Sie den Manager vorher.
@@ -241,7 +243,7 @@ Keine Fehler, sondern bewusste oder noch offene Grenzen:
 
 **Installierte Fassung:** *Einstellungen → Apps → Installierte Apps → TaskbarFolders → Deinstallieren*. Das entfernt das Programm und den Autostart-Eintrag.
 
-**Portable Fassung:** In den Einstellungen *Show "Taskbar Groups" in Explorer's right-click menu* ausschalten, dann den entpackten Ordner löschen; sonst bleibt der Menüeintrag zurück und zeigt auf ein fehlendes Programm.
+**Portable Fassung:** Vor dem Löschen des entpackten Ordners `Uninstall.cmd` darin ausführen oder in den Einstellungen **Remove from this PC…** anklicken. Beides entfernt den Explorer-Menüeintrag, den Autostart-Eintrag sowie Verknüpfungen, Symbole und Startmenü-Einträge aller Gruppen und schließt den Manager. Die Gruppenkacheln lösen Sie selbst von der Taskleiste, danach können Sie den Ordner löschen. Ohne diesen Schritt bleibt der Menüeintrag zurück und zeigt auf ein fehlendes Programm.
 
 Ihre Gruppen bleiben in beiden Fällen erhalten. Wenn Sie wirklich alles entfernen möchten:
 

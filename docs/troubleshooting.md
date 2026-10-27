@@ -127,7 +127,8 @@ On an affected build, avoid clicking Save unless you intend to set every value i
 Current, deliberate or not-yet-implemented — not bugs to report:
 
 - **The popup has almost no keyboard support.** Escape leaves edit mode or closes the popup, but no item is focused on open and the arrow keys do nothing.
-- **The "Taskbar Groups" menu is classic-menu only on Windows 11** (*Show more options*), and a group renamed while the Manager is closed keeps its old name there until the Manager starts.
+- **The "Taskbar Groups" menu is classic-menu only on Windows 11** (*Show more options*). The Manager rewrites it whenever a group is created, renamed or deleted; only a group file edited by hand while the Manager is closed shows its old name there until the Manager next starts.
+- **A deleted portable folder leaves its menu entry behind** unless `Uninstall.cmd` or *Settings → Remove from this PC…* ran first. To clean up afterwards, extract the portable ZIP again and run its `Uninstall.cmd`.
 - **On Windows 11 22H2+ the glass panel does not fade when the popup closes.** DWM draws it and does not animate this window's hide, so only the icons fade.
 - **A group with more apps than the popup can show loses the rest.** The popup stops at 800 DIP, which is eight rows — 24 apps at the default three columns — and the grid does not scroll. Anything past that is off-screen with nothing indicating it exists; a visible launch-failure strip costs a further row.
 - **The blurred popup background needs Windows 11 22H2 or later.** Older versions get a plain translucent panel. With Windows' *Transparency effects* turned off, the background is a solid colour instead of glass.

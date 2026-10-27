@@ -135,6 +135,8 @@ Settings apply when you click **Save**. Closing the dialog discards changes; an 
 
 The autostart checkbox reflects the registry, not the settings file — if you remove the Run entry by hand, the dialog shows it as off.
 
+**Remove from this PC…**, at the bottom, is for deleting a portable copy: after a confirmation it removes everything TaskbarFolders registered outside its folder (Explorer menu, start-with-Windows entry, the groups' shortcuts, icons and Start menu entries), switches the menu and autostart settings off, and closes the Manager. Your groups stay in `%APPDATA%\TaskbarFolders\groups`, and pinned tiles stay on the taskbar until you unpin them. To undo it, open the Manager, turn the settings back on, and change something in each group so its shortcuts are written again.
+
 The theme covers the whole interface, including the Settings dialog, the standard controls and the window title bar. Switching it takes effect immediately; there is no restart.
 
 ### Popup grid width
@@ -162,7 +164,7 @@ The file name is what identifies a group. Renaming `groups\abc.json` renames the
 
 **Installer:** *Settings → Apps → Installed apps → TaskbarFolders → Uninstall*, or *Add or Remove Programs*. This removes the program and the autostart entry.
 
-**Portable:** turn off *Show "Taskbar Groups" in Explorer's right-click menu* in Settings, then delete the extracted folder; otherwise the menu entry stays behind, pointing at a missing program.
+**Portable:** before deleting the extracted folder, run `Uninstall.cmd` in it, or click **Remove from this PC…** in Settings. Either removes the Explorer menu entry, the start-with-Windows entry, and every group's shortcuts, icons and Start menu entries, then closes the Manager. Unpin the group tiles from the taskbar yourself, then delete the folder. Without this step the menu entry stays behind, pointing at a missing program.
 
 Neither removes your groups. To clear everything:
 

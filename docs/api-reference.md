@@ -227,6 +227,12 @@ void Write(IReadOnlyList<GroupConfig> groups, string? launcherPath);
 
 Keeps Explorer's *Taskbar Groups* menu in step with the groups and the `AppSettings.ShowInExplorerMenu` setting. `RefreshAsync` reads both stores and the launcher path, logs and swallows registry failures. `Write` deletes the submenu for both file classes and writes it again, or leaves it deleted for no groups or no launcher. Registry access goes through `IRegistryWriter` (`DeleteTree`, `SetString` on HKCU; `CurrentUserRegistryWriter` in production). `MainWindowViewModel.GroupListChanged` and `SettingsViewModel.Saved` trigger it.
 
+#### [`IShellIntegrationRemover`](../src/TaskbarFolders.Manager/Services/IShellIntegrationRemover.cs)
+
+`Task<bool> RemoveAsync(CancellationToken)` — "Remove from this PC". Switches `ShowInExplorerMenu` and `AutoStart` off in the settings first, then disables the Run entry, deletes the Explorer menu (`ExplorerContextMenuService.Write([], null)`), calls `IGroupSyncService.RemoveArtifacts` for every group and deletes the Start menu folder if it is empty. Each step runs even if an earlier one failed; the result is `false` if any did. Group configs and pinned taskbar tiles are never touched. Default implementation `ShellIntegrationRemover`.
+
+Callers: `SettingsViewModel.RemoveFromThisPcCommand` (confirms, reports with `SettingsViewModel.RemovalResultMessage(bool)`, then raises `RemovedFromThisPc`, on which `App` shuts the Manager down) and `TaskbarFolders.Manager.exe --remove-integration` (`App.RemoveIntegrationArgument`; no main window, exit code 0 when complete, 1 otherwise), which the portable ZIP's `Uninstall.cmd` runs.
+
 #### [`LauncherPathResolver`](../src/TaskbarFolders.Manager/Services/LauncherPathResolver.cs)
 
 The Manager's `ILauncherPathResolver` (see Core). Probes side-by-side, sibling-folder and development layouts in that order, logging every probed path when none match.

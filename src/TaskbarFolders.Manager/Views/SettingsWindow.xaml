@@ -8,7 +8,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Settings"
-        Width="480" Height="420"
+        Width="480" Height="500"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
@@ -61,6 +61,16 @@
                 Auto-start writes a per-user entry to
                 HKCU\Software\Microsoft\Windows\CurrentVersion\Run — no administrator rights required.
             </TextBlock>
+
+            <Separator Margin="0,16,0,12" />
+            <TextBlock Text="Before deleting a portable copy" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <TextBlock Margin="0,0,0,8" Foreground="{DynamicResource ForegroundSubtle}" FontSize="11" TextWrapping="Wrap">
+                Removes the Explorer menu, the start-with-Windows entry and every group's shortcuts and
+                Start menu entries, then closes the Manager. Your groups are kept.
+            </TextBlock>
+            <Button Content="Remove from this PC…" HorizontalAlignment="Left" Padding="12,4"
+                    Command="{Binding RemoveFromThisPcCommand}" />
+
         </StackPanel>
     </DockPanel>
 </Window>
