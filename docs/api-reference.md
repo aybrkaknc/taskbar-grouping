@@ -238,6 +238,14 @@ string? TryResolve();
 
 The launcher executable a group's shortcuts target, or `null` when it cannot be found — sync then logs and skips the shortcut. Each executable supplies its own implementation (see the Manager section).
 
+#### [`GroupIconFiles`](../src/TaskbarFolders.Core/Groups/GroupIconFiles.cs)
+
+```csharp
+public static string? FindCurrent(IAppDataPathProvider paths, string groupId);
+```
+
+The group's newest generated `.ico` — the one sync last pointed its shortcuts at — or `null` when it has none or the folder cannot be read. Icon file names are versioned (ADR-006), so this is the only way to locate the current one.
+
 ### Interop
 
 `WindowBackdrop.TryApply(IntPtr hwnd, WindowBackdropKind kind)` requests a DWM system backdrop: `Mica` on the Manager window, `Acrylic` on the popup. A Manager failure is ignored and the window keeps solid brushes; a popup failure switches it to its fallback panel.
@@ -290,6 +298,7 @@ Task<PinResult> PinAsync(string groupId, CancellationToken cancellationToken = d
 | [`IThemeService`](../src/TaskbarFolders.Manager/Services/IThemeService.cs) | `Preference`, `EffectiveTheme`, `SetPreference()`; subscribes to system theme changes only while the preference is `System` |
 | [`IProcessRunner`](../src/TaskbarFolders.Manager/Services/IProcessRunner.cs) | `RunAndWaitAsync(ProcessStartInfo, TimeSpan, …)` returning the exit code; `TryStart(ProcessStartInfo)` without waiting |
 | [`IUserConfirmation`](../src/TaskbarFolders.Manager/Services/IUserConfirmation.cs) | `Confirm()` and `Notify()`, so view models stay free of `MessageBox` |
+| [`IGroupIconReader`](../src/TaskbarFolders.Manager/Services/IGroupIconReader.cs) | `TryRead(groupId)`: the group's current taskbar icon for the sidebar, decoded from `GroupIconFiles.FindCurrent` at 48 px; `null` before the group has one |
 
 ## TaskbarFolders.Launcher
 

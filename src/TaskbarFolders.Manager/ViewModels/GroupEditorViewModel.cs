@@ -83,6 +83,12 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         _logger = logger;
     }
 
+    /// <summary>
+    /// Raised after the editor has synced a group, which may have given it a new icon file.
+    /// The argument is the group synced, which need not be the one bound by then.
+    /// </summary>
+    public event EventHandler<GroupListItemViewModel>? GroupSynced;
+
     /// <summary>Apps currently bound to the editor — empty when no group is selected.</summary>
     public ObservableCollection<AppEntryViewModel> Apps { get; } = [];
 
@@ -254,6 +260,8 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         {
             _pendingSaves--;
         }
+
+        GroupSynced?.Invoke(this, item);
     }
 
     private async Task SaveAndSyncAsync(GroupListItemViewModel item)
@@ -271,6 +279,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         }
 
         item.NotifyAppCountChanged();
+        GroupSynced?.Invoke(this, item);
     }
 
     [RelayCommand]

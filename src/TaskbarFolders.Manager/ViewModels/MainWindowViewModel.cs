@@ -23,6 +23,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IGroupConfigStore _store;
     private readonly IGroupSyncService _syncService;
     private readonly IUserConfirmation _confirmation;
+    private readonly IGroupIconReader _iconReader;
     private readonly ILogger<MainWindowViewModel>? _logger;
 
     /// <summary>Initializes a new instance.</summary>
@@ -31,19 +32,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
         GroupEditorViewModel editor,
         IGroupSyncService syncService,
         IUserConfirmation confirmation,
+        IGroupIconReader iconReader,
         ILogger<MainWindowViewModel>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(editor);
         ArgumentNullException.ThrowIfNull(syncService);
         ArgumentNullException.ThrowIfNull(confirmation);
+        ArgumentNullException.ThrowIfNull(iconReader);
 
         _store = store;
         Editor = editor;
         _syncService = syncService;
         _confirmation = confirmation;
+        _iconReader = iconReader;
         _logger = logger;
+
+        Editor.GroupSynced += (_, item) => item.Icon = _iconReader.TryRead(item.Id);
     }
+
+    /// <summary>Name given to a group created by <see cref="NewGroupCommand"/>, before the user renames it.</summary>
+    public const string NewGroupBaseName = "New group";
+
+    /// <summary>
+    /// Asks the view to put the caret in the group name box with the name selected — after a
+    /// group is created, on F2, or from the list's context menu.
+    /// </summary>
+    public event EventHandler? RenameRequested;
 
     /// <summary>
     /// Raised after a group is created, renamed or deleted, or the list is reloaded from disk —
@@ -73,11 +88,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string _title = "TaskbarFolders Manager";
 
-    /// <summary>Pending name for <see cref="AddGroupCommand"/>; bound to the sidebar TextBox.</summary>
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(AddGroupCommand))]
-    private string _newGroupName = string.Empty;
-
     /// <summary>Currently highlighted sidebar entry, or <see langword="null"/> if none.</summary>
     [ObservableProperty]
     private GroupListItemViewModel? _selectedGroup;
@@ -96,7 +106,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         Groups.Clear();
         foreach (var config in configs.OrderBy(g => g.GroupName, StringComparer.CurrentCultureIgnoreCase))
         {
-            Groups.Add(new GroupListItemViewModel(config));
+            Groups.Add(new GroupListItemViewModel(config) { Icon = _iconReader.TryRead(config.Id) });
         }
 
         _logger?.LogInformation("Loaded {Count} group(s) from store.", Groups.Count);
@@ -178,28 +188,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
             pair.First.Name == pair.Second.Name &&
             pair.First.Arguments == pair.Second.Arguments);
 
-    // The pre-v0.4.4 command had no CanExecute: clicking "+ Add" with an empty name box
-    // hit a silent early-return and the button appeared dead. Disabling the button (and
-    // the Enter shortcut, which checks CanExecute) makes the empty-name state visible.
-    private bool CanAddGroup() => !string.IsNullOrWhiteSpace(NewGroupName);
-
-    [RelayCommand(CanExecute = nameof(CanAddGroup))]
-    private async Task AddGroupAsync()
+    /// <summary>
+    /// Creates a group under a placeholder name ("New group", or "New group 2" and so on when
+    /// that is taken), selects it and asks the view to start renaming it. Nothing has to be
+    /// typed first, so there is no disabled state to explain.
+    /// </summary>
+    [RelayCommand]
+    private async Task NewGroupAsync()
     {
-        // Defence in depth for any future caller that bypasses CanExecute.
-        var trimmed = NewGroupName?.Trim();
-        if (string.IsNullOrEmpty(trimmed))
-        {
-            return;
-        }
-
-        var config = new GroupConfig { GroupName = trimmed };
+        var config = new GroupConfig { GroupName = UnusedGroupName() };
         await _store.SaveAsync(config).ConfigureAwait(true);
 
         var item = new GroupListItemViewModel(config);
         InsertAlphabetically(item);
         SelectedGroup = item;
-        NewGroupName = string.Empty;
 
         // No apps yet → SyncAsync is a no-op. Still call it so the contract stays consistent
         // (any future addition that needs to fire on every save sees the event).
@@ -207,6 +209,40 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _logger?.LogInformation("Created group {Id} '{Name}'.", config.Id, config.GroupName);
         GroupListChanged?.Invoke(this, EventArgs.Empty);
+        RenameRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Selects <paramref name="group"/> (the selected group when <see langword="null"/>) and
+    /// asks the view to start renaming it.
+    /// </summary>
+    [RelayCommand]
+    private void BeginRename(GroupListItemViewModel? group)
+    {
+        group ??= SelectedGroup;
+        if (group is null)
+        {
+            return;
+        }
+
+        SelectedGroup = group;
+        RenameRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private string UnusedGroupName()
+    {
+        var taken = new HashSet<string>(Groups.Select(g => g.Name), StringComparer.CurrentCultureIgnoreCase);
+        if (!taken.Contains(NewGroupBaseName))
+        {
+            return NewGroupBaseName;
+        }
+
+        var n = 2;
+        while (taken.Contains($"{NewGroupBaseName} {n}"))
+        {
+            n++;
+        }
+        return $"{NewGroupBaseName} {n}";
     }
 
     [RelayCommand]

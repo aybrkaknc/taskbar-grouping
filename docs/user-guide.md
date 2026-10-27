@@ -27,10 +27,9 @@ Neither package needs a .NET runtime installed — both executables are self-con
 
 ## Creating a group
 
-1. Type a name into the box at the top of the sidebar.
-2. Click **+ Add**, or press Enter.
+Click **+ New group** at the top of the sidebar. A group called *New group* appears, selected, with its name highlighted at the top of the detail pane — type the name you want and press `Enter`. (A second one is called *New group 2*, and so on.)
 
-**+ Add** stays disabled until the box contains something other than blank space, and the box shows a *Group name…* watermark while empty. Groups are listed alphabetically, with the number of apps under each name.
+Groups are listed alphabetically. Each row shows the group's icon as it appears on the taskbar — a folder outline until the group has apps — and its number of apps on the right.
 
 ## Adding apps
 
@@ -118,7 +117,9 @@ Select a group to add or remove apps; every change is saved as you make it, and 
 
 To rename: select the group, edit the name at the top of the detail pane, and click **Rename** or press `Enter`. **Rename** stays greyed out until the name differs from the current one. The sidebar re-sorts, and the shortcut and Start menu entry follow the new name. A tile already pinned to the taskbar keeps working — it belongs to the group, not to its name.
 
-To delete: right-click the group in the sidebar → **Delete group** → confirm. This removes the configuration, the generated icon, the shortcut and the group's Start menu entry.
+Right-clicking a group in the sidebar offers **Rename** and **Delete group** for that group. With the list focused, `F2` renames and `Del` deletes the selected group.
+
+To delete: right-click the group → **Delete group** (or select it and press `Del`) → confirm. This removes the configuration, the generated icon, the shortcut and the group's Start menu entry.
 
 **Deleting a group does not remove its taskbar tile.** Right-click the tile and choose *Unpin from taskbar* yourself; the confirmation dialog reminds you.
 

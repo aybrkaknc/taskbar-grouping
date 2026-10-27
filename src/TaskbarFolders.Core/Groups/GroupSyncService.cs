@@ -202,7 +202,7 @@ public sealed class GroupSyncService : IGroupSyncService
             return false;
         }
 
-        var iconPath = FindCurrentGroupIcon(config.Id);
+        var iconPath = GroupIconFiles.FindCurrent(_paths, config.Id);
         if (iconPath is null)
         {
             _logger?.LogDebug(
@@ -406,13 +406,6 @@ public sealed class GroupSyncService : IGroupSyncService
             }
         }
     }
-
-    /// <summary>The group's most recently written icon file, or <see langword="null"/> if it has none.</summary>
-    private string? FindCurrentGroupIcon(string groupId) =>
-        EnumerateFiles(_paths.IconsDirectory, "*.ico")
-            .Where(icon => _paths.IsGroupIconFile(groupId, icon))
-            .OrderByDescending(File.GetLastWriteTimeUtc)
-            .FirstOrDefault();
 
     /// <summary>
     /// Eight hex digits derived from the image's pixels: the same image keeps its file name,

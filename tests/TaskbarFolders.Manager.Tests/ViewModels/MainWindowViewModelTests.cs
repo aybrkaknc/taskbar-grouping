@@ -49,7 +49,8 @@ public class MainWindowViewModelTests
     private static MainWindowViewModel CreateSut(
         Mock<IGroupConfigStore> store,
         bool alwaysConfirm,
-        IGroupSyncService? syncService = null)
+        IGroupSyncService? syncService = null,
+        IGroupIconReader? iconReader = null)
     {
         var confirmation = new Mock<IUserConfirmation>();
         confirmation.Setup(c => c.Confirm(It.IsAny<string>(), It.IsAny<string>())).Returns(alwaysConfirm);
@@ -57,7 +58,16 @@ public class MainWindowViewModelTests
             store.Object,
             CreateEditor(store.Object),
             syncService ?? Mock.Of<IGroupSyncService>(),
-            confirmation.Object);
+            confirmation.Object,
+            iconReader ?? Mock.Of<IGroupIconReader>());
+    }
+
+    private static System.Windows.Media.Imaging.BitmapSource StubIcon()
+    {
+        var bitmap = System.Windows.Media.Imaging.BitmapSource.Create(
+            1, 1, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, new byte[4], 4);
+        bitmap.Freeze();
+        return bitmap;
     }
 
     [Fact]
@@ -101,83 +111,117 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task AddGroupAsync_PersistsAndAppendsAlphabetically()
+    public async Task NewGroup_CreatesSelectsAndAsksForRename()
     {
         var store = CreateStoreWith(
             new GroupConfig { Id = "a", GroupName = "Apps" },
             new GroupConfig { Id = "z", GroupName = "Zed" });
         var sut = CreateSut(store);
         await sut.LoadGroupsAsync();
+        var renameRequests = 0;
+        sut.RenameRequested += (_, _) => renameRequests++;
 
-        sut.NewGroupName = "Misc";
-        await sut.AddGroupCommand.ExecuteAsync(null);
+        await sut.NewGroupCommand.ExecuteAsync(null);
 
-        store.Verify(s => s.SaveAsync(It.Is<GroupConfig>(c => c.GroupName == "Misc"), It.IsAny<CancellationToken>()), Times.Once);
-        sut.Groups.Select(g => g.Name).Should().Equal("Apps", "Misc", "Zed");
-        sut.NewGroupName.Should().BeEmpty("input is cleared after a successful add");
-        sut.SelectedGroup.Should().NotBeNull();
-        sut.SelectedGroup!.Name.Should().Be("Misc");
+        store.Verify(s => s.SaveAsync(It.Is<GroupConfig>(c => c.GroupName == "New group"), It.IsAny<CancellationToken>()), Times.Once);
+        sut.Groups.Select(g => g.Name).Should().Equal("Apps", "New group", "Zed");
+        sut.SelectedGroup!.Name.Should().Be("New group");
+        renameRequests.Should().Be(1, "the user names the group right after creating it");
     }
 
     [Fact]
-    public void AddGroupCommand_BecomesExecutable_AsSoonAsANameIsTyped()
+    public async Task NewGroup_PicksTheNextFreeName()
     {
-        // The button is bound straight to AddGroupCommand.CanExecute. If setting
-        // NewGroupName does not raise CanExecuteChanged, the button stays greyed out
-        // forever and no group can ever be created through the UI - the exact dead-button
-        // failure v0.4.4 set out to remove, only permanent instead of silent.
-        var sut = CreateSut(CreateStoreWith());
-
-        sut.AddGroupCommand.CanExecute(null).Should().BeFalse("nothing has been typed yet");
-
-        var raised = 0;
-        sut.AddGroupCommand.CanExecuteChanged += (_, _) => raised++;
-
-        sut.NewGroupName = "Dev Tools";
-
-        raised.Should().BeGreaterThan(0, "the command must be told its executability changed");
-        sut.AddGroupCommand.CanExecute(null).Should().BeTrue();
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void AddGroupCommand_StaysDisabled_ForBlankName(string? name)
-    {
-        var sut = CreateSut(CreateStoreWith());
-
-        sut.NewGroupName = name!;
-
-        sut.AddGroupCommand.CanExecute(null).Should().BeFalse();
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public async Task AddGroupAsync_DoesNothing_ForBlankName(string? name)
-    {
-        var store = CreateStoreWith();
+        var store = CreateStoreWith(
+            new GroupConfig { Id = "a", GroupName = "New group" },
+            new GroupConfig { Id = "b", GroupName = "new group 2" });
         var sut = CreateSut(store);
-        sut.NewGroupName = name!;
+        await sut.LoadGroupsAsync();
 
-        await sut.AddGroupCommand.ExecuteAsync(null);
+        await sut.NewGroupCommand.ExecuteAsync(null);
 
-        sut.Groups.Should().BeEmpty();
-        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+        sut.SelectedGroup!.Name.Should().Be("New group 3", "names compare without case, as the sidebar sorts them");
     }
 
     [Fact]
-    public async Task AddGroupAsync_TrimsWhitespaceAroundName()
+    public void NewGroupCommand_IsAlwaysExecutable()
     {
-        var store = CreateStoreWith();
+        // The old "+ Add" was disabled until a name was typed, and that state needed a tooltip
+        // that could not show on a disabled button (v0.4.6). Nothing has to be typed now.
+        var sut = CreateSut(CreateStoreWith());
+
+        sut.NewGroupCommand.CanExecute(null).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task BeginRename_SelectsTheGivenGroup_AndAsksForRename()
+    {
+        var store = CreateStoreWith(
+            new GroupConfig { Id = "a", GroupName = "Apps" },
+            new GroupConfig { Id = "b", GroupName = "Browsers" });
         var sut = CreateSut(store);
-        sut.NewGroupName = "  Spaced  ";
+        await sut.LoadGroupsAsync();
+        sut.SelectedGroup = sut.Groups[0];
+        var renameRequests = 0;
+        sut.RenameRequested += (_, _) => renameRequests++;
 
-        await sut.AddGroupCommand.ExecuteAsync(null);
+        sut.BeginRenameCommand.Execute(sut.Groups[1]);
 
-        sut.Groups.Single().Name.Should().Be("Spaced");
+        sut.SelectedGroup.Should().BeSameAs(sut.Groups[1], "the context menu acts on the row it opened on");
+        sut.EditedGroupName.Should().Be("Browsers");
+        renameRequests.Should().Be(1);
+    }
+
+    [Fact]
+    public void BeginRename_DoesNothing_WithoutAGroup()
+    {
+        var sut = CreateSut(CreateStoreWith());
+        var renameRequests = 0;
+        sut.RenameRequested += (_, _) => renameRequests++;
+
+        sut.BeginRenameCommand.Execute(null);
+
+        renameRequests.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task LoadGroups_ReadsEachGroupsIcon()
+    {
+        var store = CreateStoreWith(
+            new GroupConfig { Id = "a", GroupName = "Apps" },
+            new GroupConfig { Id = "b", GroupName = "Browsers" });
+        var icon = StubIcon();
+        var reader = new Mock<IGroupIconReader>();
+        reader.Setup(r => r.TryRead("a")).Returns(icon);
+        var sut = CreateSut(store, alwaysConfirm: true, iconReader: reader.Object);
+
+        await sut.LoadGroupsAsync();
+
+        sut.Groups[0].Icon.Should().BeSameAs(icon);
+        sut.Groups[1].Icon.Should().BeNull("a group without an icon file shows the folder glyph");
+    }
+
+    [Fact]
+    public async Task AGroupsIcon_IsReread_AfterTheEditorSyncsIt()
+    {
+        var config = new GroupConfig { Id = "a", GroupName = "Apps" };
+        var store = CreateStoreWith(config);
+        var reader = new Mock<IGroupIconReader>();
+        var sut = CreateSut(store, alwaysConfirm: true, iconReader: reader.Object);
+        await sut.LoadGroupsAsync();
+        sut.SelectedGroup = sut.Groups[0];
+        var updated = StubIcon();
+        reader.Setup(r => r.TryRead("a")).Returns(updated);
+
+        await sut.Editor.RemoveAppCommand.ExecuteAsync(null);
+        sut.Groups[0].Icon.Should().BeNull("nothing was synced");
+
+        config.Apps.Add(new AppEntry { Name = "x", Path = "x.exe" });
+        sut.Editor.Bind(null);
+        sut.Editor.Bind(sut.Groups[0]);
+        await sut.Editor.RemoveAppCommand.ExecuteAsync(sut.Editor.Apps[0]);
+
+        sut.Groups[0].Icon.Should().BeSameAs(updated);
     }
 
     [Fact]
@@ -269,8 +313,7 @@ public class MainWindowViewModelTests
         var raised = 0;
         sut.GroupListChanged += (_, _) => raised++;
 
-        sut.NewGroupName = "Tools";
-        await sut.AddGroupCommand.ExecuteAsync(null);
+        await sut.NewGroupCommand.ExecuteAsync(null);
         sut.EditedGroupName = "Tools 2";
         await sut.RenameGroupCommand.ExecuteAsync(null);
         await sut.DeleteGroupCommand.ExecuteAsync(sut.SelectedGroup);

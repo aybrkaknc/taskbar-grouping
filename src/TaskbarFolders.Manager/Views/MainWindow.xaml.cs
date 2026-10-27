@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 using TaskbarFolders.Core.Interop;
@@ -29,6 +30,7 @@ public partial class MainWindow : Window
 
         InitializeComponent();
         DataContext = viewModel;
+        viewModel.RenameRequested += OnRenameRequested;
         SourceInitialized += OnSourceInitialized;
         Activated += OnActivated;
         Closed += OnClosed;
@@ -73,6 +75,10 @@ public partial class MainWindow : Window
         {
             themeService.ThemeChanged -= OnThemeChanged;
         }
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.RenameRequested -= OnRenameRequested;
+        }
         Activated -= OnActivated;
         Closed -= OnClosed;
     }
@@ -89,19 +95,14 @@ public partial class MainWindow : Window
             ? services.GetService<IThemeService>()
             : null;
 
-    private void NewGroupName_KeyDown(object sender, KeyEventArgs e)
-    {
-        if (e.Key != Key.Enter)
+    // The editor header may only just have been bound to a new group, so wait for layout
+    // before moving the caret into it.
+    private void OnRenameRequested(object? sender, EventArgs e) =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
         {
-            return;
-        }
-
-        if (DataContext is MainWindowViewModel vm && vm.AddGroupCommand.CanExecute(null))
-        {
-            vm.AddGroupCommand.Execute(null);
-            e.Handled = true;
-        }
-    }
+            GroupNameBox.Focus();
+            GroupNameBox.SelectAll();
+        });
 
     private void GroupName_KeyDown(object sender, KeyEventArgs e)
     {

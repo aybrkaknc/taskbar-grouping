@@ -81,11 +81,9 @@ Eine neue Version installieren Sie einfach über die alte. Der Installer erkennt
 
 ### Gruppe anlegen
 
-Tippen Sie den Namen in das Feld oben links und klicken Sie auf **+ Add**.
+Klicken Sie oben in der Liste links auf **+ New group**. Es erscheint eine Gruppe namens *New group*, bereits ausgewählt, und ihr Name oben im rechten Bereich ist markiert — tippen Sie einfach den gewünschten Namen und drücken Sie `Enter`. (Eine zweite heißt *New group 2* und so weiter.)
 
-Der Knopf **+ Add** bleibt ausgegraut, solange das Feld leer ist — eine Gruppe braucht einen Namen. Wenn Sie mit der Maus über den ausgegrauten Knopf fahren, erklärt ein Hinweis genau das. `Enter` im Namensfeld hat dieselbe Wirkung wie ein Klick.
-
-In der Liste links stehen alle Gruppen alphabetisch, darunter jeweils die Anzahl der enthaltenen Programme.
+In der Liste links stehen alle Gruppen alphabetisch. Jede Zeile zeigt das Symbol der Gruppe, wie es in der Taskleiste erscheint — einen Ordnerumriss, solange die Gruppe leer ist —, und rechts die Anzahl der enthaltenen Programme.
 
 ### Programme hinzufügen
 
@@ -175,7 +173,9 @@ Wählen Sie eine Gruppe aus, um Programme hinzuzufügen oder zu entfernen. Jede 
 
 **Umbenennen:** Gruppe auswählen, den Namen oben im rechten Bereich ändern und auf **Rename** klicken oder `Enter` drücken. **Rename** bleibt ausgegraut, solange der Name dem bisherigen entspricht. Die Liste links sortiert sich neu, Verknüpfung und Startmenü-Eintrag tragen danach den neuen Namen. Eine bereits angeheftete Kachel funktioniert weiter — sie gehört zur Gruppe, nicht zu ihrem Namen.
 
-**Löschen:** Rechtsklick auf die Gruppe in der Liste links → **Delete group** → bestätigen. Damit verschwinden Konfiguration, Symbol, Verknüpfung und der Startmenü-Eintrag der Gruppe.
+Ein Rechtsklick auf eine Gruppe in der Liste links bietet **Rename** und **Delete group** für genau diese Gruppe. Hat die Liste den Fokus, benennt `F2` die ausgewählte Gruppe um und `Entf` löscht sie.
+
+**Löschen:** Rechtsklick auf die Gruppe → **Delete group** (oder auswählen und `Entf` drücken) → bestätigen. Damit verschwinden Konfiguration, Symbol, Verknüpfung und der Startmenü-Eintrag der Gruppe.
 
 > **Die Kachel in der Taskleiste bleibt dabei bestehen.** Klicken Sie sie mit der rechten Maustaste an und wählen Sie **Von Taskleiste lösen**. Die Sicherheitsabfrage weist Sie darauf hin.
 
