@@ -149,9 +149,11 @@ Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fe
 - **Auf ein Symbol klicken** startet das Programm, das Fenster schließt sich.
 - **Auf ✕** oben rechts klicken schließt das Fenster, ohne etwas zu starten.
 - **Lässt sich ein Programm nicht starten**, bleibt das Fenster offen und zeigt einen roten Hinweis mit dem Namen.
-- **Klick daneben** schließt das Fenster.
+- **Klick daneben** oder **`Esc`** schließt das Fenster. Der Klick daneben wirkt auch dann, wenn Windows dem Fenster den Fokus nicht gegeben hat.
 
-Das Fenster hat keine Tastaturbedienung: `Esc` schließt es nicht, und beim Öffnen ist kein Symbol vorausgewählt. Klicken Sie daneben, um es zu schließen.
+Ist *Enable popup animations* eingeschaltet, blendet sich das Fenster beim Schließen kurz aus. Unter Windows 11 22H2 und neuer kann die Glasfläche selbst nicht ausblenden; sie verschwindet unmittelbar nach den Symbolen.
+
+`Esc` ist die einzige Taste: Beim Öffnen ist kein Symbol vorausgewählt, und die Pfeiltasten wechseln nicht zwischen den Symbolen.
 
 ## Gruppen ändern und löschen
 
@@ -220,7 +222,7 @@ Ausführlicher, mit Zuordnung von Protokollzeilen zu Ursachen: [Troubleshooting]
 Keine Fehler, sondern bewusste oder noch offene Grenzen:
 
 - Programme lassen sich **nicht umsortieren**, Symbole nicht selbst wählen, Startparameter nicht setzen.
-- Das Aufklapp-Fenster hat **keine Tastaturbedienung**.
+- Das Aufklapp-Fenster lässt sich **nicht mit den Pfeiltasten** bedienen; nur `Esc` schließt es.
 - Der verschwommene Glas-Hintergrund des Aufklapp-Fensters braucht Windows 11 22H2 oder neuer. Sind in Windows die *Transparenzeffekte* ausgeschaltet, ist er eine einfarbige Fläche.
 - Es gibt **keine ARM64-Fassung**.
 - Nichts hindert daran, den Manager **zweimal gleichzeitig** zu starten. Die zweite Instanz kann Änderungen der ersten überschreiben.

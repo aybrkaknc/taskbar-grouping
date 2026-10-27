@@ -242,5 +242,7 @@ Task<PinResult> PinAsync(string groupId, CancellationToken cancellationToken = d
 | [`IProcessLauncher`](../src/TaskbarFolders.Launcher/Services/IProcessLauncher.cs) | `bool Launch(string path, string? arguments)` |
 | `TaskbarPinRunner` | Drives the WinRT pin request in pin mode and maps the outcome to an exit code |
 | `StartupFailureLogger` | Dependency-free, never-throwing logger for failure paths that occur before or instead of the DI graph |
+| [`OutsideClickWatcher`](../src/TaskbarFolders.Launcher/Services/OutsideClickWatcher.cs) | `IDisposable` low-level mouse hook calling back on any button press outside a window; `IsInstalled`; pure `static bool IsOutside(x, y, left, top, right, bottom)` in **device pixels**, right/bottom exclusive |
+| `PopupViewModel` | Besides loading the group and `LaunchAppCommand`: `CloseCommand` raises `CloseRequested`, mirroring `LaunchSucceeded`; the window closes on either |
 
 `ICursorAnchor` carries device pixels and `ComputePlacement` returns DIPs. That single conversion is the contract — see [ADR-003](adr/003-dpi-unit-contract.md).

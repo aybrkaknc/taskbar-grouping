@@ -64,7 +64,9 @@ New persistence code must follow this.
 
 **Pin mode's exit code is its result, so pin mode shuts down explicitly** — `ShutdownMode.OnExplicitShutdown` in `RunPinModeAsync`. Under the default `OnLastWindowClose`, closing `PinHostWindow` started a shutdown with code 0 and the `Shutdown(exitCode)` after it was ignored; every pin outcome reached the Manager as "Pinned" until this was found. A log line saying "exit code 2" proves nothing about the process exit code — check `Process.ExitCode`.
 
-**Implicit Button theme styles beat inherited text colour in the popup too** — the v0.4.7 Manager fix (`Themes/Controls.xaml`) never reached the Launcher, whose tiles are `Button`s styled by `AppTileButton`. That style must set `Foreground` itself; `PopupWindowThemeTests` checks the realised label colour in both themes.
+**Implicit Button theme styles beat inherited text colour in the popup too** — the v0.4.7 Manager fix (`Themes/Controls.xaml`) never reached the Launcher, whose tiles are `Button`s styled by `AppTileButton`. That style must set `Foreground` itself; `PopupWindowThemeTests` checks the realised label colour in both themes. The header's `PopupIconButton` follows the same rule.
+
+**Every popup dismissal is a `Close()`; `OnClosing` owns the fade** — do not add a separate close path. With animations on, `OnClosing` cancels the first request and plays `CloseAnimation`; `FinishClose` closes for real on `Completed` or after a 300 ms safety net. The outside-click hook (`OutsideClickWatcher`, `WH_MOUSE_LL`) is installed on `ContentRendered`, never earlier: a low-level hook on a thread that is not pumping messages stalls every mouse event on the desktop. Its delegate lives in a field so the GC cannot collect it under the native hook.
 
 **The popup's window mode is fixed before the HWND exists** — DWM never paints a system backdrop behind a layered (`AllowsTransparency=True`) window, so on Windows 11 22H2+ the constructor switches the popup to a non-layered window with a full-client `WindowChrome` glass frame and DWM acrylic; elsewhere it stays layered with the `PopupFallbackBackground` panel. Both modes are live code. See ADR-004.
 

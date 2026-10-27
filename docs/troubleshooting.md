@@ -106,9 +106,9 @@ Placement is DPI-sensitive. On mixed-DPI or scaled setups it should still land n
 
 ## The popup closes immediately, or will not close
 
-The popup closes when it loses focus, after a successful launch, and via a three-second fallback if Windows never gave it focus at all. A failed launch keeps it open and shows an error strip naming the app.
+The popup closes on a mouse click anywhere outside it, on Escape, on its ✕ button, when it loses focus, after a successful launch, and via a three-second fallback if Windows never gave it focus and the pointer is not over it. A click outside is seen through a low-level mouse hook, so it works whether or not the popup got the focus. A failed launch keeps it open and shows an error strip naming the app.
 
-There are no keyboard shortcuts — Escape does not close it. Click elsewhere.
+With *Enable popup animations* on, every close is a fade of about 120 ms. If the popup appears to linger, turn animations off to isolate the fade: a 300 ms safety net closes it even if the fade never completes.
 
 ## My settings keep reverting
 
@@ -126,7 +126,9 @@ On an affected build, avoid clicking Save unless you intend to set every value i
 
 Current, deliberate or not-yet-implemented — not bugs to report:
 
-- **The popup has no keyboard support.** No Escape to dismiss, no focused item on open.
+- **The popup has almost no keyboard support.** Escape closes it, but no item is focused on open and the arrow keys do nothing.
+- **Clicking the group's tile while its popup is open does not toggle it.** The click lands outside the popup and closes it, and the tile then starts a new one.
+- **On Windows 11 22H2+ the glass panel does not fade when the popup closes.** DWM draws it and does not animate this window's hide, so only the icons fade.
 - **A group with more apps than the popup can show loses the rest.** The popup stops at 800 DIP, which is eight rows — 24 apps at the default three columns — and the grid does not scroll. Anything past that is off-screen with nothing indicating it exists; a visible launch-failure strip costs a further row.
 - **The blurred popup background needs Windows 11 22H2 or later.** Older versions get a plain translucent panel. With Windows' *Transparency effects* turned off, the background is a solid colour instead of glass.
 - **No reordering, custom icons, or launch arguments** from the interface. `arguments` and the per-group `columns` value (1–6, default 3) exist in the JSON only; a per-group `theme` field is serialised but ignored.

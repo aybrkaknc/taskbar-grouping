@@ -92,9 +92,11 @@ Click the pinned tile. A popup opens next to the taskbar, anchored near the tile
 - **Click an icon** to launch it. The popup closes.
 - **Click ✕** in the top-right corner to close the popup without launching anything.
 - **If a launch fails**, the popup stays open and shows an error strip naming the app.
-- **Click anywhere else** to dismiss the popup.
+- **Click anywhere else**, or press **Escape**, to dismiss the popup. A click outside works even if Windows did not give the popup the focus.
 
-The popup has no keyboard shortcuts. Escape does not close it, and no icon is focused when it opens — click elsewhere to dismiss it.
+With *Enable popup animations* on, the popup fades out briefly as it closes. On Windows 11 22H2 and later the glass panel itself cannot fade, so it disappears right after the icons have.
+
+Escape is the only keyboard shortcut. No icon is focused when the popup opens, and the arrow keys do not move between icons.
 
 ## Editing and deleting groups
 

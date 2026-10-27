@@ -58,6 +58,39 @@
             </DoubleAnimation>
         </Storyboard>
 
+        <!-- Close: a quick fade and slight shrink of ChromeRoot, run from OnClosing for every
+             way the popup closes. No From values, so it starts from wherever the open
+             animation got to. EaseOut, not EaseIn: an ease-in fade stays nearly opaque for most
+             of its run and then the window vanishes, which reads as no animation at all
+             (measured: ~0.8 opacity two thirds of the way through).
+             Only ChromeRoot fades. On Windows 11 22H2+ the acrylic behind it is drawn by DWM,
+             which cannot be faded from WPF and does not animate Hide() for this window
+             (measured: gone within one frame), so the glass disappears when the window closes,
+             right after the content. On the layered fallback the whole popup fades. -->
+        <Storyboard x:Key="CloseAnimation">
+            <DoubleAnimation Storyboard.TargetName="ChromeRoot"
+                             Storyboard.TargetProperty="Opacity"
+                             To="0" Duration="0:0:0.12">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="ChromeRoot"
+                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                             To="0.96" Duration="0:0:0.12">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+            <DoubleAnimation Storyboard.TargetName="ChromeRoot"
+                             Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                             To="0.96" Duration="0:0:0.12">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseOut" />
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+
         <Style x:Key="AppTileButton" TargetType="Button">
             <!-- Required, not redundant: WPF's built-in Button theme style sets Foreground to
                  the system control-text colour (black), and a theme-style setter outranks the

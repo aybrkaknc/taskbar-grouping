@@ -121,7 +121,9 @@ The taskbar starts the launcher. Startup order matters and is deliberate:
 
 Names appear immediately; icons stream in afterwards on the thread pool. Each `BitmapSource` is frozen inside the producer before the continuation crosses back to the UI thread — an unfrozen bitmap carries the wrong dispatcher affinity and the WPF binding throws.
 
-The popup closes on focus loss, after a successful launch, or via a three-second fallback if Windows never granted it activation. A *failed* launch keeps it open and shows an inline error strip.
+The popup closes on a click outside it, Escape, its ✕ button, focus loss, a successful launch, or via a three-second fallback if Windows never granted it activation. A *failed* launch keeps it open and shows an inline error strip.
+
+All of these end in `Window.Close()`, and `OnClosing` is the single place that applies the fade-out: with animations on it cancels the first request, plays `CloseAnimation` on `ChromeRoot` (about 120 ms), and closes for real on `Completed` or after a 300 ms safety net. Clicks outside are detected by `OutsideClickWatcher`, a process-local `WH_MOUSE_LL` hook installed on `ContentRendered` and removed when the popup closes, because `Deactivated` only fires for a popup that was activated in the first place.
 
 The popup has two window modes, chosen in its constructor before the HWND exists. On Windows 11 22H2+ it is a non-layered window whose `WindowChrome` glass frame covers the client area, with DWM acrylic behind it, tinted by the theme, and rounded corners. Elsewhere it stays a layered (`AllowsTransparency`) window and paints a translucent fallback panel, because DWM never draws a backdrop behind a layered window. See [ADR-004](adr/004-popup-acrylic-backdrop.md).
 

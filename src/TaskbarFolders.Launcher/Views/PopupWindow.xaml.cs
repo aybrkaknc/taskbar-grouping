@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -28,7 +29,7 @@ namespace TaskbarFolders.Launcher.Views;
 /// <see cref="IAppSettingsStore"/>; App.OnStartup loads once and registers the instance as a
 /// singleton.
 /// </remarks>
-public partial class PopupWindow : Window
+public sealed partial class PopupWindow : Window, IDisposable
 {
     /// <summary>Tile width + height in DIPs. Mirrors the Image width in the data template.</summary>
     private const int TilePx = 96;
@@ -47,6 +48,10 @@ public partial class PopupWindow : Window
     private readonly ITaskbarPositionHelper _positionHelper;
     private readonly AppSettings _settings;
     private readonly bool _useSystemBackdrop;
+    private OutsideClickWatcher? _outsideClicks;
+    private DispatcherTimer? _closeSafetyTimer;
+    private bool _closeAnimating;
+    private bool _closeConfirmed;
     private DispatcherTimer? _safetyTimer;
     private DispatcherTimer? _activationFallbackTimer;
     private bool _wasActivated;
@@ -99,8 +104,109 @@ public partial class PopupWindow : Window
         // or the strip clips the fixed 96 px tiles (issue #24).
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         Activated += OnActivated;
+        Closing += OnClosing;
         Closed += OnClosed;
+        KeyDown += OnKeyDown;
+        ContentRendered += OnContentRendered;
         SourceInitialized += OnSourceInitialized;
+    }
+
+    /// <summary>
+    /// Starts watching for clicks outside the popup once it is on screen. Not earlier: a
+    /// low-level hook on a thread that does not pump messages stalls every mouse event on the
+    /// desktop, and ContentRendered is the first point the dispatcher is known to be running
+    /// (it never fires in the windowed tests, which have no message loop).
+    /// </summary>
+    private void OnContentRendered(object? sender, EventArgs e)
+    {
+        ContentRendered -= OnContentRendered;
+        if (_closeAnimating || _closeConfirmed)
+        {
+            return;
+        }
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        _outsideClicks = new OutsideClickWatcher(hwnd, () => Dispatcher.BeginInvoke(new Action(Close)));
+    }
+
+    private void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            Close();
+        }
+    }
+
+    /// <summary>
+    /// Every way the popup closes — X, Escape, a click outside, focus loss, a launch, the
+    /// fallback timer, even Alt+F4 — arrives here as a Close(), so this is the one place the
+    /// fade-out is applied. The first request is cancelled and replaced by the animation,
+    /// which calls Close() again once it has finished.
+    /// </summary>
+    private void OnClosing(object? sender, CancelEventArgs e)
+    {
+        if (_closeConfirmed)
+        {
+            return;
+        }
+
+        if (!_settings.EnableAnimations || !IsVisible || TryFindResource("CloseAnimation") is not Storyboard storyboard)
+        {
+            _closeConfirmed = true;
+            return;
+        }
+
+        e.Cancel = true;
+        if (_closeAnimating)
+        {
+            return;
+        }
+
+        _closeAnimating = true;
+        _outsideClicks?.Dispose();
+        _outsideClicks = null;
+        _safetyTimer?.Stop();
+        PlayCloseAnimation(storyboard);
+    }
+
+
+    private void PlayCloseAnimation(Storyboard template)
+    {
+        var storyboard = template.Clone();
+        foreach (var animation in storyboard.Children)
+        {
+            if (Storyboard.GetTargetName(animation) == "ChromeRoot")
+            {
+                Storyboard.SetTarget(animation, ChromeRoot);
+            }
+        }
+
+        storyboard.Completed += (_, _) => FinishClose();
+        storyboard.Begin(this);
+
+        // Same reasoning as the open animation's safety net: if the composition pass is
+        // skipped, Completed may never come, and a popup that cannot close is worse than one
+        // that closes without its fade.
+        _closeSafetyTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(300),
+        };
+        _closeSafetyTimer.Tick += (_, _) => FinishClose();
+        _closeSafetyTimer.Start();
+    }
+
+    private void FinishClose()
+    {
+        if (_closeConfirmed)
+        {
+            return;
+        }
+
+        _closeConfirmed = true;
+        _closeSafetyTimer?.Stop();
+        _closeSafetyTimer = null;
+        Close();
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -363,7 +469,22 @@ public partial class PopupWindow : Window
         _viewModel.CloseRequested -= OnCloseRequested;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         Activated -= OnActivated;
+        Closing -= OnClosing;
         Closed -= OnClosed;
+        KeyDown -= OnKeyDown;
+        ContentRendered -= OnContentRendered;
         SourceInitialized -= OnSourceInitialized;
+        _closeSafetyTimer?.Stop();
+        _closeSafetyTimer = null;
+        Dispose();
+    }
+
+    /// <summary>
+    /// Removes the outside-click hook. Called from <c>Closed</c>; safe to call more than once.
+    /// </summary>
+    public void Dispose()
+    {
+        _outsideClicks?.Dispose();
+        _outsideClicks = null;
     }
 }
