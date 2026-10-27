@@ -195,7 +195,7 @@ Der Autostart-Haken zeigt den tatsächlichen Zustand in der Windows-Registrierun
 
 ### Spaltenanzahl des Aufklapp-Fensters
 
-Jede Gruppe hat einen Wert zwischen 1 und 6 für die Breite des Rasters, standardmäßig 3. Dafür gibt es noch keine Bedienoberfläche — Sie können ihn in der Konfigurationsdatei der Gruppe ändern (siehe nächster Abschnitt), Feld `columns`. Schließen Sie den Manager vorher.
+Jede Gruppe hat einen Wert zwischen 1 und 6 für die Breite des Rasters, standardmäßig 3. Hat eine Gruppe mehr Zeilen, als ins Fenster passen — etwa acht —, lässt sie sich mit dem Mausrad scrollen; ein schmaler Balken rechts zeigt die Position. Dafür gibt es noch keine Bedienoberfläche — Sie können ihn in der Konfigurationsdatei der Gruppe ändern (siehe nächster Abschnitt), Feld `columns`. Schließen Sie den Manager vorher.
 
 ## Wo Ihre Daten liegen
 

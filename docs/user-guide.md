@@ -142,7 +142,7 @@ The theme covers the whole interface, including the Settings dialog, the standar
 
 ### Popup grid width
 
-Each group has a `columns` value between 1 and 6, defaulting to 3, controlling how wide its popup grid is. There is no interface for it yet — edit the group's JSON file directly (see below) and reopen the popup.
+Each group has a `columns` value between 1 and 6, defaulting to 3, controlling how wide its popup grid is. A group with more rows than fit on screen — about eight — scrolls with the mouse wheel; a thin bar on the right shows where you are. There is no interface for it yet — edit the group's JSON file directly (see below) and reopen the popup.
 
 ## Where your files are
 

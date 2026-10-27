@@ -378,8 +378,21 @@ public sealed partial class PopupWindow : Window, IDisposable
         ChromeRoot.Measure(new Size(Width, double.PositiveInfinity));
         Height = Math.Clamp(ChromeRoot.DesiredSize.Height, MinHeight, MaxHeight);
 
+
         // Second pass so hit-test / DesiredSize match the new explicit size before placement.
         UpdateLayout();
+
+        // Past MaxHeight the tile grid scrolls (issue #32), and the vertical bar takes its width
+        // out of the viewport, which would squeeze the fixed 96 px tiles; widen the window by
+        // exactly that much instead (the bar's width and margin, PopupScrollBar). Asked of the
+        // laid-out scroller rather than worked out from DesiredSize, which does not yet carry the
+        // tiles on the first pass. MaxWidth leaves room for the bar at six columns.
+        if (TileScroller.ComputedVerticalScrollBarVisibility == Visibility.Visible)
+        {
+            var barWidth = TileScroller.ActualWidth - TileScroller.ViewportWidth;
+            Width = Math.Clamp(Width + barWidth, MinWidth, MaxWidth);
+            UpdateLayout();
+        }
 
         var placement = _positionHelper.ComputePlacement(new Size(Width, Height), _settings.PopupPosition);
         Left = placement.Left;

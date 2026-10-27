@@ -175,6 +175,47 @@ public sealed class PopupWindowSizingTests
         System.Windows.Threading.Dispatcher.PushFrame(frame);
     }
 
+    // Issue #32: past eight rows the grid used to be clipped at MaxHeight with nothing to show
+    // that more apps existed.
+    [Theory]
+    [InlineData(30, 3, false)]
+    [InlineData(30, 3, true)]   // the strip is where the last row went missing first
+    [InlineData(60, 6, false)]  // widest grid: the scroll bar must not squeeze six columns
+    public void LargeGroup_ScrollsToEveryTile_InsideMaxHeight(int appCount, int columns, bool withError)
+    {
+        WithPopup(appCount, columns, (window, viewModel, _) =>
+        {
+            if (withError)
+            {
+                viewModel.LastError = "Could not launch \"Broken App\".";
+            }
+
+            // Let the layout the real popup gets from its dispatcher catch up with the size.
+            PumpDispatcher(TimeSpan.FromMilliseconds(200));
+            var rows = (appCount + columns - 1) / columns;
+            var scroller = (ScrollViewer)window.FindName("TileScroller");
+
+            window.Height.Should().Be(window.MaxHeight, "the popup must not grow past its ceiling");
+            scroller.Should().NotBeNull("tiles past the ceiling have to be reachable");
+            scroller.ExtentHeight.Should().BeGreaterOrEqualTo(rows * TilePx, "every row is in the scrollable content");
+            scroller.ScrollableHeight.Should().BeGreaterThan(0);
+            scroller.ViewportWidth.Should().BeGreaterOrEqualTo(columns * TilePx, "the scroll bar must not cut into the tiles");
+        });
+    }
+
+    [Fact]
+    public void GroupThatFits_ShowsNoScrollBar_AndKeepsItsWidth()
+    {
+        WithPopup(appCount: 6, columns: 3, (window, _, _) =>
+        {
+            var scroller = (ScrollViewer)window.FindName("TileScroller");
+
+            scroller.Should().NotBeNull();
+            scroller.ComputedVerticalScrollBarVisibility.Should().Be(Visibility.Collapsed);
+            window.Width.Should().Be((3 * TilePx) + (2 * PaddingPx));
+        });
+    }
+
     [Fact]
     public void UnavailableGroup_StaysAtMinHeight()
     {
