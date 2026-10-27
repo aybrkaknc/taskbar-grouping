@@ -160,7 +160,10 @@ kept so the rule stays arguable rather than ritual.
   | Anything about versioning, tagging or the pipeline | `docs/release-process.md` |
   | A decision that constrains future work | a new ADR under `docs/adr/`, added to its index |
   | A new convention or invariant | this file |
+  | A roadmap item finished, started, reordered, split, added or dropped | `plan.md` |
   | Anything at all | a `CHANGELOG.md` entry under `[Unreleased]` |
+
+- **The roadmap lives in `plan.md` and is kept live.** It is the single record of what is done, what is in progress and the agreed order of what comes next — not session memory, not chat. Update it the moment the state changes: an item is ticked off in the same commit that finishes it (with its commit hash and branch), and a change of order, scope or a split into steps is written down as soon as it is agreed, even if no code changes with it. Bump its *Last updated* date with every edit. Read it at the start of a session before picking up work; if it disagrees with the git history, fix the file first. A plan that lags behind the work is worse than none, because the next session will follow it.
 
 - **No AI/agent mentions** in code, comments, commits, docs, or any human-facing committed file. Tooling files like this one are exempt.
 - **Conventional Commits** — `<type>(<scope>): <desc>`. Types per `CONTRIBUTING.md`.
@@ -213,7 +216,7 @@ This project is solo-maintained; senior-dev workflow expectations apply.
 
 **6. Pushing & releasing.** Bug fixes land on `develop` directly (no PR — solo-maintained). Patch releases tag `v0.x.y` from `develop`; `release.yml` publishes the assets. Bump `Directory.Build.props:Version`, `installer/setup.iss:MyAppVersion`, `src/TaskbarFolders.Manager/app.manifest:assemblyIdentity/@version` (four-part, e.g. `0.4.5.0`), the README status banner, and add a `CHANGELOG.md` section in the same commit as the tag-eligible state. Full checklist in `docs/release-process.md`. If a fix is user-blocking on a shipped version, cut a patch release the same day. **Wait for the installer-smoke pass before announcing the release as available** — the tag and the assets exist before they're verified.
 
-**7. Documentation upkeep.** Before calling any change done, walk the table in Repo Policy and update every row the change touched, in the same commit. When a fix introduces a new convention or invariant, surface it here too — the next session reads this file before doing anything else.
+**7. Documentation upkeep.** Before calling any change done, walk the table in Repo Policy and update every row the change touched, in the same commit — including `plan.md` when the change finishes or advances a roadmap item. When a fix introduces a new convention or invariant, surface it here too — the next session reads this file before doing anything else.
 
 ## Release
 
