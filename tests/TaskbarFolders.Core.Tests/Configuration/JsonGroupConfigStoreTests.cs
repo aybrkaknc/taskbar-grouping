@@ -143,6 +143,22 @@ public sealed class JsonGroupConfigStoreTests : IDisposable
         all.Should().ContainSingle(g => g.Id == "real");
     }
 
+    // A hand edit with a stray backslash crashed the Manager on start, and with it the
+    // uninstaller, which loads the groups the same way.
+    [Fact]
+    public async Task LoadAllAsync_SkipsADamagedFile_AndReturnsTheRest()
+    {
+        await _sut.SaveAsync(new GroupConfig { Id = "real", GroupName = "Real" });
+        await File.WriteAllTextAsync(
+            Path.Combine(_paths.GroupsDirectory, "damaged.json"),
+            """{ "groupName": "Broken", "apps": [ { "path": "C:\Windows" } ] }""");
+
+        var all = await _sut.LoadAllAsync();
+
+        all.Select(g => g.Id).Should().Equal("real");
+        File.Exists(Path.Combine(_paths.GroupsDirectory, "damaged.json")).Should().BeTrue("the user may still repair it");
+    }
+
     [Fact]
     public async Task LoadAsync_ReconstructsIdFromFilename_WhenJsonOmitsIt()
     {
