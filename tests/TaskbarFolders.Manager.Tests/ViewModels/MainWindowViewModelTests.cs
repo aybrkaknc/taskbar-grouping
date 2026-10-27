@@ -305,6 +305,81 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task CommitRename_SavesAChangedName()
+    {
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+        sut.SelectedGroup = sut.Groups[0];
+
+        sut.EditedGroupName = "Tools";
+        await sut.CommitRenameCommand.ExecuteAsync(null);
+
+        sut.Groups[0].Name.Should().Be("Tools");
+        store.Verify(s => s.SaveAsync(It.Is<GroupConfig>(c => c.GroupName == "Tools"), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("Apps")]
+    public async Task CommitRename_PutsTheCurrentNameBack_ForABlankOrUnchangedName(string typed)
+    {
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+        sut.SelectedGroup = sut.Groups[0];
+
+        sut.EditedGroupName = typed;
+        await sut.CommitRenameCommand.ExecuteAsync(null);
+
+        sut.EditedGroupName.Should().Be("Apps", "leaving the box blank is not a way to rename a group");
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task CancelRename_DiscardsTheEdit()
+    {
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+        sut.SelectedGroup = sut.Groups[0];
+        sut.EditedGroupName = "Half-typed";
+
+        sut.CancelRenameCommand.Execute(null);
+
+        sut.EditedGroupName.Should().Be("Apps");
+        sut.Groups[0].Name.Should().Be("Apps");
+    }
+
+    [Fact]
+    public async Task Rename_DoesNotWriteItsNameIntoTheBox_WhenTheSelectionMovedDuringTheSave()
+    {
+        // The box commits on focus loss; a click on another group moves the focus and the
+        // selection while the save is still awaited.
+        var store = CreateStoreWith(
+            new GroupConfig { Id = "a", GroupName = "Apps" },
+            new GroupConfig { Id = "b", GroupName = "Browsers" });
+        var saving = new TaskCompletionSource();
+        store.Setup(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>())).Returns(saving.Task);
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+        var apps = sut.Groups[0];
+        var browsers = sut.Groups[1];
+        sut.SelectedGroup = apps;
+
+        sut.EditedGroupName = "Tools";
+        var commit = sut.CommitRenameCommand.ExecuteAsync(null);
+        sut.SelectedGroup = browsers;
+        saving.SetResult();
+        await commit;
+
+        apps.Name.Should().Be("Tools");
+        sut.EditedGroupName.Should().Be("Browsers", "the box now belongs to the group that was clicked");
+        browsers.Name.Should().Be("Browsers");
+    }
+
+    [Fact]
     public async Task GroupListChanged_IsRaised_ForAddRenameAndDelete()
     {
         var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });

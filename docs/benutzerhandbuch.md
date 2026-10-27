@@ -117,11 +117,11 @@ Das Symbol der Gruppe wird aus den Symbolen der enthaltenen Programme zusammenge
 
 ### Ein eigenes Bild als Symbol
 
-Ein Klick auf **Change icon…** unter der Vorschau öffnet die Dateiauswahl für ein `.ico`, `.png`, `.jpg` oder `.bmp`. Das Gruppensymbol — Verknüpfung, Startmenü-Eintrag und angeheftete Kachel — zeigt dann dieses Bild statt der Programme, ganz gleich, welche Programme Sie hinzufügen oder entfernen. Gespeichert wird eine Kopie, quadratisch eingepasst mit durchsichtigen Rändern; die Originaldatei darf also verschoben oder gelöscht werden. Bei einer `.ico`-Datei wird die größte enthaltene Größe verwendet.
+Ein Klick auf das Gruppensymbol oben im rechten Bereich → **Change icon…** öffnet die Dateiauswahl für ein `.ico`, `.png`, `.jpg` oder `.bmp`. Das Gruppensymbol — Verknüpfung, Startmenü-Eintrag und angeheftete Kachel — zeigt dann dieses Bild statt der Programme, ganz gleich, welche Programme Sie hinzufügen oder entfernen. Gespeichert wird eine Kopie, quadratisch eingepasst mit durchsichtigen Rändern; die Originaldatei darf also verschoben oder gelöscht werden. Bei einer `.ico`-Datei wird die größte enthaltene Größe verwendet.
 
-**Use app icons** kehrt zum aus den Programmen zusammengesetzten Symbol zurück. Zeigt eine angeheftete Kachel noch das alte Bild, hat Windows ihr Symbol noch nicht neu gelesen; Ab- und wieder Anmelden oder ein Neustart des Explorers hilft.
+**Use app icons** im selben Menü kehrt zum aus den Programmen zusammengesetzten Symbol zurück. Zeigt eine angeheftete Kachel noch das alte Bild, hat Windows ihr Symbol noch nicht neu gelesen; Ab- und wieder Anmelden oder ein Neustart des Explorers hilft.
 
-Die Vorschau oben rechts aktualisiert sich kurz nachdem Sie mit dem Ändern fertig sind.
+Das Symbol oben links im rechten Bereich aktualisiert sich kurz nachdem Sie mit dem Ändern fertig sind.
 
 ## An die Taskleiste anheften
 
@@ -141,7 +141,7 @@ Manche Windows-Editionen und viele Firmenrechner verbieten das Anheften durch Pr
 
 Dort klicken Sie mit der rechten Maustaste auf die `.lnk`-Datei → **Weitere Optionen anzeigen** (unter Windows 11 22H2 und neuer) → **An Taskleiste anheften**.
 
-Diesen Ordner erreichen Sie jederzeit über **Show shortcut…**.
+Diesen Ordner erreichen Sie jederzeit über **⋯ → Show shortcut…** neben **Pin to taskbar**.
 
 ## Eine Gruppe benutzen
 
@@ -171,11 +171,11 @@ Rechtsklick auf eine `.exe` oder eine Verknüpfung im Explorer oder auf dem Desk
 
 Wählen Sie eine Gruppe aus, um Programme hinzuzufügen oder zu entfernen. Jede Änderung wird sofort gespeichert, Symbol und Verknüpfung werden neu erzeugt.
 
-**Umbenennen:** Gruppe auswählen, den Namen oben im rechten Bereich ändern und auf **Rename** klicken oder `Enter` drücken. **Rename** bleibt ausgegraut, solange der Name dem bisherigen entspricht. Die Liste links sortiert sich neu, Verknüpfung und Startmenü-Eintrag tragen danach den neuen Namen. Eine bereits angeheftete Kachel funktioniert weiter — sie gehört zur Gruppe, nicht zu ihrem Namen.
+**Umbenennen:** Gruppe auswählen, oben im rechten Bereich auf den Namen klicken und tippen. Gespeichert wird mit `Enter` oder sobald Sie woanders hinklicken; `Esc` stellt den alten Namen wieder her, ein leerer Name wird nicht gespeichert. Die Liste links sortiert sich neu, Verknüpfung und Startmenü-Eintrag tragen danach den neuen Namen. Eine bereits angeheftete Kachel funktioniert weiter — sie gehört zur Gruppe, nicht zu ihrem Namen.
 
 Ein Rechtsklick auf eine Gruppe in der Liste links bietet **Rename** und **Delete group** für genau diese Gruppe. Hat die Liste den Fokus, benennt `F2` die ausgewählte Gruppe um und `Entf` löscht sie.
 
-**Löschen:** Rechtsklick auf die Gruppe → **Delete group** (oder auswählen und `Entf` drücken) → bestätigen. Damit verschwinden Konfiguration, Symbol, Verknüpfung und der Startmenü-Eintrag der Gruppe.
+**Löschen:** Rechtsklick auf die Gruppe → **Delete group** (oder auswählen und `Entf` drücken, oder **⋯ → Delete group…** oben rechts) → bestätigen. Damit verschwinden Konfiguration, Symbol, Verknüpfung und der Startmenü-Eintrag der Gruppe.
 
 > **Die Kachel in der Taskleiste bleibt dabei bestehen.** Klicken Sie sie mit der rechten Maustaste an und wählen Sie **Von Taskleiste lösen**. Die Sicherheitsabfrage weist Sie darauf hin.
 
@@ -228,7 +228,7 @@ Der erste Blick geht in die Protokolldateien unter `%APPDATA%\TaskbarFolders\log
 | Symptom | Zu prüfen |
 |---|---|
 | Klick auf die Kachel bewirkt nichts | Heutige `launcher-*.log` öffnen. Beendet sich das Programm mit Code 1, fehlt der Verknüpfung ihre Kennung — Gruppe im Manager erneut anheften. Code 3 bedeutet einen Fehler beim Start, die Ursache steht darunter. |
-| Anheften meldet, es sei nicht verfügbar | Ihre Windows-Edition oder Ihre Firmenrichtlinie verbietet es. Über **Show shortcut…** von Hand anheften. |
+| Anheften meldet, es sei nicht verfügbar | Ihre Windows-Edition oder Ihre Firmenrichtlinie verbietet es. Über **⋯ → Show shortcut…** von Hand anheften. |
 | Anheften scheint zu klappen, es erscheint aber keine Kachel | Manager schließen und neu öffnen — er repariert dabei die Startmenü-Einträge — und erneut anheften. |
 | Kein Symbol und keine Verknüpfung nach dem Hinzufügen | Die Gruppe ist leer. Bei der portablen Fassung prüfen, ob `Manager` und `Launcher` noch nebeneinander liegen. |
 | Aufklapp-Fenster erscheint an falscher Stelle | Skalierung der Anzeige, Monitoranordnung und die Bildschirmseite der Taskleiste notieren und melden. |

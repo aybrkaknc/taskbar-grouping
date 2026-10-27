@@ -44,7 +44,7 @@ Only `.exe` and `.lnk` are accepted; anything else in a dropped selection is ign
 
 The path under each name is shortened for display: anything inside your user folder shows as `%USERPROFILE%\…` so your account name is not on screen in a screenshot or a screen share. Hover the path to see it in full. What is stored and launched is always the real path.
 
-The composite preview refreshes shortly after you stop making changes.
+The group's icon at the top of the detail pane refreshes shortly after you stop making changes.
 
 ### How the composite icon is built
 
@@ -59,9 +59,9 @@ Only the **first four** apps in the group contribute to the icon. The popup stil
 
 ### Using your own image as the icon
 
-Click **Change icon…** under the preview and pick an `.ico`, `.png`, `.jpg` or `.bmp`. The group's icon — its shortcut, Start menu entry and pinned tile — then shows that image instead of its apps, whatever apps you add or remove. A copy is stored, fitted into a square with transparent edges, so moving or deleting the original file changes nothing. For an `.ico` the largest size it contains is used.
+Click the group's icon at the top of the detail pane → **Change icon…** and pick an `.ico`, `.png`, `.jpg` or `.bmp`. The group's icon — its shortcut, Start menu entry and pinned tile — then shows that image instead of its apps, whatever apps you add or remove. A copy is stored, fitted into a square with transparent edges, so moving or deleting the original file changes nothing. For an `.ico` the largest size it contains is used.
 
-**Use app icons** goes back to the icon built from the apps. If a pinned tile keeps the old picture, Windows has not refreshed its icon yet; signing out and in again, or restarting Explorer, makes it re-read.
+The same menu's **Use app icons** goes back to the icon built from the apps. If a pinned tile keeps the old picture, Windows has not refreshed its icon yet; signing out and in again, or restarting Explorer, makes it re-read.
 
 ### Removing an app
 
@@ -85,7 +85,7 @@ Some Windows editions and managed environments block programmatic pinning, and i
 
 From there: right-click the `.lnk` → **Show more options** (Windows 11 22H2 and later) → **Pin to taskbar**.
 
-You can open that folder yourself at any time with **Show shortcut…**.
+You can open that folder yourself at any time with **⋯ → Show shortcut…** next to **Pin to taskbar**.
 
 ## Using a group
 
@@ -115,11 +115,11 @@ Right-click an `.exe` or a shortcut in Explorer or on the desktop → **Show mor
 
 Select a group to add or remove apps; every change is saved as you make it, and the icon and shortcut are regenerated.
 
-To rename: select the group, edit the name at the top of the detail pane, and click **Rename** or press `Enter`. **Rename** stays greyed out until the name differs from the current one. The sidebar re-sorts, and the shortcut and Start menu entry follow the new name. A tile already pinned to the taskbar keeps working — it belongs to the group, not to its name.
+To rename: select the group, click its name at the top of the detail pane and type. The name is saved when you press `Enter` or click anywhere else; `Esc` puts the old name back, and a name left blank is not saved. The sidebar re-sorts, and the shortcut and Start menu entry follow the new name. A tile already pinned to the taskbar keeps working — it belongs to the group, not to its name.
 
 Right-clicking a group in the sidebar offers **Rename** and **Delete group** for that group. With the list focused, `F2` renames and `Del` deletes the selected group.
 
-To delete: right-click the group → **Delete group** (or select it and press `Del`) → confirm. This removes the configuration, the generated icon, the shortcut and the group's Start menu entry.
+To delete: right-click the group → **Delete group** (or select it and press `Del`, or use **⋯ → Delete group…** in the header) → confirm. This removes the configuration, the generated icon, the shortcut and the group's Start menu entry.
 
 **Deleting a group does not remove its taskbar tile.** Right-click the tile and choose *Unpin from taskbar* yourself; the confirmation dialog reminds you.
 

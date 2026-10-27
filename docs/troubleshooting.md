@@ -64,7 +64,7 @@ A brief busy cursor and then nothing means the launcher started and exited.
 1. Open today's `launcher-*.log`.
 2. Look for the most recent shutdown line and its exit code.
 
-- **Exit code 1** — the shortcut lost its AppUserModelID, or was created by hand without one. Open the Manager, select the group, and click **Pin to taskbar** again, or re-pin from **Show shortcut…**; both regenerate the shortcut.
+- **Exit code 1** — the shortcut lost its AppUserModelID, or was created by hand without one. Open the Manager, select the group, and click **Pin to taskbar** again, or re-pin from **⋯ → Show shortcut…**; both regenerate the shortcut.
 - **Exit code 3** — startup failed and the exception is logged. If the group's JSON has been hand-edited, check that it is still valid JSON.
 - **No new lines at all** — the launcher never ran. The pinned shortcut may point at a launcher that has moved: this happens if a portable install was reorganised so that `Manager\` and `Launcher\` are no longer siblings. Restore the layout and re-pin.
 
@@ -74,7 +74,7 @@ If the popup opens but is invisible, check the *Enable popup animations* setting
 
 Exit code 2. Programmatic pinning needs Windows 10 version 2004 or newer, and some editions and managed environments block it outright. The launcher log says which: `TaskbarManager.IsPinningAllowed=false` means Windows itself refused before any dialog was shown.
 
-Use the manual path: the Manager opens the shortcut folder for you, or click **Show shortcut…**. Right-click the `.lnk` → **Show more options** (Windows 11 22H2 and later) → **Pin to taskbar**.
+Use the manual path: the Manager opens the shortcut folder for you, or use **⋯ → Show shortcut…**. Right-click the `.lnk` → **Show more options** (Windows 11 22H2 and later) → **Pin to taskbar**.
 
 ## Pinning appears to succeed but no tile appears
 
@@ -90,11 +90,11 @@ Windows only persists a programmatic pin when the AppUserModelID is already know
 2. Try **Pin to taskbar** again.
 3. Check that `%APPDATA%\Microsoft\Windows\Start Menu\Programs\TaskbarFolders\` contains an entry for the group. The pin-time log lines in `launcher-*.log` list exactly what that folder contained when the attempt was made.
 
-If it still fails, pin manually via **Show shortcut…** — the result is identical.
+If it still fails, pin manually via **⋯ → Show shortcut…** — the result is identical.
 
 ## Nothing is generated when I add an app
 
-No icon, no shortcut, and **Show shortcut…** opens nothing.
+No icon, no shortcut, and **⋯ → Show shortcut…** opens nothing.
 
 - **The group has no apps.** An empty group deliberately produces no icon and no shortcut. Add at least one.
 - **The launcher binary was not found.** The Manager needs to know where `TaskbarFolders.Launcher.exe` is in order to write a shortcut targeting it. It logs every path it probed at error level — search `manager-*.log` for "Launcher binary not found". In a portable install this means `Manager\` and `Launcher\` are no longer siblings.

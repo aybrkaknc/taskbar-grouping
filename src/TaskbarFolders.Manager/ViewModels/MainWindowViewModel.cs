@@ -314,7 +314,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
             throw;
         }
 
-        EditedGroupName = trimmed;
+        // The name box commits when it loses focus, and a click on another group both takes the
+        // focus and changes the selection while the save is awaited. By then the box shows the
+        // other group, and writing this name into it would let the next commit rename that one.
+        if (ReferenceEquals(SelectedGroup, group))
+        {
+            EditedGroupName = trimmed;
+        }
         RenameGroupCommand.NotifyCanExecuteChanged();
         MoveToAlphabeticalPosition(group);
 
@@ -325,6 +331,27 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _logger?.LogInformation("Renamed group {Id} from '{Old}' to '{New}'.", group.Id, previousName, trimmed);
         GroupListChanged?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// Saves the name in the header box — on Enter or when the box loses focus. A blank or
+    /// unchanged name is not an error: the box simply goes back to the current name.
+    /// </summary>
+    [RelayCommand]
+    private async Task CommitRenameAsync()
+    {
+        if (CanRenameGroup())
+        {
+            await RenameGroupAsync().ConfigureAwait(true);
+        }
+        else
+        {
+            CancelRename();
+        }
+    }
+
+    /// <summary>Discards an edit in the header box (Escape).</summary>
+    [RelayCommand]
+    private void CancelRename() => EditedGroupName = SelectedGroup?.Name ?? string.Empty;
 
     private void InsertAlphabetically(GroupListItemViewModel item)
     {

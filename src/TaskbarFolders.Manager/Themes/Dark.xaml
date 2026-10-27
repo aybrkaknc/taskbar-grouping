@@ -21,6 +21,9 @@
 
     <!-- Accent -->
     <SolidColorBrush x:Key="AccentBrush" Color="#4CC2FF" />
+    <SolidColorBrush x:Key="AccentBrushHover" Color="#47B1E8" />
+    <!-- Text on an accent fill: dark on the light dark-theme accent, as Windows does. -->
+    <SolidColorBrush x:Key="AccentForeground" Color="#000000" />
 
     <!-- Control chrome. WPF's built-in theme styles set Background and Foreground on
          Button/TextBox/ListBox/ComboBox/CheckBox, and a theme-style setter outranks the
