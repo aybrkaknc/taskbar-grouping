@@ -125,4 +125,21 @@ public class SettingsViewModelTests
 
         sut.HasUnsavedChanges.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task ShowInExplorerMenu_IsLoaded_Saved_AndAnnounced()
+    {
+        var sut = CreateSut(new AppSettings { ShowInExplorerMenu = false }, autoStartEnabled: false, out var store, out _, out _);
+        await sut.LoadAsync();
+        sut.ShowInExplorerMenu.Should().BeFalse();
+        var saved = 0;
+        sut.Saved += (_, _) => saved++;
+
+        sut.ShowInExplorerMenu = true;
+        sut.HasUnsavedChanges.Should().BeTrue();
+        await sut.SaveCommand.ExecuteAsync(null);
+
+        store.Verify(s => s.SaveAsync(It.Is<AppSettings>(a => a.ShowInExplorerMenu), It.IsAny<CancellationToken>()), Times.Once);
+        saved.Should().Be(1, "the Explorer menu is rewritten when the settings are saved");
+    }
 }

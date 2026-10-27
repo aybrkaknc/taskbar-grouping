@@ -44,6 +44,10 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\Manager\{#MyAppExeName}"; T
 
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "TaskbarFolders"; ValueData: """{app}\Manager\{#MyAppExeName}"""; Flags: uninsdeletevalue; Tasks: autostart
+; Explorer's "Taskbar Groups" menu is written by the Manager at run time; the installer only
+; removes it on uninstall (dontcreatekey: nothing is created here).
+Root: HKCU; Subkey: "Software\Classes\exefile\shell\TaskbarFolders.Groups"; Flags: uninsdeletekey dontcreatekey
+Root: HKCU; Subkey: "Software\Classes\lnkfile\shell\TaskbarFolders.Groups"; Flags: uninsdeletekey dontcreatekey
 
 [Run]
 Filename: "{app}\Manager\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent

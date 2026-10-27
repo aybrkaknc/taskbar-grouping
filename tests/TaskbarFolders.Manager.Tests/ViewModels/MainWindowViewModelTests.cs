@@ -260,6 +260,24 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task GroupListChanged_IsRaised_ForAddRenameAndDelete()
+    {
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+        var raised = 0;
+        sut.GroupListChanged += (_, _) => raised++;
+
+        sut.NewGroupName = "Tools";
+        await sut.AddGroupCommand.ExecuteAsync(null);
+        sut.EditedGroupName = "Tools 2";
+        await sut.RenameGroupCommand.ExecuteAsync(null);
+        await sut.DeleteGroupCommand.ExecuteAsync(sut.SelectedGroup);
+
+        raised.Should().Be(3, "Explorer's menu lists the groups by name, so each of these has to update it");
+    }
+
+    [Fact]
     public async Task RefreshFromStoreAsync_LeavesEverythingAlone_WhenNothingChangedOnDisk()
     {
         var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps", Apps = { new AppEntry { Name = "x", Path = "x.exe" } } });

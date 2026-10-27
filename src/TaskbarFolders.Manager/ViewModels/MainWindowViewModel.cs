@@ -45,6 +45,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _logger = logger;
     }
 
+    /// <summary>
+    /// Raised after a group is created, renamed or deleted, or the list is reloaded from disk —
+    /// anything that changes which groups exist or what they are called.
+    /// </summary>
+    public event EventHandler? GroupListChanged;
+
     /// <summary>Detail-pane view model. Single instance reused across selection changes.</summary>
     public GroupEditorViewModel Editor { get; }
 
@@ -132,6 +138,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             : Groups.FirstOrDefault(g => string.Equals(g.Id, selectedId, StringComparison.OrdinalIgnoreCase));
 
         _logger?.LogInformation("Groups changed on disk while the Manager was in the background; reloaded.");
+        GroupListChanged?.Invoke(this, EventArgs.Empty);
         return true;
     }
 
@@ -191,6 +198,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         await _syncService.SyncAsync(config).ConfigureAwait(true);
 
         _logger?.LogInformation("Created group {Id} '{Name}'.", config.Id, config.GroupName);
+        GroupListChanged?.Invoke(this, EventArgs.Empty);
     }
 
     [RelayCommand]
@@ -226,6 +234,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         _logger?.LogInformation("Deleted group {Id}.", group.Id);
+        GroupListChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private bool CanRenameGroup()
@@ -270,6 +279,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         await _syncService.SyncAsync(group.Config).ConfigureAwait(true);
 
         _logger?.LogInformation("Renamed group {Id} from '{Old}' to '{New}'.", group.Id, previousName, trimmed);
+        GroupListChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void InsertAlphabetically(GroupListItemViewModel item)

@@ -95,6 +95,8 @@ The popup is the second writer ([ADR-005](adr/005-popup-edits-its-group.md)): ad
 
 Files can also reach a group on the launcher's command line — `--group-id <id> <file>…`, which is what Explorer's *Taskbar Groups* menu runs and what a file dropped on the group's taskbar tile turns into. `CommandLineAppAdder` adds them inside a per-group, machine-wide lock (a named semaphore, since the work awaits), skipping files already in the group, then saves and syncs. Explorer starts one launcher per selected file, so a multi-selection is many launchers at once: each claims the group's `PopupPresence` event before adding anything, the one that created it shows the popup, and the others add their file, signal the event and exit; the open popup reloads its tiles on that signal.
 
+Explorer's *Taskbar Groups* menu ([ADR-007](adr/007-explorer-menu-registry-verbs.md)) is a set of per-user static verbs under `HKCU\Software\Classes\{exefile,lnkfile}\shell\TaskbarFolders.Groups`, one entry per group, each running the launcher with `--group-id <id> "%1"`. `ExplorerContextMenuService` in the Manager deletes and rewrites the whole submenu on startup, whenever the group list changes (`MainWindowViewModel.GroupListChanged`) and when settings are saved; the *Show "Taskbar Groups"* setting removes it.
+
 The Manager keeps every group in memory, so it re-reads the store whenever its window is activated and rebuilds the list — reselecting the previous group by id — only if some group differs from the copy in memory. Without that, a change made outside the Manager while it was open would be overwritten by its next save of the same group.
 
 ### Pinning

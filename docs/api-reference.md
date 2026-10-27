@@ -218,6 +218,15 @@ The launcher executable a group's shortcuts target, or `null` when it cannot be 
 
 ## TaskbarFolders.Manager
 
+#### [`ExplorerContextMenuService`](../src/TaskbarFolders.Manager/Services/ExplorerContextMenuService.cs)
+
+```csharp
+Task RefreshAsync(CancellationToken cancellationToken = default);
+void Write(IReadOnlyList<GroupConfig> groups, string? launcherPath);
+```
+
+Keeps Explorer's *Taskbar Groups* menu in step with the groups and the `AppSettings.ShowInExplorerMenu` setting. `RefreshAsync` reads both stores and the launcher path, logs and swallows registry failures. `Write` deletes the submenu for both file classes and writes it again, or leaves it deleted for no groups or no launcher. Registry access goes through `IRegistryWriter` (`DeleteTree`, `SetString` on HKCU; `CurrentUserRegistryWriter` in production). `MainWindowViewModel.GroupListChanged` and `SettingsViewModel.Saved` trigger it.
+
 #### [`LauncherPathResolver`](../src/TaskbarFolders.Manager/Services/LauncherPathResolver.cs)
 
 The Manager's `ILauncherPathResolver` (see Core). Probes side-by-side, sibling-folder and development layouts in that order, logging every probed path when none match.

@@ -88,6 +88,14 @@ public partial class App : Application
         // here was how a stale anchor could outlive its group indefinitely.
         sync.RemoveOrphanedStartMenuAnchors();
 
+        // Explorer's "Taskbar Groups" menu follows the group list and the setting; rewritten
+        // now (heals an install whose groups changed while the Manager was closed) and on
+        // every change after.
+        var explorerMenu = _host.Services.GetRequiredService<ExplorerContextMenuService>();
+        await explorerMenu.RefreshAsync().ConfigureAwait(true);
+        viewModel.GroupListChanged += async (_, _) => await explorerMenu.RefreshAsync().ConfigureAwait(true);
+        _host.Services.GetRequiredService<SettingsViewModel>().Saved += async (_, _) => await explorerMenu.RefreshAsync().ConfigureAwait(true);
+
         // Deferred startup IO: prune stale icon-cache PNGs and old log files in the background
         // so the first paint of MainWindow is not blocked by ~10-70 ms of enumerate-and-delete.
         _host.Services.GetRequiredService<IIconCache>().StartBackgroundPrune();

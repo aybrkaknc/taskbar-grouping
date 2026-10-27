@@ -53,6 +53,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private PopupPositionPreference _popupPosition;
 
+    /// <summary>Whether Explorer's context menu offers "Taskbar Groups" for .exe and .lnk files.</summary>
+    [ObservableProperty]
+    private bool _showInExplorerMenu = true;
+
+    /// <summary>Raised after the settings have been written.</summary>
+    public event EventHandler? Saved;
+
     /// <summary>Whether any property has been mutated since the last load or save.</summary>
     [ObservableProperty]
     private bool _hasUnsavedChanges;
@@ -70,6 +77,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             // mirrored on Save, but if the user removed the run entry by hand the registry wins.
             AutoStart = _autoStartService.IsEnabled;
             EnableAnimations = settings.EnableAnimations;
+            ShowInExplorerMenu = settings.ShowInExplorerMenu;
             PopupPosition = settings.PopupPosition;
         }
         finally
@@ -87,6 +95,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             Theme = Theme,
             AutoStart = AutoStart,
             EnableAnimations = EnableAnimations,
+            ShowInExplorerMenu = ShowInExplorerMenu,
             PopupPosition = PopupPosition,
         };
 
@@ -106,11 +115,13 @@ public sealed partial class SettingsViewModel : ObservableObject
         HasUnsavedChanges = false;
         _logger?.LogInformation("Settings saved. Theme={Theme} AutoStart={AutoStart} Animations={Animations} Position={Position}.",
             Theme, AutoStart, EnableAnimations, PopupPosition);
+        Saved?.Invoke(this, EventArgs.Empty);
     }
 
     partial void OnThemeChanged(ThemePreference value) => MarkDirty();
     partial void OnAutoStartChanged(bool value) => MarkDirty();
     partial void OnEnableAnimationsChanged(bool value) => MarkDirty();
+    partial void OnShowInExplorerMenuChanged(bool value) => MarkDirty();
     partial void OnPopupPositionChanged(PopupPositionPreference value) => MarkDirty();
 
     private void MarkDirty()

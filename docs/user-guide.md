@@ -94,6 +94,12 @@ Click the pinned tile. A popup opens next to the taskbar, anchored near the tile
 - **Click +** to add apps: a file picker opens, and every .exe or .lnk you choose is added to the group and appears in the popup. The taskbar icon and shortcut are updated as they are from the Manager. The popup stays open while the picker is.
 - **Click ✎** to remove apps: each tile gets a small ✕, and clicking it takes that app out of the group — only out of the group; the program or shortcut on disk is not touched. Tiles do not launch while editing. Click the ✓ (or press **Escape**) when done. Removing the last app leaves an empty group, which you can fill again with +.
 - **Drag files onto the popup** to add them. Switch to edit mode (✎) first: while editing, clicking elsewhere does not close the popup, so you can press on a file in Explorer and drag it over. The popup highlights when what you drag can be added (`.exe` or `.lnk`).
+
+### Sending files from Explorer
+
+Right-click an `.exe` or a shortcut in Explorer or on the desktop → **Show more options** (or **Shift+F10**) → **Taskbar Groups** → the group. The file is added and the group's popup opens showing it; select several files to add them all at once. Windows 11 lists the entry in the classic menu only — its compact first menu takes only packaged apps. Turn the entry off in Settings.
+
+Dropping a file on a group's **taskbar tile** may add it as well, if your Windows passes dropped files to the pinned app; when it does not, use the popup or the menu.
 - **If a launch fails**, the popup stays open and shows an error strip naming the app.
 - **Click anywhere else**, or press **Escape**, to dismiss the popup. A click outside works even if Windows did not give the popup the focus.
 
@@ -125,6 +131,7 @@ Open with the **⚙** button in the top right.
 | Popup position | Auto, Above, Below | Auto | *Auto* places the popup on the sensible side of the taskbar for its current edge. |
 | Enable popup animations | on / off | on | Turns the popup's open animation on or off. |
 | Start TaskbarFolders Manager when Windows starts | on / off | off | Adds or removes the per-user Run registry entry. |
+| Show "Taskbar Groups" in Explorer's right-click menu | on / off | on | Lists your groups under *Show more options* for `.exe` and `.lnk` files. Kept up to date by the Manager. |
 
 Settings apply when you click **Save**. Closing the dialog discards changes; an *Unsaved changes* marker appears while any are pending.
 
@@ -157,7 +164,7 @@ The file name is what identifies a group. Renaming `groups\abc.json` renames the
 
 **Installer:** *Settings → Apps → Installed apps → TaskbarFolders → Uninstall*, or *Add or Remove Programs*. This removes the program and the autostart entry.
 
-**Portable:** delete the extracted folder.
+**Portable:** turn off *Show "Taskbar Groups" in Explorer's right-click menu* in Settings, then delete the extracted folder; otherwise the menu entry stays behind, pointing at a missing program.
 
 Neither removes your groups. To clear everything:
 

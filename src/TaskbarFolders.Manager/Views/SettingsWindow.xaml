@@ -54,7 +54,8 @@
                       Margin="0,0,0,16" />
 
             <CheckBox IsChecked="{Binding EnableAnimations}" Content="Enable popup animations" Margin="0,0,0,12" />
-            <CheckBox IsChecked="{Binding AutoStart}" Content="Start TaskbarFolders Manager when Windows starts" />
+            <CheckBox IsChecked="{Binding AutoStart}" Content="Start TaskbarFolders Manager when Windows starts" Margin="0,0,0,12" />
+            <CheckBox IsChecked="{Binding ShowInExplorerMenu}" Content="Show &quot;Taskbar Groups&quot; in Explorer's right-click menu" />
 
             <TextBlock Margin="0,16,0,0" Foreground="{DynamicResource ForegroundSubtle}" FontSize="11" TextWrapping="Wrap">
                 Auto-start writes a per-user entry to

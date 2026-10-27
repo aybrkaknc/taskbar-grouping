@@ -14,6 +14,7 @@ Write one when a decision constrains future work, when a plausible alternative w
 | [004](004-popup-acrylic-backdrop.md) | Acrylic backdrop behind the popup | Accepted |
 | [005](005-popup-edits-its-group.md) | The popup may edit its own group | Accepted |
 | [006](006-versioned-group-icons.md) | Versioned group icons, and updating our own pinned shortcut | Accepted |
+| [007](007-explorer-menu-registry-verbs.md) | Explorer's "Taskbar Groups" menu as per-user registry verbs | Accepted |
 
 ## Conventions
 

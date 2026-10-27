@@ -33,4 +33,11 @@ public sealed class AppSettings
     [JsonPropertyName("popupPosition")]
     [JsonConverter(typeof(CamelCaseEnumConverter<PopupPositionPreference>))]
     public PopupPositionPreference PopupPosition { get; set; } = PopupPositionPreference.Auto;
+
+    /// <summary>
+    /// Whether Explorer's classic context menu for <c>.exe</c> and <c>.lnk</c> files offers
+    /// "Taskbar Groups", with one entry per group that adds the file to it.
+    /// </summary>
+    [JsonPropertyName("showInExplorerMenu")]
+    public bool ShowInExplorerMenu { get; set; } = true;
 }
