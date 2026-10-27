@@ -91,6 +91,7 @@ Click the pinned tile. A popup opens next to the taskbar, anchored near the tile
 - The group's name is shown at the top of the popup.
 - **Click an icon** to launch it. The popup closes.
 - **Click ✕** in the top-right corner to close the popup without launching anything.
+- **Click +** to add apps: a file picker opens, and every .exe or .lnk you choose is added to the group and appears in the popup. The taskbar icon and shortcut are updated as they are from the Manager. The popup stays open while the picker is.
 - **If a launch fails**, the popup stays open and shows an error strip naming the app.
 - **Click anywhere else**, or press **Escape**, to dismiss the popup. A click outside works even if Windows did not give the popup the focus.
 

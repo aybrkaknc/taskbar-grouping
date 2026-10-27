@@ -148,6 +148,7 @@ Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fe
 - Oben im Fenster steht der Name der Gruppe.
 - **Auf ein Symbol klicken** startet das Programm, das Fenster schließt sich.
 - **Auf ✕** oben rechts klicken schließt das Fenster, ohne etwas zu starten.
+- **Auf +** klicken fügt Programme hinzu: Es öffnet sich eine Dateiauswahl, und jede gewählte .exe- oder .lnk-Datei kommt in die Gruppe und erscheint sofort im Fenster. Taskleistensymbol und Verknüpfung werden wie aus dem Manager aktualisiert. Solange die Auswahl offen ist, bleibt das Fenster stehen.
 - **Lässt sich ein Programm nicht starten**, bleibt das Fenster offen und zeigt einen roten Hinweis mit dem Namen.
 - **Klick daneben** oder **`Esc`** schließt das Fenster. Der Klick daneben wirkt auch dann, wenn Windows dem Fenster den Fokus nicht gegeben hat.
 

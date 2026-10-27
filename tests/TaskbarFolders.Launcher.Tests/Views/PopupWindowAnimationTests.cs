@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using FluentAssertions;
 using Moq;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
@@ -117,6 +118,7 @@ public sealed class PopupWindowAnimationTests
             Mock.Of<IIconExtractor>(),
             Mock.Of<IIconCache>(),
             Mock.Of<IProcessLauncher>(),
+            Mock.Of<IGroupSyncService>(),
             new LauncherOptions("g1"));
 
         return new PopupWindow(viewModel, Mock.Of<ITaskbarPositionHelper>(), new AppSettings());

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -8,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shell;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using TaskbarFolders.Core.Interop;
 using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
@@ -49,6 +51,10 @@ public sealed partial class PopupWindow : Window, IDisposable
     private readonly AppSettings _settings;
     private readonly bool _useSystemBackdrop;
     private OutsideClickWatcher? _outsideClicks;
+
+    // True while a dialog owned by the popup (the add-apps picker) is open. Clicks in it land
+    // outside the popup and it takes the focus, so every dismissal trigger has to stand down.
+    private bool _dismissSuspended;
     private DispatcherTimer? _closeSafetyTimer;
     private bool _closeAnimating;
     private bool _closeConfirmed;
@@ -103,6 +109,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         // LastError toggles the docked strip after open; height must grow/shrink with it
         // or the strip clips the fixed 96 px tiles (issue #24).
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        _viewModel.Apps.CollectionChanged += OnAppsChanged;
         Activated += OnActivated;
         Closing += OnClosing;
         Closed += OnClosed;
@@ -126,7 +133,13 @@ public sealed partial class PopupWindow : Window, IDisposable
         }
 
         var hwnd = new WindowInteropHelper(this).Handle;
-        _outsideClicks = new OutsideClickWatcher(hwnd, () => Dispatcher.BeginInvoke(new Action(Close)));
+        _outsideClicks = new OutsideClickWatcher(hwnd, () =>
+        {
+            if (!_dismissSuspended)
+            {
+                Dispatcher.BeginInvoke(new Action(Close));
+            }
+        });
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -243,7 +256,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         };
         _activationFallbackTimer.Tick += (_, _) =>
         {
-            if (_wasActivated || IsMouseOver)
+            if (_wasActivated || IsMouseOver || _dismissSuspended)
             {
                 return;
             }
@@ -285,7 +298,7 @@ public sealed partial class PopupWindow : Window, IDisposable
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(PopupViewModel.LastError))
+        if (e.PropertyName is not (nameof(PopupViewModel.LastError) or nameof(PopupViewModel.IsUnavailable)))
         {
             return;
         }
@@ -443,7 +456,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         // Only dismiss after the window has genuinely held activation once. A spurious
         // deactivation before first activation would otherwise close the popup before
         // the user ever saw it.
-        if (_wasActivated)
+        if (_wasActivated && !_dismissSuspended)
         {
             Close();
         }
@@ -452,6 +465,47 @@ public sealed partial class PopupWindow : Window, IDisposable
     private void OnLaunchSucceeded(object? sender, EventArgs e) => Close();
 
     private void OnCloseRequested(object? sender, EventArgs e) => Close();
+
+    // Tiles added or removed from inside the popup change the grid's height.
+    private void OnAppsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (IsLoaded && !_closeAnimating)
+        {
+            ApplySizeAndPlacement();
+        }
+    }
+
+    /// <summary>
+    /// Opens the file picker for the + button. Input routing only: the picked files go to the
+    /// view model, which applies the add rule and saves the group.
+    /// </summary>
+    private async void AddApps_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Applications and shortcuts|*.exe;*.lnk|Executables (*.exe)|*.exe|Shortcuts (*.lnk)|*.lnk",
+            Multiselect = true,
+            Title = $"Add apps to \"{_viewModel.GroupName}\"",
+        };
+
+        bool? picked;
+        _dismissSuspended = true;
+        try
+        {
+            picked = dialog.ShowDialog(this);
+        }
+        finally
+        {
+            _dismissSuspended = false;
+            // The dialog had the focus; give it back so dismiss-on-focus-loss works again.
+            Activate();
+        }
+
+        if (picked == true && dialog.FileNames.Length > 0)
+        {
+            await _viewModel.AddAppsAsync(dialog.FileNames).ConfigureAwait(true);
+        }
+    }
 
     private void OnClosed(object? sender, EventArgs e)
     {
@@ -468,6 +522,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         _viewModel.LaunchSucceeded -= OnLaunchSucceeded;
         _viewModel.CloseRequested -= OnCloseRequested;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        _viewModel.Apps.CollectionChanged -= OnAppsChanged;
         Activated -= OnActivated;
         Closing -= OnClosing;
         Closed -= OnClosed;

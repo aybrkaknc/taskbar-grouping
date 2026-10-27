@@ -250,7 +250,8 @@ Task<PinResult> PinAsync(string groupId, CancellationToken cancellationToken = d
 | [`IProcessLauncher`](../src/TaskbarFolders.Launcher/Services/IProcessLauncher.cs) | `bool Launch(string path, string? arguments)` |
 | `TaskbarPinRunner` | Drives the WinRT pin request in pin mode and maps the outcome to an exit code |
 | `StartupFailureLogger` | Dependency-free, never-throwing logger for failure paths that occur before or instead of the DI graph |
+| [`SelfLauncherPathResolver`](../src/TaskbarFolders.Launcher/Services/SelfLauncherPathResolver.cs) | The launcher's `ILauncherPathResolver`: `Environment.ProcessPath`, since the launcher is the shortcut target |
 | [`OutsideClickWatcher`](../src/TaskbarFolders.Launcher/Services/OutsideClickWatcher.cs) | `IDisposable` low-level mouse hook calling back on any button press outside a window; `IsInstalled`; pure `static bool IsOutside(x, y, left, top, right, bottom)` in **device pixels**, right/bottom exclusive |
-| `PopupViewModel` | Besides loading the group and `LaunchAppCommand`: `CloseCommand` raises `CloseRequested`, mirroring `LaunchSucceeded`; the window closes on either |
+| `PopupViewModel` | Besides loading the group and `LaunchAppCommand`: `CloseCommand` raises `CloseRequested`, mirroring `LaunchSucceeded`; the window closes on either. `Task<int> AddAppsAsync(IEnumerable<string>)` adds what `AppEntry.TryCreateFromPath` accepts, saves and runs `IGroupSyncService.SyncAsync`; a failure lands in `LastError`. `CanEditGroup` is false for a group that could not be loaded |
 
 `ICursorAnchor` carries device pixels and `ComputePlacement` returns DIPs. That single conversion is the contract — see [ADR-003](adr/003-dpi-unit-contract.md).

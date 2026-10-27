@@ -6,6 +6,7 @@ using System.Windows.Data;
 using System.Windows.Media.Imaging;
 using FluentAssertions;
 using Moq;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
@@ -170,6 +171,7 @@ public sealed class PopupWindowSizingTests
             extractor.Object,
             cache.Object,
             launcher.Object,
+            Mock.Of<IGroupSyncService>(),
             new LauncherOptions("g1"));
         viewModel.LoadAsync().GetAwaiter().GetResult();
 

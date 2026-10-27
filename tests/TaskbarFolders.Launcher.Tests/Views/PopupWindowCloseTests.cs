@@ -7,6 +7,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using FluentAssertions;
 using Moq;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
@@ -141,6 +142,7 @@ public sealed class PopupWindowCloseTests
             extractor.Object,
             cache.Object,
             Mock.Of<IProcessLauncher>(),
+            Mock.Of<IGroupSyncService>(),
             new LauncherOptions("g1"));
         viewModel.LoadAsync().GetAwaiter().GetResult();
 

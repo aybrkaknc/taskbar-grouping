@@ -12,6 +12,7 @@ Write one when a decision constrains future work, when a plausible alternative w
 | [002](002-per-group-lnk-aumid.md) | Per-group shortcut with a distinct AppUserModelID | Accepted — supersedes part of ADR-001 |
 | [003](003-dpi-unit-contract.md) | Device pixels at the Win32 boundary | Accepted |
 | [004](004-popup-acrylic-backdrop.md) | Acrylic backdrop behind the popup | Accepted |
+| [005](005-popup-edits-its-group.md) | The popup may edit its own group | Accepted |
 
 ## Conventions
 

@@ -6,6 +6,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using FluentAssertions;
 using Moq;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
@@ -36,7 +37,7 @@ public class PopupViewModelTests
                     Mock<IGroupConfigStore> store,
                     Mock<IIconExtractor> extractor,
                     Mock<IIconCache> cache,
-                    Mock<IProcessLauncher> launcher) CreateSut(string groupId = "g1", GroupConfig? config = null)
+                    Mock<IProcessLauncher> launcher) CreateSut(string groupId = "g1", GroupConfig? config = null, Mock<IGroupSyncService>? sync = null)
     {
         var store = new Mock<IGroupConfigStore>();
         store.Setup(s => s.LoadAsync(groupId, It.IsAny<CancellationToken>())).ReturnsAsync(config);
@@ -56,6 +57,7 @@ public class PopupViewModelTests
             extractor.Object,
             cache.Object,
             launcher.Object,
+            (sync ?? new Mock<IGroupSyncService>()).Object,
             new LauncherOptions(groupId));
 
         return (sut, store, extractor, cache, launcher);
@@ -255,6 +257,84 @@ public class PopupViewModelTests
 
         launcher.Verify(l => l.Launch("a.exe", "-x"), Times.Once);
         succeeded.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AddAppsAsync_AddsAcceptedFiles_SavesAndResyncsTheGroup()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var sync = new Mock<IGroupSyncService>();
+        var (sut, store, _, _, _) = CreateSut("g", config, sync);
+        await sut.LoadAsync();
+
+        var added = await sut.AddAppsAsync([@"C:\Tools\New.exe", @"C:\Docs\notes.txt", @"C:\Links\Other.lnk"]);
+
+        added.Should().Be(2, "the .txt is not an app and is skipped");
+        sut.Apps.Select(a => a.Name).Should().Equal("a", "New", "Other");
+        store.Verify(s => s.SaveAsync(
+            It.Is<GroupConfig>(c => c.Apps.Select(a => a.Path).SequenceEqual(new[] { "a.exe", @"C:\Tools\New.exe", @"C:\Links\Other.lnk" })),
+            It.IsAny<CancellationToken>()), Times.Once);
+        sync.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once,
+            "the taskbar icon and shortcuts have to follow the new app list");
+        sut.LastError.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task AddAppsAsync_DoesNothing_WhenNoPickedFileIsAnApp()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var sync = new Mock<IGroupSyncService>();
+        var (sut, store, _, _, _) = CreateSut("g", config, sync);
+        await sut.LoadAsync();
+
+        var added = await sut.AddAppsAsync([@"C:\Docs\notes.txt"]);
+
+        added.Should().Be(0);
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+        sync.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task AddAppsAsync_MakesAnEmptyGroupAvailable()
+    {
+        var config = new GroupConfig { Id = "empty", GroupName = "Empty" };
+        var (sut, _, _, _, _) = CreateSut("empty", config);
+        await sut.LoadAsync();
+        sut.IsUnavailable.Should().BeTrue();
+        sut.CanEditGroup.Should().BeTrue("an empty group exists and can be filled from the popup");
+
+        await sut.AddAppsAsync([@"C:\Tools\First.exe"]);
+
+        sut.IsUnavailable.Should().BeFalse();
+        sut.Apps.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task AddAppsAsync_IsRefused_ForAGroupThatDoesNotExist()
+    {
+        var (sut, store, _, _, _) = CreateSut("missing", config: null);
+        await sut.LoadAsync();
+
+        sut.CanEditGroup.Should().BeFalse();
+        (await sut.AddAppsAsync([@"C:\Tools\New.exe"])).Should().Be(0);
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AddAppsAsync_ShowsAnError_WhenTheGroupCannotBeSaved()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var sync = new Mock<IGroupSyncService>();
+        var (sut, store, _, _, _) = CreateSut("g", config, sync);
+        store.Setup(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()))
+             .ThrowsAsync(new System.IO.IOException("locked"));
+        await sut.LoadAsync();
+
+        var act = () => sut.AddAppsAsync([@"C:\Tools\New.exe"]);
+
+        await act.Should().NotThrowAsync("the popup has nobody above it to catch an exception");
+        sut.LastError.Should().NotBeNullOrEmpty();
+        sync.VerifyNoOtherCalls();
     }
 
     [Fact]

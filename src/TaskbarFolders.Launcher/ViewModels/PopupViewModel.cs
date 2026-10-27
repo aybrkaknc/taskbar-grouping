@@ -1,11 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
@@ -30,11 +34,16 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     private readonly IIconExtractor _extractor;
     private readonly IIconCache _cache;
     private readonly IProcessLauncher _launcher;
+    private readonly IGroupSyncService _syncService;
     private readonly LauncherOptions _options;
     private readonly ILogger<PopupViewModel>? _logger;
 
     private readonly object _iconLoadLock = new();
     private CancellationTokenSource? _iconLoadCts;
+
+    // The group as loaded, kept so edits made in the popup can be saved back. Null when the
+    // group does not exist, in which case nothing can be edited.
+    private GroupConfig? _config;
 
     /// <summary>Initializes a new instance.</summary>
     public PopupViewModel(
@@ -42,6 +51,7 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         IIconExtractor extractor,
         IIconCache cache,
         IProcessLauncher launcher,
+        IGroupSyncService syncService,
         LauncherOptions options,
         ILogger<PopupViewModel>? logger = null)
     {
@@ -49,15 +59,24 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         ArgumentNullException.ThrowIfNull(extractor);
         ArgumentNullException.ThrowIfNull(cache);
         ArgumentNullException.ThrowIfNull(launcher);
+        ArgumentNullException.ThrowIfNull(syncService);
         ArgumentNullException.ThrowIfNull(options);
 
         _store = store;
         _extractor = extractor;
         _cache = cache;
         _launcher = launcher;
+        _syncService = syncService;
         _options = options;
         _logger = logger;
     }
+
+    /// <summary>
+    /// True once an existing group has been loaded; the popup only offers to edit a group it
+    /// could read.
+    /// </summary>
+    [ObservableProperty]
+    private bool _canEditGroup;
 
     /// <summary>Display name of the loaded group; empty string until <see cref="LoadAsync"/> completes.</summary>
     [ObservableProperty]
@@ -101,6 +120,8 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
             return;
         }
 
+        _config = config;
+        CanEditGroup = true;
         GroupName = config.GroupName;
         Columns = config.Columns;
 
@@ -159,6 +180,85 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
             _iconLoadCts?.Cancel();
             _iconLoadCts?.Dispose();
             _iconLoadCts = null;
+        }
+    }
+
+    /// <summary>
+    /// Adds the picked files to the group: anything <see cref="AppEntry.TryCreateFromPath"/>
+    /// accepts becomes a tile at the end of the grid, then the group is saved and re-synced so
+    /// the taskbar icon and shortcuts follow. Returns how many apps were added.
+    /// </summary>
+    /// <param name="paths">Files chosen in the picker.</param>
+    public async Task<int> AddAppsAsync(IEnumerable<string>? paths)
+    {
+        if (paths is null || _config is null)
+        {
+            return 0;
+        }
+
+        var added = new List<PopupAppViewModel>();
+        foreach (var path in paths)
+        {
+            if (!AppEntry.TryCreateFromPath(path, out var entry))
+            {
+                _logger?.LogDebug("Ignored {Path}: not an .exe or .lnk.", path);
+                continue;
+            }
+
+            _config.Apps.Add(entry);
+            var app = new PopupAppViewModel(entry);
+            Apps.Add(app);
+            added.Add(app);
+        }
+
+        if (added.Count == 0)
+        {
+            return 0;
+        }
+
+        IsUnavailable = false;
+        LoadIconsFor(added);
+        _logger?.LogInformation("Added {Count} app(s) to group {GroupId} from the popup.", added.Count, _options.GroupId);
+        await PersistAsync().ConfigureAwait(true);
+        return added.Count;
+    }
+
+    /// <summary>
+    /// Saves the edited group and regenerates its icon and shortcuts. A failure is shown in the
+    /// error strip rather than thrown: the popup is a short-lived window with nobody to catch it.
+    /// </summary>
+    private async Task PersistAsync()
+    {
+        if (_config is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _store.SaveAsync(_config).ConfigureAwait(true);
+            await _syncService.SyncAsync(_config).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or COMException)
+        {
+            _logger?.LogError(ex, "Saving group {GroupId} from the popup failed.", _options.GroupId);
+            LastError = "Could not save the change to this group.";
+        }
+    }
+
+    /// <summary>Loads icons for tiles added after the initial batch, without cancelling it.</summary>
+    private void LoadIconsFor(IEnumerable<PopupAppViewModel> apps)
+    {
+        CancellationToken token;
+        lock (_iconLoadLock)
+        {
+            _iconLoadCts ??= new CancellationTokenSource();
+            token = _iconLoadCts.Token;
+        }
+
+        foreach (var app in apps)
+        {
+            _ = LoadIconForAsync(app, token);
         }
     }
 

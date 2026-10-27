@@ -177,6 +177,15 @@
                         ToolTip="Close"
                         AutomationProperties.Name="Close"
                         Command="{Binding CloseCommand}" />
+                <Button x:Name="AddAppsButton"
+                        DockPanel.Dock="Right"
+                        Margin="0,0,4,0"
+                        Style="{StaticResource PopupIconButton}"
+                        Content="&#xE710;"
+                        ToolTip="Add apps to this group"
+                        AutomationProperties.Name="Add apps"
+                        IsEnabled="{Binding CanEditGroup}"
+                        Click="AddApps_Click" />
                 <TextBlock x:Name="GroupNameText"
                            Text="{Binding GroupName}"
                            VerticalAlignment="Center"

@@ -1,5 +1,6 @@
 ﻿using System.Runtime.Versioning;
 using Microsoft.Extensions.DependencyInjection;
+using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Launcher.Configuration;
@@ -38,13 +39,23 @@ public static class LauncherServiceCollectionExtensions
         services.AddSingleton(options);
         services.AddSingleton(paths);
 
-        // Persistence — the launcher is read-only against group configs and settings.
+        // Persistence. Settings are read-only here; the popup writes its own group's config
+        // when apps are added or removed in it (ADR-005).
         services.AddSingleton<IGroupConfigStore, JsonGroupConfigStore>();
         services.AddSingleton<IAppSettingsStore, JsonAppSettingsStore>();
 
         // Icon engine — needed for the popup tiles.
         services.AddSingleton<IIconExtractor, ShellIconExtractor>();
         services.AddSingleton<IIconCache, FileSystemIconCache>();
+
+        // Group sync — regenerates the composite icon, shortcut and Start menu anchor after
+        // the popup edits its group. The launcher is the shortcut target, hence the resolver.
+        services.AddSingleton<ICompositeIconGenerator, CompositeIconGenerator>();
+        services.AddSingleton<IIcoFileWriter, IcoFileWriter>();
+        services.AddSingleton<IShortcutGenerator, ShortcutGenerator>();
+        services.AddSingleton<IShellChangeNotifier, ShellChangeNotifier>();
+        services.AddSingleton<ILauncherPathResolver, SelfLauncherPathResolver>();
+        services.AddSingleton<IGroupSyncService, GroupSyncService>();
 
         // Launcher-only services.
         services.AddSingleton<IProcessLauncher, ProcessLauncher>();
