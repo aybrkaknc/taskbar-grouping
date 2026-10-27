@@ -62,6 +62,13 @@ public sealed partial class PopupWindow : Window, IDisposable
     private DispatcherTimer? _activationFallbackTimer;
     private bool _wasActivated;
 
+    /// <summary>
+    /// Raised on the UI thread when a press outside the popup is about to close it, with the
+    /// press position in device pixels. <see cref="App"/> uses it to tell a press on the
+    /// group's own tile apart (see <see cref="TileToggle"/>).
+    /// </summary>
+    public event EventHandler<Point>? ClosingFromOutsidePress;
+
     /// <summary>Initializes a new instance of the <see cref="PopupWindow"/> class.</summary>
     public PopupWindow(
         PopupViewModel viewModel,
@@ -133,10 +140,13 @@ public sealed partial class PopupWindow : Window, IDisposable
         }
 
         var hwnd = new WindowInteropHelper(this).Handle;
-        _outsideClicks = new OutsideClickWatcher(hwnd, () =>
+        _outsideClicks = new OutsideClickWatcher(hwnd, (x, y) =>
         {
             if (!_dismissSuspended)
             {
+                // Synchronous: the marker has to exist before the shell starts the launcher
+                // that the same click on the tile triggers.
+                ClosingFromOutsidePress?.Invoke(this, new Point(x, y));
                 Dispatcher.BeginInvoke(new Action(Close));
             }
         });

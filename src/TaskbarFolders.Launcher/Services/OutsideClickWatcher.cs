@@ -21,7 +21,7 @@ namespace TaskbarFolders.Launcher.Services;
 public sealed class OutsideClickWatcher : IDisposable
 {
     private readonly IntPtr _hwnd;
-    private readonly Action _onOutsideClick;
+    private readonly Action<int, int> _onOutsideClick;
 
     // Held in a field: the hook keeps only a native pointer to this delegate, so a delegate
     // the GC could collect would crash the process on the next mouse event.
@@ -30,8 +30,8 @@ public sealed class OutsideClickWatcher : IDisposable
 
     /// <summary>Installs the hook for <paramref name="hwnd"/>.</summary>
     /// <param name="hwnd">Window whose rectangle counts as "inside".</param>
-    /// <param name="onOutsideClick">Called on the installing thread for each press outside the window.</param>
-    public OutsideClickWatcher(IntPtr hwnd, Action onOutsideClick)
+    /// <param name="onOutsideClick">Called on the installing thread for each press outside the window, with its position in device pixels.</param>
+    public OutsideClickWatcher(IntPtr hwnd, Action<int, int> onOutsideClick)
     {
         ArgumentNullException.ThrowIfNull(onOutsideClick);
 
@@ -77,7 +77,7 @@ public sealed class OutsideClickWatcher : IDisposable
             var info = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
             if (IsOutside(info.pt.X, info.pt.Y, rect.Left, rect.Top, rect.Right, rect.Bottom))
             {
-                _onOutsideClick();
+                _onOutsideClick(info.pt.X, info.pt.Y);
             }
         }
 

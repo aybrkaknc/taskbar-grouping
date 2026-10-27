@@ -152,6 +152,7 @@ Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fe
 - **Auf ✎** klicken, um Programme zu entfernen: Jede Kachel bekommt ein kleines ✕, ein Klick darauf nimmt das Programm aus der Gruppe — nur aus der Gruppe; die Programmdatei oder Verknüpfung bleibt unberührt. Während der Bearbeitung starten die Kacheln nichts. Mit ✓ (oder `Esc`) beenden. Wird das letzte Programm entfernt, ist die Gruppe leer und lässt sich mit + wieder füllen.
 - **Lässt sich ein Programm nicht starten**, bleibt das Fenster offen und zeigt einen roten Hinweis mit dem Namen.
 - **Klick daneben** oder **`Esc`** schließt das Fenster. Der Klick daneben wirkt auch dann, wenn Windows dem Fenster den Fokus nicht gegeben hat.
+- **Erneuter Klick auf die Taskleistenkachel** der Gruppe schließt das Fenster, ohne es wieder zu öffnen.
 
 Ist *Enable popup animations* eingeschaltet, blendet sich das Fenster beim Schließen kurz aus. Unter Windows 11 22H2 und neuer kann die Glasfläche selbst nicht ausblenden; sie verschwindet unmittelbar nach den Symbolen.
 

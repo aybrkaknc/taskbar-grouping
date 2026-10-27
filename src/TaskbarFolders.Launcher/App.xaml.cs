@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using TaskbarFolders.Core.Icons;
@@ -39,6 +40,7 @@ public partial class App : Application
 {
     private ServiceProvider? _services;
     private PopupPresence? _presence;
+    private TileToggle? _tileToggle;
 
     /// <summary>
     /// Gets the application service provider once <see cref="OnStartup"/> has completed.
@@ -270,13 +272,22 @@ public partial class App : Application
         var logger = _services.GetRequiredService<ILogger<App>>();
         logger.LogInformation("Launcher starting for group {GroupId}.", groupId);
 
+        // Files after the group id come from Explorer's "Taskbar Groups" menu.
+        var filesToAdd = CommandLineParser.ParseFilesToAdd(e.Args);
+
+        // This click on the tile is the one that just closed the group's popup: a toggle.
+        if (filesToAdd.Count == 0 && TileToggle.TryConsume(groupId))
+        {
+            logger.LogInformation("Popup for {GroupId} was closed by this tile click; not reopening.", groupId);
+            Shutdown(0);
+            return;
+        }
+
         // Claimed before anything is added, so of several launchers started together for one
         // group (a multi-selection sent from Explorer) exactly one shows the popup.
         _presence = PopupPresence.Claim(groupId);
 
-        // Files after the group id come from Explorer's "Taskbar Groups" menu or a drop on the
-        // taskbar tile: add them first, so the popup opens already showing them.
-        var filesToAdd = CommandLineParser.ParseFilesToAdd(e.Args);
+        // Add the files first, so the popup opens already showing them.
         if (filesToAdd.Count > 0)
         {
             await _services.GetRequiredService<CommandLineAppAdder>().AddAsync(filesToAdd).ConfigureAwait(true);
@@ -362,6 +373,17 @@ public partial class App : Application
                 rendered);
         };
 
+        // A press on the tile that opened the popup is also the click that starts the next
+        // launcher; leave it the marker that tells it to stay hidden.
+        popup.ClosingFromOutsidePress += (_, press) =>
+        {
+            if (_tileToggle is null
+                && TileToggle.IsOnOpeningTile(anchor, (int)press.X, (int)press.Y, VisualTreeHelper.GetDpi(popup).DpiScaleX))
+            {
+                _tileToggle = TileToggle.MarkDismissed(groupId);
+            }
+        };
+
         popup.Show();
         tShown = Stopwatch.GetTimestamp();
 
@@ -393,6 +415,15 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
+
+        if (_tileToggle is not null)
+        {
+            // The window is gone; the process stays only until the tile click's launcher has
+            // seen the marker, which also ends the wait early.
+            _tileToggle.WaitForNextLaunch(TileToggle.Window);
+            _tileToggle.Dispose();
+            _tileToggle = null;
+        }
 
         _presence?.Dispose();
         _presence = null;
