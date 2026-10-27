@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
@@ -94,6 +95,73 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _logger?.LogInformation("Loaded {Count} group(s) from store.", Groups.Count);
     }
+
+    /// <summary>
+    /// Re-reads the store and, only if a group differs from what is in memory, rebuilds
+    /// <see cref="Groups"/> and reselects the previously selected group by id. Called when the
+    /// window is activated: the popup can add or remove apps while the Manager is open, and
+    /// the Manager's next save of that group would otherwise write its stale copy back.
+    /// Returns <see langword="true"/> when the list was rebuilt.
+    /// </summary>
+    public async Task<bool> RefreshFromStoreAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<GroupConfig> configs;
+        try
+        {
+            configs = await _store.LoadAllAsync(cancellationToken).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            // Best effort: this runs from a window event, and a failed re-read must not take
+            // the Manager down. The list in memory stays as it was.
+            _logger?.LogWarning(ex, "Could not re-read groups on activation.");
+            return false;
+        }
+
+        if (MatchesGroups(configs))
+        {
+            // Nothing changed on disk: leave the list, the selection and any half-typed
+            // rename alone.
+            return false;
+        }
+
+        var selectedId = SelectedGroup?.Id;
+        await LoadGroupsAsync(cancellationToken).ConfigureAwait(true);
+        SelectedGroup = selectedId is null
+            ? null
+            : Groups.FirstOrDefault(g => string.Equals(g.Id, selectedId, StringComparison.OrdinalIgnoreCase));
+
+        _logger?.LogInformation("Groups changed on disk while the Manager was in the background; reloaded.");
+        return true;
+    }
+
+    private bool MatchesGroups(IReadOnlyList<GroupConfig> configs)
+    {
+        if (configs.Count != Groups.Count)
+        {
+            return false;
+        }
+
+        var byId = Groups.ToDictionary(g => g.Id, g => g.Config, StringComparer.OrdinalIgnoreCase);
+        foreach (var loaded in configs)
+        {
+            if (!byId.TryGetValue(loaded.Id, out var current) || !SameContent(current, loaded))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool SameContent(GroupConfig a, GroupConfig b) =>
+        a.GroupName == b.GroupName &&
+        a.Columns == b.Columns &&
+        a.Apps.Count == b.Apps.Count &&
+        a.Apps.Zip(b.Apps).All(pair =>
+            pair.First.Path == pair.Second.Path &&
+            pair.First.Name == pair.Second.Name &&
+            pair.First.Arguments == pair.Second.Arguments);
 
     // The pre-v0.4.4 command had no CanExecute: clicking "+ Add" with an empty name box
     // hit a silent early-return and the button appeared dead. Disabling the button (and

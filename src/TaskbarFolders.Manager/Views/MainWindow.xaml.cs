@@ -30,7 +30,18 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         SourceInitialized += OnSourceInitialized;
+        Activated += OnActivated;
         Closed += OnClosed;
+    }
+
+    // The popup can add or remove a group's apps while the Manager sits in the background;
+    // coming back to the window is when that has to show up, before anything is saved.
+    private async void OnActivated(object? sender, EventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            await vm.RefreshFromStoreAsync().ConfigureAwait(true);
+        }
     }
 
     private void OnSourceInitialized(object? sender, EventArgs e)
@@ -62,6 +73,7 @@ public partial class MainWindow : Window
         {
             themeService.ThemeChanged -= OnThemeChanged;
         }
+        Activated -= OnActivated;
         Closed -= OnClosed;
     }
 

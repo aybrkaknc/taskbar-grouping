@@ -89,6 +89,8 @@ The anchor's file name follows the group's display name, but its identity is the
 
 If every icon extraction fails, sync stops before writing a shortcut rather than producing a group tile with no icon.
 
+The Manager keeps every group in memory, so it re-reads the store whenever its window is activated and rebuilds the list — reselecting the previous group by id — only if some group differs from the copy in memory. Without that, a change made outside the Manager while it was open would be overwritten by its next save of the same group.
+
 ### Pinning
 
 Two paths, both offered in the UI.

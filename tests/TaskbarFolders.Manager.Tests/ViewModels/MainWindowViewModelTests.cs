@@ -260,6 +260,95 @@ public class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task RefreshFromStoreAsync_LeavesEverythingAlone_WhenNothingChangedOnDisk()
+    {
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps", Apps = { new AppEntry { Name = "x", Path = "x.exe" } } });
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+        var item = sut.Groups[0];
+        sut.SelectedGroup = item;
+        sut.EditedGroupName = "Half-typed new na";
+
+        // Same content, fresh objects — what a re-read of unchanged files produces.
+        store.Setup(s => s.LoadAllAsync(It.IsAny<CancellationToken>()))
+             .ReturnsAsync((IReadOnlyList<GroupConfig>)
+                 [new GroupConfig { Id = "a", GroupName = "Apps", Apps = { new AppEntry { Name = "x", Path = "x.exe" } } }]);
+
+        var rebuilt = await sut.RefreshFromStoreAsync();
+
+        rebuilt.Should().BeFalse();
+        sut.Groups.Single().Should().BeSameAs(item);
+        sut.SelectedGroup.Should().BeSameAs(item);
+        sut.EditedGroupName.Should().Be("Half-typed new na", "switching windows must not discard a rename in progress");
+    }
+
+    [Fact]
+    public async Task RefreshFromStoreAsync_PicksUpAnAppAddedByThePopup_AndKeepsTheSelection()
+    {
+        var store = CreateStoreWith(
+            new GroupConfig { Id = "a", GroupName = "Apps", Apps = { new AppEntry { Name = "x", Path = "x.exe" } } },
+            new GroupConfig { Id = "b", GroupName = "Browsers" });
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+        sut.SelectedGroup = sut.Groups.Single(g => g.Id == "a");
+
+        store.Setup(s => s.LoadAllAsync(It.IsAny<CancellationToken>()))
+             .ReturnsAsync((IReadOnlyList<GroupConfig>)
+             [
+                 new GroupConfig
+                 {
+                     Id = "a",
+                     GroupName = "Apps",
+                     Apps = { new AppEntry { Name = "x", Path = "x.exe" }, new AppEntry { Name = "y", Path = "y.lnk" } },
+                 },
+                 new GroupConfig { Id = "b", GroupName = "Browsers" },
+             ]);
+
+        var rebuilt = await sut.RefreshFromStoreAsync();
+
+        rebuilt.Should().BeTrue();
+        sut.SelectedGroup.Should().NotBeNull();
+        sut.SelectedGroup!.Id.Should().Be("a", "the selection follows the group, not the old object");
+        sut.SelectedGroup.Config.Apps.Select(a => a.Path).Should().Equal("x.exe", "y.lnk");
+        sut.Editor.Apps.Should().HaveCount(2, "the editor rebinds to the reloaded group");
+    }
+
+    [Fact]
+    public async Task RefreshFromStoreAsync_ClearsTheSelection_WhenTheSelectedGroupIsGone()
+    {
+        var store = CreateStoreWith(
+            new GroupConfig { Id = "a", GroupName = "Apps" },
+            new GroupConfig { Id = "b", GroupName = "Browsers" });
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+        sut.SelectedGroup = sut.Groups.Single(g => g.Id == "a");
+
+        store.Setup(s => s.LoadAllAsync(It.IsAny<CancellationToken>()))
+             .ReturnsAsync((IReadOnlyList<GroupConfig>)[new GroupConfig { Id = "b", GroupName = "Browsers" }]);
+
+        await sut.RefreshFromStoreAsync();
+
+        sut.Groups.Select(g => g.Id).Should().Equal("b");
+        sut.SelectedGroup.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task RefreshFromStoreAsync_KeepsTheListInMemory_WhenTheStoreCannotBeRead()
+    {
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+
+        store.Setup(s => s.LoadAllAsync(It.IsAny<CancellationToken>()))
+             .ThrowsAsync(new System.IO.IOException("share violation"));
+
+        var rebuilt = await sut.RefreshFromStoreAsync();
+
+        rebuilt.Should().BeFalse();
+        sut.Groups.Select(g => g.Id).Should().Equal("a");
+    }
+
+    [Fact]
     public async Task SelectingAGroup_SeedsTheEditableName()
     {
         var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });
