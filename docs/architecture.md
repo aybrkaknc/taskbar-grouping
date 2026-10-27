@@ -97,7 +97,7 @@ Files can also reach a group on the launcher's command line — `--group-id <id>
 
 Explorer's *Taskbar Groups* menu ([ADR-007](adr/007-explorer-menu-registry-verbs.md)) is a set of per-user static verbs under `HKCU\Software\Classes\{exefile,lnkfile}\shell\TaskbarFolders.Groups`, one entry per group, each running the launcher with `--group-id <id> "%1"`. `ExplorerContextMenuService` in the Manager deletes and rewrites the whole submenu on startup, whenever the group list changes (`MainWindowViewModel.GroupListChanged`) and when settings are saved; the *Show "Taskbar Groups"* setting removes it.
 
-The Manager keeps every group in memory, so it re-reads the store whenever its window is activated and rebuilds the list — reselecting the previous group by id — only if some group differs from the copy in memory. Without that, a change made outside the Manager while it was open would be overwritten by its next save of the same group.
+The Manager keeps every group in memory, so it re-reads the store whenever its window is activated and rebuilds the list — reselecting the previous group by id — only if some group differs from the copy in memory. Without that, a change made outside the Manager while it was open would be overwritten by its next save of the same group. The re-read is skipped while the editor is saving an add or remove (`GroupEditorViewModel.IsSaving`), checked before and after reading: then memory is ahead of the disk, and closing the add-apps picker activates the window exactly then.
 
 ### Pinning
 

@@ -44,6 +44,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     private GroupListItemViewModel? _boundItem;
     private CancellationTokenSource? _previewCts;
     private readonly object _previewCtsLock = new();
+    private int _pendingSaves;
     private bool _disposed;
 
     /// <summary>Initializes a new instance with the dependencies it needs to render previews and persist edits.</summary>
@@ -129,10 +130,19 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// True while an add or remove is saving and syncing its group. A re-read of the store in
+    /// that window sees the file from before the save, so the Manager must not reload then.
+    /// </summary>
+    public bool IsSaving => _pendingSaves > 0;
+
     [RelayCommand]
     private async Task AddAppsAsync(IEnumerable<string>? paths)
     {
-        if (paths is null || _boundItem is null)
+        // Held in a local: the editor can be rebound while the save is awaited (closing the
+        // file picker re-activates the window, which may reload the groups).
+        var item = _boundItem;
+        if (paths is null || item is null)
         {
             return;
         }
@@ -146,7 +156,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
                 continue;
             }
 
-            _boundItem.Config.Apps.Add(entry);
+            item.Config.Apps.Add(entry);
 
             var appVm = new AppEntryViewModel(entry);
             Apps.Add(appVm);
@@ -156,26 +166,40 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
 
         if (added > 0)
         {
-            await _store.SaveAsync(_boundItem.Config).ConfigureAwait(true);
-            await _syncService.SyncAsync(_boundItem.Config).ConfigureAwait(true);
-            _boundItem.NotifyAppCountChanged();
+            await SaveAndSyncAsync(item).ConfigureAwait(true);
         }
     }
 
     [RelayCommand]
     private async Task RemoveAppAsync(AppEntryViewModel? app)
     {
-        if (app is null || _boundItem is null)
+        var item = _boundItem;
+        if (app is null || item is null)
         {
             return;
         }
 
-        _boundItem.Config.Apps.Remove(app.Entry);
+        item.Config.Apps.Remove(app.Entry);
         Apps.Remove(app);
 
-        await _store.SaveAsync(_boundItem.Config).ConfigureAwait(true);
-        await _syncService.SyncAsync(_boundItem.Config).ConfigureAwait(true);
-        _boundItem.NotifyAppCountChanged();
+        await SaveAndSyncAsync(item).ConfigureAwait(true);
+    }
+
+    private async Task SaveAndSyncAsync(GroupListItemViewModel item)
+    {
+        // Every await here resumes on the UI thread, so a plain counter is enough.
+        _pendingSaves++;
+        try
+        {
+            await _store.SaveAsync(item.Config).ConfigureAwait(true);
+            await _syncService.SyncAsync(item.Config).ConfigureAwait(true);
+        }
+        finally
+        {
+            _pendingSaves--;
+        }
+
+        item.NotifyAppCountChanged();
     }
 
     [RelayCommand]

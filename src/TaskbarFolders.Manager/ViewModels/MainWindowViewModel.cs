@@ -111,6 +111,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public async Task<bool> RefreshFromStoreAsync(CancellationToken cancellationToken = default)
     {
+        // An editor save in flight means memory is ahead of the disk, not behind it. Checked
+        // before and after the read: closing the add-apps picker activates the window just
+        // before the add starts saving.
+        if (Editor.IsSaving)
+        {
+            return false;
+        }
+
         IReadOnlyList<GroupConfig> configs;
         try
         {
@@ -124,7 +132,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return false;
         }
 
-        if (MatchesGroups(configs))
+        if (Editor.IsSaving || MatchesGroups(configs))
         {
             // Nothing changed on disk: leave the list, the selection and any half-typed
             // rename alone.

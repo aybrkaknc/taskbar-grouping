@@ -331,6 +331,59 @@ public class MainWindowViewModelTests
         sut.Editor.Apps.Should().HaveCount(2, "the editor rebinds to the reloaded group");
     }
 
+    // Closing the add-apps picker activates the window while the editor is still saving: the
+    // re-read sees the file from before the save and would replace the group being edited.
+    [Fact]
+    public async Task RefreshFromStoreAsync_StandsDown_WhileTheEditorIsSaving()
+    {
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps", Apps = { new AppEntry { Name = "x", Path = "x.exe" } } });
+        var saving = new TaskCompletionSource();
+        store.Setup(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>())).Returns(saving.Task);
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+        var item = sut.Groups[0];
+        sut.SelectedGroup = item;
+
+        // The file as it is before the save lands.
+        store.Setup(s => s.LoadAllAsync(It.IsAny<CancellationToken>()))
+             .ReturnsAsync((IReadOnlyList<GroupConfig>)
+                 [new GroupConfig { Id = "a", GroupName = "Apps", Apps = { new AppEntry { Name = "x", Path = "x.exe" } } }]);
+
+        var add = sut.Editor.AddAppsCommand.ExecuteAsync(new[] { "y.exe" });
+        var rebuilt = await sut.RefreshFromStoreAsync();
+        saving.SetResult();
+        await add;
+
+        rebuilt.Should().BeFalse();
+        sut.SelectedGroup.Should().BeSameAs(item);
+        sut.Editor.Apps.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task RefreshFromStoreAsync_StandsDown_WhenASaveStartsDuringTheRead()
+    {
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps", Apps = { new AppEntry { Name = "x", Path = "x.exe" } } });
+        var sut = CreateSut(store);
+        await sut.LoadGroupsAsync();
+        var item = sut.Groups[0];
+        sut.SelectedGroup = item;
+
+        var saving = new TaskCompletionSource();
+        store.Setup(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>())).Returns(saving.Task);
+        var reading = new TaskCompletionSource<IReadOnlyList<GroupConfig>>();
+        store.Setup(s => s.LoadAllAsync(It.IsAny<CancellationToken>())).Returns(reading.Task);
+
+        var refresh = sut.RefreshFromStoreAsync();
+        var add = sut.Editor.AddAppsCommand.ExecuteAsync(new[] { "y.exe" });
+        reading.SetResult([new GroupConfig { Id = "a", GroupName = "Apps", Apps = { new AppEntry { Name = "x", Path = "x.exe" } } }]);
+        var rebuilt = await refresh;
+        saving.SetResult();
+        await add;
+
+        rebuilt.Should().BeFalse("the file read predates the add");
+        sut.SelectedGroup.Should().BeSameAs(item);
+    }
+
     [Fact]
     public async Task RefreshFromStoreAsync_ClearsTheSelection_WhenTheSelectedGroupIsGone()
     {

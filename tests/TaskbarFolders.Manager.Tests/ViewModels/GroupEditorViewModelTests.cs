@@ -168,6 +168,47 @@ public class GroupEditorViewModelTests
         store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    // The file picker returning re-activates the Manager, whose reload can rebind the editor
+    // while the save is still running; v0.4.10 then dereferenced the cleared binding and the
+    // Manager crashed with the app already saved.
+    [Fact]
+    public async Task AddAppsAsync_FinishesForItsOwnGroup_WhenTheEditorIsReboundDuringTheSave()
+    {
+        var (sut, _, _, _, store, syncService, _, _, _) = CreateSutWithCollaborators();
+        var saving = new TaskCompletionSource();
+        store.Setup(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>())).Returns(saving.Task);
+        var config = new GroupConfig { Id = "g", GroupName = "g" };
+        var item = new GroupListItemViewModel(config);
+        sut.Bind(item);
+
+        var add = sut.AddAppsCommand.ExecuteAsync(new[] { "x.exe" });
+        sut.IsSaving.Should().BeTrue();
+        sut.Bind(null);
+        saving.SetResult();
+
+        await add.Invoking(t => t).Should().NotThrowAsync();
+        syncService.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        item.AppCount.Should().Be(1);
+        sut.IsSaving.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RemoveAppAsync_FinishesForItsOwnGroup_WhenTheEditorIsReboundDuringTheSave()
+    {
+        var (sut, _, _, _, store, syncService, _, _, _) = CreateSutWithCollaborators();
+        var saving = new TaskCompletionSource();
+        store.Setup(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>())).Returns(saving.Task);
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        sut.Bind(new GroupListItemViewModel(config));
+
+        var remove = sut.RemoveAppCommand.ExecuteAsync(sut.Apps.Single());
+        sut.Bind(null);
+        saving.SetResult();
+
+        await remove.Invoking(t => t).Should().NotThrowAsync();
+        syncService.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Fact]
     public async Task RemoveAppAsync_RemovesFromBothViewModelAndConfig_AndPersists()
     {
