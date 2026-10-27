@@ -31,6 +31,7 @@ namespace TaskbarFolders.Launcher.Tests.Views;
 /// The values live in XAML, so this needs the real window. It is built on an STA thread and
 /// never shown: reading resources and named elements needs no HWND.
 /// </remarks>
+[Collection(PopupWindowTestGroup.Name)]
 public sealed class PopupWindowAnimationTests
 {
     [Fact]

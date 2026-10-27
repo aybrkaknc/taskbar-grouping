@@ -32,6 +32,7 @@ namespace TaskbarFolders.Launcher.Tests.Views;
 /// Only the realised visual tree shows the effective value, so these tests build the real
 /// popup, as <see cref="PopupWindowSizingTests"/> does, on an STA thread.
 /// </remarks>
+[Collection(PopupWindowTestGroup.Name)]
 public sealed class PopupWindowThemeTests
 {
     [Theory]

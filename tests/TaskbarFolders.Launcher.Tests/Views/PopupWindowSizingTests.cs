@@ -34,6 +34,7 @@ namespace TaskbarFolders.Launcher.Tests.Views;
 /// short-lived STA thread. The window is never shown: sizing runs off the LastError
 /// PropertyChanged handler wired in the constructor, and Measure needs no HWND.
 /// </remarks>
+[Collection(PopupWindowTestGroup.Name)]
 public sealed class PopupWindowSizingTests
 {
     private const int TilePx = 96;
