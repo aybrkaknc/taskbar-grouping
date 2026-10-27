@@ -17,11 +17,6 @@
         Topmost="True"
         WindowStartupLocation="Manual"
         Deactivated="OnDeactivated"
-        AllowDrop="True"
-        DragEnter="OnDragOver"
-        DragOver="OnDragOver"
-        DragLeave="OnDragLeave"
-        Drop="OnDrop"
         d:DataContext="{d:DesignInstance Type=vm:PopupViewModel}">
     <Window.Resources>
         <!-- Scale 0.9→1.0 with QuinticEase over 110 ms makes the popup settle up out of the
@@ -331,15 +326,6 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </DockPanel>
-                <!-- Shown while files that can be added are dragged over the popup. Overlays the
-                     tiles, takes no clicks and no layout space. -->
-                <Border x:Name="DropHighlight"
-                        Visibility="Collapsed"
-                        IsHitTestVisible="False"
-                        CornerRadius="8"
-                        BorderThickness="2"
-                        BorderBrush="{DynamicResource ForegroundSubtle}"
-                        Background="{DynamicResource TileHoverBackground}" />
             </Grid>
         </DockPanel>
     </Border>

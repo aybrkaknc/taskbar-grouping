@@ -106,7 +106,7 @@ Placement is DPI-sensitive. On mixed-DPI or scaled setups it should still land n
 
 ## The popup closes immediately, or will not close
 
-In edit mode (✎) a click outside and losing the focus do not close the popup — that is what lets you drag files in from Explorer; use ✓, ✕ or Escape. Otherwise the popup closes on a mouse click anywhere outside it, on Escape, on its ✕ button, when it loses focus, after a successful launch, and via a three-second fallback if Windows never gave it focus and the pointer is not over it. A click outside is seen through a low-level mouse hook, so it works whether or not the popup got the focus. A failed launch keeps it open and shows an error strip naming the app.
+The popup closes on a mouse click anywhere outside it, on Escape, on its ✕ button, when it loses focus, after a successful launch, and via a three-second fallback if Windows never gave it focus and the pointer is not over it. A click outside is seen through a low-level mouse hook, so it works whether or not the popup got the focus. A failed launch keeps it open and shows an error strip naming the app.
 
 With *Enable popup animations* on, every close is a fade of about 120 ms. If the popup appears to linger, turn animations off to isolate the fade: a 300 ms safety net closes it even if the fade never completes.
 
@@ -128,7 +128,6 @@ Current, deliberate or not-yet-implemented — not bugs to report:
 
 - **The popup has almost no keyboard support.** Escape leaves edit mode or closes the popup, but no item is focused on open and the arrow keys do nothing.
 - **The "Taskbar Groups" menu is classic-menu only on Windows 11** (*Show more options*), and a group renamed while the Manager is closed keeps its old name there until the Manager starts.
-- **Dropping a file on a group's taskbar tile** works only if Windows passes dropped files to the pinned app; not every build does.
 - **Clicking the group's tile while its popup is open does not toggle it.** The click lands outside the popup and closes it, and the tile then starts a new one.
 - **On Windows 11 22H2+ the glass panel does not fade when the popup closes.** DWM draws it and does not animate this window's hide, so only the icons fade.
 - **A group with more apps than the popup can show loses the rest.** The popup stops at 800 DIP, which is eight rows — 24 apps at the default three columns — and the grid does not scroll. Anything past that is off-screen with nothing indicating it exists; a visible launch-failure strip costs a further row.

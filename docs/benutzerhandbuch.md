@@ -150,19 +150,16 @@ Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fe
 - **Auf ✕** oben rechts klicken schließt das Fenster, ohne etwas zu starten.
 - **Auf +** klicken fügt Programme hinzu: Es öffnet sich eine Dateiauswahl, und jede gewählte .exe- oder .lnk-Datei kommt in die Gruppe und erscheint sofort im Fenster. Taskleistensymbol und Verknüpfung werden wie aus dem Manager aktualisiert. Solange die Auswahl offen ist, bleibt das Fenster stehen.
 - **Auf ✎** klicken, um Programme zu entfernen: Jede Kachel bekommt ein kleines ✕, ein Klick darauf nimmt das Programm aus der Gruppe — nur aus der Gruppe; die Programmdatei oder Verknüpfung bleibt unberührt. Während der Bearbeitung starten die Kacheln nichts. Mit ✓ (oder `Esc`) beenden. Wird das letzte Programm entfernt, ist die Gruppe leer und lässt sich mit + wieder füllen.
-- **Dateien auf das Fenster ziehen**, um sie hinzuzufügen. Vorher mit ✎ in den Bearbeitungsmodus wechseln: Dort schließt ein Klick daneben das Fenster nicht, sodass Sie eine Datei im Explorer anklicken und herüberziehen können. Das Fenster hebt sich hervor, wenn das Gezogene hinzugefügt werden kann (`.exe` oder `.lnk`).
-
-### Dateien aus dem Explorer senden
-
-Rechtsklick auf eine `.exe` oder eine Verknüpfung im Explorer oder auf dem Desktop → **Weitere Optionen anzeigen** (oder **Umschalt+F10**) → **Taskbar Groups** → die Gruppe. Die Datei wird hinzugefügt, und das Fenster der Gruppe öffnet sich mit ihr; mehrere markierte Dateien kommen auf einmal hinzu. Windows 11 zeigt den Eintrag nur im klassischen Menü — das kurze erste Menü nimmt nur paketierte Apps auf. In den Einstellungen lässt sich der Eintrag abschalten.
-
-Eine Datei auf die **Taskleistenkachel** einer Gruppe zu ziehen, kann sie ebenfalls hinzufügen, sofern Ihr Windows gezogene Dateien an die angeheftete App weitergibt; sonst das Fenster oder das Menü verwenden.
 - **Lässt sich ein Programm nicht starten**, bleibt das Fenster offen und zeigt einen roten Hinweis mit dem Namen.
 - **Klick daneben** oder **`Esc`** schließt das Fenster. Der Klick daneben wirkt auch dann, wenn Windows dem Fenster den Fokus nicht gegeben hat.
 
 Ist *Enable popup animations* eingeschaltet, blendet sich das Fenster beim Schließen kurz aus. Unter Windows 11 22H2 und neuer kann die Glasfläche selbst nicht ausblenden; sie verschwindet unmittelbar nach den Symbolen.
 
 `Esc` ist die einzige Taste (im Bearbeitungsmodus beendet der erste Druck die Bearbeitung): Beim Öffnen ist kein Symbol vorausgewählt, und die Pfeiltasten wechseln nicht zwischen den Symbolen.
+
+### Dateien aus dem Explorer senden
+
+Rechtsklick auf eine `.exe` oder eine Verknüpfung im Explorer oder auf dem Desktop → **Weitere Optionen anzeigen** (oder **Umschalt+F10**) → **Taskbar Groups** → die Gruppe. Die Datei wird hinzugefügt, und das Fenster der Gruppe öffnet sich mit ihr; mehrere markierte Dateien kommen auf einmal hinzu. Windows 11 zeigt den Eintrag nur im klassischen Menü — das kurze erste Menü nimmt nur paketierte Apps auf. In den Einstellungen lässt sich der Eintrag abschalten.
 
 ## Gruppen ändern und löschen
 
