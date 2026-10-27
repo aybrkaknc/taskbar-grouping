@@ -39,6 +39,37 @@ public sealed class PopupWindowThemeTests
     [Theory]
     [InlineData("Dark.xaml")]
     [InlineData("Light.xaml")]
+    public void PlaceholderIcon_ShowsOnlyForAnAppWithoutAnIcon_InTheSubtleThemeForeground(string themeFile)
+    {
+        var (visible, hidden, stroke, expected) = OnStaThread(() =>
+        {
+            var theme = LoadTheme(themeFile);
+            var window = CreatePopup(theme, firstIconMissing: true);
+            try
+            {
+                var placeholders = FindDescendants<System.Windows.Shapes.Path>(window)
+                    .Where(p => ReferenceEquals(p.Data, PlaceholderIcon.Shape))
+                    .ToList();
+                return (
+                    placeholders.Count(p => p.IsVisible),
+                    placeholders.Count(p => !p.IsVisible),
+                    ((SolidColorBrush)placeholders.First(p => p.IsVisible).Stroke).Color,
+                    ((SolidColorBrush)theme["ForegroundSubtle"]).Color);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+
+        visible.Should().Be(1, "only the app marked as having no icon shows the placeholder");
+        hidden.Should().Be(1, "a tile still loading its icon shows nothing yet");
+        stroke.Should().Be(expected, $"the placeholder must take ForegroundSubtle from {themeFile}");
+    }
+
+    [Theory]
+    [InlineData("Dark.xaml")]
+    [InlineData("Light.xaml")]
     public void TileLabels_UseTheThemeForeground(string themeFile)
     {
         var (label, expected) = OnStaThread(() =>
@@ -132,7 +163,7 @@ public sealed class PopupWindowThemeTests
         return (ResourceDictionary)XamlReader.Load(stream);
     }
 
-    private static PopupWindow CreatePopup(ResourceDictionary theme)
+    private static PopupWindow CreatePopup(ResourceDictionary theme, bool firstIconMissing = false)
     {
         var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = 3 };
         config.Apps.Add(new AppEntry { Name = "App 1", Path = @"C:\does\not\exist\app1.exe" });
@@ -156,6 +187,7 @@ public sealed class PopupWindowThemeTests
             Mock.Of<IGroupSyncService>(),
             new LauncherOptions("g1"));
         viewModel.LoadAsync().GetAwaiter().GetResult();
+        viewModel.Apps[0].IconMissing = firstIconMissing;
 
         // Off any real desktop, so running the suite never flashes a window.
         var positionHelper = new Mock<ITaskbarPositionHelper>();

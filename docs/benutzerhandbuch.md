@@ -98,7 +98,7 @@ Wählen Sie eine Gruppe aus. Dann entweder
 
 Es werden nur Programmdateien (`.exe`) und Verknüpfungen (`.lnk`) übernommen. Ziehen Sie versehentlich anderes mit, wird es kommentarlos übergangen.
 
-Der angezeigte Name stammt aus dem Dateinamen, das Symbol aus der Datei selbst — bei einer Verknüpfung aus dem Programm, auf das sie zeigt.
+Der angezeigte Name stammt aus dem Dateinamen, das Symbol aus der Datei selbst — bei einer Verknüpfung aus dem Programm, auf das sie zeigt. Ein Programm ohne eigenes Symbol — oder dessen Datei nicht mehr auffindbar ist — erscheint stattdessen als schlichter Fensterumriss, in der Liste, im Aufklapp-Fenster und im Symbol der Gruppe.
 
 Der Pfad unter dem Namen wird gekürzt dargestellt: alles innerhalb Ihres Benutzerordners erscheint als `%USERPROFILE%\…`, damit Ihr Kontoname nicht in Screenshots oder bei Bildschirmfreigaben zu sehen ist. Fahren Sie mit der Maus über den Pfad, um ihn vollständig zu sehen. Gespeichert und gestartet wird immer der echte Pfad.
 
@@ -223,7 +223,7 @@ Der erste Blick geht in die Protokolldateien unter `%APPDATA%\TaskbarFolders\log
 | Klick auf die Kachel bewirkt nichts | Heutige `launcher-*.log` öffnen. Beendet sich das Programm mit Code 1, fehlt der Verknüpfung ihre Kennung — Gruppe im Manager erneut anheften. Code 3 bedeutet einen Fehler beim Start, die Ursache steht darunter. |
 | Anheften meldet, es sei nicht verfügbar | Ihre Windows-Edition oder Ihre Firmenrichtlinie verbietet es. Über **Show shortcut…** von Hand anheften. |
 | Anheften scheint zu klappen, es erscheint aber keine Kachel | Manager schließen und neu öffnen — er repariert dabei die Startmenü-Einträge — und erneut anheften. |
-| Kein Symbol und keine Verknüpfung nach dem Hinzufügen | Die Gruppe ist leer, oder von keinem Programm ließ sich ein Symbol lesen. Bei der portablen Fassung prüfen, ob `Manager` und `Launcher` noch nebeneinander liegen. |
+| Kein Symbol und keine Verknüpfung nach dem Hinzufügen | Die Gruppe ist leer. Bei der portablen Fassung prüfen, ob `Manager` und `Launcher` noch nebeneinander liegen. |
 | Aufklapp-Fenster erscheint an falscher Stelle | Skalierung der Anzeige, Monitoranordnung und die Bildschirmseite der Taskleiste notieren und melden. |
 
 Ausführlicher, mit Zuordnung von Protokollzeilen zu Ursachen: [Troubleshooting](troubleshooting.md) (englisch).

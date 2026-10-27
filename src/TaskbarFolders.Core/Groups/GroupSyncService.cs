@@ -96,14 +96,6 @@ public sealed class GroupSyncService : IGroupSyncService
         }
 
         var icons = CollectSourceIcons(config);
-        if (icons.Count == 0)
-        {
-            _logger?.LogWarning(
-                "None of the apps in {GroupId} produced an extractable icon; shortcut not regenerated.",
-                config.Id);
-            return;
-        }
-
         var composite = _composer.GenerateComposite(icons);
 
         // A new file name for every new image: Windows caches a shortcut's icon by path, so a
@@ -301,11 +293,10 @@ public sealed class GroupSyncService : IGroupSyncService
         var icons = new List<BitmapSource>(Math.Min(config.Apps.Count, CompositeIconGenerator.MaxTiles));
         foreach (var app in config.Apps.Take(CompositeIconGenerator.MaxTiles))
         {
-            var icon = LoadIcon(app.Path);
-            if (icon is not null)
-            {
-                icons.Add(icon);
-            }
+            // An app without an icon still takes its place in the composite, so a group made
+            // only of such apps gets a tile like any other.
+            icons.Add(LoadIcon(app.Path)
+                ?? PlaceholderIcon.Render(CompositeSourceIconSize, PlaceholderIcon.NeutralColor));
         }
         return icons;
     }

@@ -407,17 +407,10 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
                 break;
             }
 
-            var icon = app.Icon ?? ExtractAndCache(app.Path, PreviewSize);
-            if (icon is not null)
-            {
-                icons.Add(icon);
-            }
-        }
-
-        if (icons.Count == 0)
-        {
-            CompositeIconPreview = null;
-            return;
+            // Same substitution as GroupSyncService, so the preview matches the pinned tile.
+            icons.Add(app.Icon
+                ?? ExtractAndCache(app.Path, PreviewSize)
+                ?? PlaceholderIcon.Render(PreviewSize, PlaceholderIcon.NeutralColor));
         }
 
         CompositeIconPreview = _composer.GenerateComposite(icons, PreviewSize);

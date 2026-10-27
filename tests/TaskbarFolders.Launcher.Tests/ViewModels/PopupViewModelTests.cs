@@ -205,6 +205,50 @@ public class PopupViewModelTests
     }
 
     [Fact]
+    public async Task StartIconLoad_MarksTheIconMissing_WhenTheAppHasNone()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, _, cache, _) = CreateSut("g", config);
+
+        await sut.LoadAsync();
+        sut.Apps[0].IconMissing.Should().BeFalse("nothing is known before extraction runs");
+        sut.StartIconLoad();
+        await Task.Delay(100);
+
+        sut.Apps[0].IconMissing.Should().BeTrue();
+        sut.Apps[0].Icon.Should().BeNull("the extractor's null stays visible to callers");
+        cache.Verify(c => c.Set(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<BitmapSource>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task StartIconLoad_MarksTheIconMissing_WhenExtractionThrows()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, extractor, _, _) = CreateSut("g", config);
+        extractor.Setup(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize)).Throws(new InvalidOperationException("shell"));
+
+        await sut.LoadAsync();
+        sut.StartIconLoad();
+        await Task.Delay(100);
+
+        sut.Apps[0].IconMissing.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StartIconLoad_LeavesIconMissingFalse_WhenAnIconIsFound()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, extractor, _, _) = CreateSut("g", config);
+        extractor.Setup(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize)).Returns(StubIcon());
+
+        await sut.LoadAsync();
+        sut.StartIconLoad();
+        await Task.Delay(100);
+
+        sut.Apps[0].IconMissing.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task CancelIconLoad_AfterStart_PreventsFurtherExtractorAssignment()
     {
         // Hard-gate the extractor on a manually completed TCS so the test controls timing.

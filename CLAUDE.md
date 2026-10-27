@@ -56,6 +56,8 @@ New persistence code must follow this.
 
 **Cross-thread BitmapSource** — `Freeze()` inside the producer lambda *before* `await` crosses back to the UI thread (see `PopupViewModel.LoadIconForAsync`). An unfrozen bitmap that crosses threads carries the wrong dispatcher affinity and the WPF Image binding throws.
 
+**A missing icon stays `null` until it is drawn** — `IIconExtractor` returns `null` for an app without an icon, and callers keep that distinction: the fallback `PlaceholderIcon` is substituted only where an icon is shown or composed, and never stored in the icon cache (a cached placeholder would hide an icon that appears later). The popup draws it only on `PopupAppViewModel.IconMissing`, because a `null` icon there also means "still loading" (upstream #27).
+
 **CancellationTokenSource fields → IDisposable** — Adding a CTS field triggers CA1001. Make the owner `sealed … IDisposable` and have `Dispose` call the cancel-and-dispose helper (`PopupViewModel`, `GroupEditorViewModel` follow this).
 
 **Launcher failure paths must reach the file log** — `Trace`-only diagnostics are forbidden in the Launcher. Every early-exit (`Shutdown(n)`) and every catch that ends startup goes through `StartupFailureLogger` (DI-free, never throws, same line format/file as `FileLogger`). The v0.4.x popup regression exited with code 3 on every click for weeks while the log showed nothing — because the failure was `Trace`-only. Exit codes are documented in `App` remarks: 1 = no group id, 3 = startup threw, 4 = unhandled dispatcher exception.

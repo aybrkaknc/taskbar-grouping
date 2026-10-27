@@ -83,13 +83,13 @@ The anchor's file name follows the group's display name, but its identity is the
 
 1. The Manager creates a `GroupConfig` with a GUID id and writes `groups/<id>.json`. Writes go to a `.tmp` file and are then moved over the target, so a crash mid-write cannot truncate a config.
 2. Adding apps triggers a sync. Sync **returns early for an empty group** — no apps means no icon and no shortcut, and therefore nothing to pin.
-3. Icons for the first four apps are extracted at 128 px through the icon cache. `.lnk` inputs are resolved to their targets first.
+3. Icons for the first four apps are extracted at 128 px through the icon cache. `.lnk` inputs are resolved to their targets first. An app with no icon contributes `PlaceholderIcon` in its neutral grey; the placeholder is not cached, so an icon that becomes available later replaces it.
 4. Those icons are composed into one image: one centred, two side by side, three in an iOS-style arrangement, four as a 2×2 grid.
 5. The composite is written as a multi-resolution PNG-in-ICO container (16/32/48/256 px) to `icons/<id>-<v>.ico`, again atomically. `<v>` is eight hex digits of a hash over the image: Windows caches a shortcut's icon by path, so a changed image needs a new file name or the pinned tile keeps the old one ([ADR-006](adr/006-versioned-group-icons.md)).
 6. The `.lnk` is generated with the AUMID and icon reference described above, and the Start menu anchor is written and announced.
 7. The taskbar's pinned copies of the group (the `.lnk` files in `User Pinned\TaskBar` carrying its AUMID) get their icon location — only that — pointed at the new file, with `SHCNE_UPDATEITEM`. Then the group's older icon files are deleted.
 
-If every icon extraction fails, sync stops before writing a shortcut rather than producing a group tile with no icon.
+`IIconExtractor` keeps returning `null` for an app without an icon; the placeholder is substituted only where an icon is shown or composed (upstream #27). The popup and the Manager's list stroke the same `PlaceholderIcon.Shape` with the theme's `ForegroundSubtle`. The popup shows it only once extraction has finished without an icon (`PopupAppViewModel.IconMissing`), since a `null` icon there also means "still loading".
 
 The popup is the second writer ([ADR-005](adr/005-popup-edits-its-group.md)): adding apps with its **+** or removing them in its edit mode saves the group through the same store and runs the same GroupSyncService, which lives in Core for that reason. The launcher resolves the shortcut target as its own executable (SelfLauncherPathResolver). While the file picker it opens is up, the popup's dismissal triggers — outside click, focus loss, the never-activated fallback — are suspended, or it would close under its own dialog.
 

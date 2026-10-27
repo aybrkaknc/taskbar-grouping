@@ -97,7 +97,6 @@ If it still fails, pin manually via **Show shortcut…** — the result is ident
 No icon, no shortcut, and **Show shortcut…** opens nothing.
 
 - **The group has no apps.** An empty group deliberately produces no icon and no shortcut. Add at least one.
-- **Every icon extraction failed.** If none of the apps yielded an icon, generation stops rather than producing an iconless tile. Check the paths still exist.
 - **The launcher binary was not found.** The Manager needs to know where `TaskbarFolders.Launcher.exe` is in order to write a shortcut targeting it. It logs every path it probed at error level — search `manager-*.log` for "Launcher binary not found". In a portable install this means `Manager\` and `Launcher\` are no longer siblings.
 
 ## The popup opens in the wrong place

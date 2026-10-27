@@ -254,6 +254,30 @@ public class GroupEditorViewModelTests
     }
 
     [Fact]
+    public async Task PreviewRefresh_ComposesAPlaceholder_ForAnAppWithoutAnIcon()
+    {
+        var (sut, extractor, composer, _, _) = CreateSut();
+        extractor.Setup(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>())).Returns((BitmapSource?)null);
+        System.Collections.Generic.IReadOnlyList<BitmapSource>? composed = null;
+        composer.Setup(c => c.GenerateComposite(It.IsAny<System.Collections.Generic.IReadOnlyList<BitmapSource>>(), It.IsAny<int>()))
+                .Callback<System.Collections.Generic.IReadOnlyList<BitmapSource>, int>((icons, _) => composed = icons)
+                .Returns(StubIcon());
+        sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g" }));
+
+        await sut.AddAppsCommand.ExecuteAsync(new[] { "a.exe" });
+
+        var deadline = DateTime.UtcNow + GroupEditorViewModel.PreviewDebounce + TimeSpan.FromSeconds(10);
+        while (DateTime.UtcNow < deadline && sut.CompositeIconPreview is null)
+        {
+            await Task.Delay(50);
+        }
+
+        sut.Apps[0].Icon.Should().BeNull("the row draws its own themed placeholder");
+        composed.Should().ContainSingle().Which.PixelWidth.Should().Be(GroupEditorViewModel.PreviewSize);
+        sut.CompositeIconPreview.Should().NotBeNull();
+    }
+
+    [Fact]
     public void Dispose_StopsRespondingToFurtherCollectionChanges()
     {
         var (sut, _, composer, _, _) = CreateSut();

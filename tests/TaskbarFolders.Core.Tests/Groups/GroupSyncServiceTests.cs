@@ -163,9 +163,41 @@ public sealed class GroupSyncServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SyncAsync_NoOp_WhenNoIconsCouldBeExtracted()
+    public async Task SyncAsync_ComposesAPlaceholder_ForAnAppWithoutAnIcon()
     {
-        _extractor.Setup(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>())).Returns((BitmapSource?)null);
+        // Upstream #27: an app without an icon used to drop out of the composite, and a group
+        // made only of such apps got no tile at all.
+        var real = StubIcon();
+        _extractor.Setup(e => e.ExtractIcon("has-icon.exe", It.IsAny<int>())).Returns(real);
+        _extractor.Setup(e => e.ExtractIcon("no-icon.exe", It.IsAny<int>())).Returns((BitmapSource?)null);
+        System.Collections.Generic.IReadOnlyList<BitmapSource>? composed = null;
+        _composer.Setup(c => c.GenerateComposite(It.IsAny<System.Collections.Generic.IReadOnlyList<BitmapSource>>(), It.IsAny<int>()))
+                 .Callback<System.Collections.Generic.IReadOnlyList<BitmapSource>, int>((icons, _) => composed = icons)
+                 .Returns(StubIcon());
+        var sut = CreateSut();
+        var config = new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Apps =
+            {
+                new AppEntry { Name = "a", Path = "no-icon.exe" },
+                new AppEntry { Name = "b", Path = "has-icon.exe" },
+            },
+        };
+
+        await sut.SyncAsync(config);
+
+        composed.Should().HaveCount(2, "the iconless app keeps its place");
+        composed![0].Should().NotBeSameAs(real);
+        composed[0].PixelWidth.Should().Be(GroupSyncService.CompositeSourceIconSize);
+        composed[1].Should().BeSameAs(real);
+        _shortcutGenerator.Verify(g => g.Generate(It.Is<GroupShortcutRequest>(r => r.ShortcutPath == _paths.GetGroupShortcutFile("g"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncAsync_StillWritesATile_WhenNoAppHasAnIcon()
+    {
         var sut = CreateSut();
         var config = new GroupConfig
         {
@@ -176,9 +208,23 @@ public sealed class GroupSyncServiceTests : IDisposable
 
         await sut.SyncAsync(config);
 
-        // Composer must not be called with an empty icon list
-        _composer.VerifyNoOtherCalls();
-        _shortcutGenerator.VerifyNoOtherCalls();
+        _shortcutGenerator.Verify(g => g.Generate(It.Is<GroupShortcutRequest>(r => r.ShortcutPath == _paths.GetGroupShortcutFile("g"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncAsync_DoesNotCacheThePlaceholder_SoARealIconCanStillArrive()
+    {
+        var sut = CreateSut();
+        var config = new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Apps = { new AppEntry { Name = "a", Path = "missing.exe" } },
+        };
+
+        await sut.SyncAsync(config);
+
+        _cache.Verify(c => c.Set(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<BitmapSource>()), Times.Never);
     }
 
     [Fact]

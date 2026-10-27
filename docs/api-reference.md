@@ -120,6 +120,18 @@ BitmapSource GenerateComposite(IReadOnlyList<BitmapSource> icons, int outputSize
 
 Implemented by `CompositeIconGenerator`. Uses at most the first four icons: one centred, two side by side, three in an iOS-style arrangement, four as a 2×2 grid.
 
+#### [`PlaceholderIcon`](../src/TaskbarFolders.Core/Icons/PlaceholderIcon.cs)
+
+```csharp
+public const double DesignSize = 24;
+public const double StrokeThickness = 1.5;
+public static readonly Color NeutralColor;
+public static Geometry Shape { get; }
+public static BitmapSource Render(int size, Color color);
+```
+
+The icon shown for an app that has none: a window outline in a `DesignSize` square, frozen. XAML strokes `Shape` with a theme brush; `Render` draws it into a frozen bitmap for the composite, in `NeutralColor` there because the taskbar follows the system theme, not the app's.
+
 #### [`IIcoFileWriter`](../src/TaskbarFolders.Core/Icons/IIcoFileWriter.cs)
 
 ```csharp

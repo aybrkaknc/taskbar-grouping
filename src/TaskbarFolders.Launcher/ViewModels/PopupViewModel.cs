@@ -414,6 +414,10 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
                 _cache.Set(app.Path, IconSize, icon);
                 app.Icon = icon;
             }
+            else
+            {
+                app.IconMissing = true;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -422,8 +426,9 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         catch (Exception ex)
         {
             // A single bad path must not crash the launcher process; the tile shows the
-            // empty placeholder. Log so support can correlate with shell errors.
+            // placeholder. Log so support can correlate with shell errors.
             _logger?.LogWarning(ex, "Failed to extract icon for {Path}.", app.Path);
+            app.IconMissing = true;
         }
     }
 }
