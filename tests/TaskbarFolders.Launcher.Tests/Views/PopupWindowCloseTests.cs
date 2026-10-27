@@ -131,6 +131,57 @@ public sealed class PopupWindowCloseTests
         closedAfterSecond.Should().BeTrue("the second Escape closes it");
     }
 
+    [Fact]
+    public void EditMode_KeepsThePopupOpenOnOutsideInteraction()
+    {
+        // Dragging a file in from Explorer starts with a press outside the popup; in edit mode
+        // that must not close it.
+        var (normally, editing, afterwards) = OnStaThread(() =>
+        {
+            var window = CreatePopup(enableAnimations: false);
+            try
+            {
+                var viewModel = (PopupViewModel)window.DataContext;
+                var before = window.DismissesOnOutsideInteraction;
+                viewModel.ToggleEditCommand.Execute(null);
+                var during = window.DismissesOnOutsideInteraction;
+                viewModel.ToggleEditCommand.Execute(null);
+                return (before, during, window.DismissesOnOutsideInteraction);
+            }
+            finally
+            {
+                window.Close();
+            }
+        });
+
+        normally.Should().BeTrue();
+        editing.Should().BeFalse();
+        afterwards.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AcceptableDroppedFiles_KeepsOnlyApps()
+    {
+        var files = OnStaThread(() =>
+        {
+            var data = new DataObject(DataFormats.FileDrop, new[] { @"C:\Tools\A.exe", @"C:\Docs\b.txt", @"C:\Links\C.lnk" });
+            return PopupWindow.AcceptableDroppedFiles(data);
+        });
+
+        files.Should().Equal(@"C:\Tools\A.exe", @"C:\Links\C.lnk");
+    }
+
+    [Fact]
+    public void AcceptableDroppedFiles_IsEmpty_ForAnythingButFiles()
+    {
+        var (text, none) = OnStaThread(() =>
+            (PopupWindow.AcceptableDroppedFiles(new DataObject(DataFormats.Text, "C:\\Tools\\A.exe")).Count,
+             PopupWindow.AcceptableDroppedFiles(null).Count));
+
+        text.Should().Be(0, "a dragged string is not a file, even if it looks like a path");
+        none.Should().Be(0);
+    }
+
     private static void PressEscape(Window window)
     {
         var source = PresentationSource.FromVisual(window)

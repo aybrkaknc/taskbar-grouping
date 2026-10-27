@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -55,6 +57,14 @@ public sealed partial class PopupWindow : Window, IDisposable
     // True while a dialog owned by the popup (the add-apps picker) is open. Clicks in it land
     // outside the popup and it takes the focus, so every dismissal trigger has to stand down.
     private bool _dismissSuspended;
+
+    /// <summary>
+    /// Whether a click outside the popup, or losing the focus, closes it. Not while a dialog it
+    /// owns is open, and not in edit mode: dragging a file in from Explorer starts with a press
+    /// on that file, outside the popup, which would otherwise close it before the drop.
+    /// The ✕, ✓ and Escape still work.
+    /// </summary>
+    public bool DismissesOnOutsideInteraction => !_dismissSuspended && !_viewModel.IsEditing;
     private DispatcherTimer? _closeSafetyTimer;
     private bool _closeAnimating;
     private bool _closeConfirmed;
@@ -135,7 +145,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         var hwnd = new WindowInteropHelper(this).Handle;
         _outsideClicks = new OutsideClickWatcher(hwnd, () =>
         {
-            if (!_dismissSuspended)
+            if (DismissesOnOutsideInteraction)
             {
                 Dispatcher.BeginInvoke(new Action(Close));
             }
@@ -264,7 +274,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         };
         _activationFallbackTimer.Tick += (_, _) =>
         {
-            if (_wasActivated || IsMouseOver || _dismissSuspended)
+            if (_wasActivated || IsMouseOver || !DismissesOnOutsideInteraction)
             {
                 return;
             }
@@ -464,7 +474,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         // Only dismiss after the window has genuinely held activation once. A spurious
         // deactivation before first activation would otherwise close the popup before
         // the user ever saw it.
-        if (_wasActivated && !_dismissSuspended)
+        if (_wasActivated && DismissesOnOutsideInteraction)
         {
             Close();
         }
@@ -498,6 +508,42 @@ public sealed partial class PopupWindow : Window, IDisposable
     /// Opens the file picker for the + button. Input routing only: the picked files go to the
     /// view model, which applies the add rule and saves the group.
     /// </summary>
+    /// <summary>
+    /// The dragged files the popup would add: those <see cref="AppEntry.TryCreateFromPath"/>
+    /// accepts. Empty for anything else, which makes the drop a no-op.
+    /// </summary>
+    /// <param name="data">Drag-and-drop payload.</param>
+    public static IReadOnlyList<string> AcceptableDroppedFiles(IDataObject? data)
+    {
+        if (data?.GetDataPresent(DataFormats.FileDrop) != true || data.GetData(DataFormats.FileDrop) is not string[] files)
+        {
+            return [];
+        }
+
+        return files.Where(file => AppEntry.TryCreateFromPath(file, out _)).ToList();
+    }
+
+    private void OnDragOver(object sender, DragEventArgs e)
+    {
+        var accepted = _viewModel.CanEditGroup && AcceptableDroppedFiles(e.Data).Count > 0;
+        e.Effects = accepted ? DragDropEffects.Copy : DragDropEffects.None;
+        DropHighlight.Visibility = accepted ? Visibility.Visible : Visibility.Collapsed;
+        e.Handled = true;
+    }
+
+    private void OnDragLeave(object sender, DragEventArgs e) => DropHighlight.Visibility = Visibility.Collapsed;
+
+    private async void OnDrop(object sender, DragEventArgs e)
+    {
+        DropHighlight.Visibility = Visibility.Collapsed;
+        var files = AcceptableDroppedFiles(e.Data);
+        e.Handled = true;
+        if (_viewModel.CanEditGroup && files.Count > 0)
+        {
+            await _viewModel.AddAppsAsync(files).ConfigureAwait(true);
+        }
+    }
+
     private async void AddApps_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog
