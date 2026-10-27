@@ -79,7 +79,7 @@ Two features degrade gracefully on older builds rather than failing:
 4. Click **Pin to taskbar**. Windows asks you to confirm — that prompt comes from Windows and cannot be skipped.
 5. Click the new taskbar tile. The popup opens; click any icon to launch it.
 
-If step 4 reports that pinning is unavailable, the Manager opens the shortcut folder for you. Right-click the `.lnk` there → **Show more options** (on Windows 11 22H2+) → **Pin to taskbar**. The same folder is reachable any time via **Show shortcut…**.
+If step 4 reports that pinning is unavailable, the Manager opens the shortcut folder for you. Right-click the `.lnk` there → **Show more options** (on Windows 11 22H2+) → **Pin to taskbar**. The same folder is reachable any time via **⋯ → Show shortcut…**.
 
 A group with no apps in it produces no icon and no shortcut, so add at least one app before pinning.
 

@@ -6,6 +6,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Markup;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using FluentAssertions;
 using Xunit;
 
@@ -82,6 +84,49 @@ public sealed class ControlStyleTests
             act.Should().NotThrow($"the {controlType.Name} style and its template must be valid XAML");
             return 0;
         });
+    }
+
+    [Theory]
+    [InlineData("Dark.xaml")]
+    [InlineData("Light.xaml")]
+    public void ContextMenu_IsPaintedInTheThemeColour_DownItsLeftEdge(string themeFile)
+    {
+        // WPF's own ContextMenu template draws a light icon gutter down the left edge in fixed
+        // colours; in dark mode the header's "more" menu showed it as a white strip.
+        var (gutter, expected) = OnStaThread(() =>
+        {
+            var theme = LoadTheme(themeFile);
+            var resources = new ResourceDictionary();
+            resources.MergedDictionaries.Add(theme);
+            resources.MergedDictionaries.Add(LoadControls());
+
+            var menu = new ContextMenu { Resources = resources };
+            menu.Items.Add(new MenuItem { Header = "Show shortcut…" });
+            menu.Items.Add(new Separator());
+            menu.Items.Add(new MenuItem { Header = "Delete group…" });
+            menu.Measure(new Size(400, 400));
+            menu.Arrange(new Rect(menu.DesiredSize));
+            menu.UpdateLayout();
+
+            var width = (int)Math.Ceiling(menu.ActualWidth);
+            var height = (int)Math.Ceiling(menu.ActualHeight);
+            var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(menu);
+
+            // Inside the border and padding, level with the first item, where the gutter was.
+            var pixel = new byte[4];
+            bitmap.CopyPixels(new Int32Rect(10, 12, 1, 1), pixel, 4, 0);
+            return (Color.FromRgb(pixel[2], pixel[1], pixel[0]), ((SolidColorBrush)theme["ControlBackground"]).Color);
+        });
+
+        gutter.Should().Be(expected, $"the menu's left edge must take ControlBackground from {themeFile}");
+    }
+
+    private static ResourceDictionary LoadTheme(string fileName)
+    {
+        using var stream = File.OpenRead(Path.Combine(
+            FindRepoRoot(), "src", "TaskbarFolders.Manager", "Themes", fileName));
+        return (ResourceDictionary)XamlReader.Load(stream);
     }
 
     private static ResourceDictionary LoadControls()

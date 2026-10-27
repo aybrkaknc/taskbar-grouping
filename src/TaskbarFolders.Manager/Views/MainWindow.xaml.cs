@@ -106,15 +106,49 @@ public partial class MainWindow : Window
 
     private void GroupName_KeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Enter)
+        if (DataContext is not MainWindowViewModel vm)
         {
             return;
         }
 
-        if (DataContext is MainWindowViewModel vm && vm.RenameGroupCommand.CanExecute(null))
+        switch (e.Key)
         {
-            vm.RenameGroupCommand.Execute(null);
-            e.Handled = true;
+            case Key.Enter:
+                vm.CommitRenameCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                vm.CancelRenameCommand.Execute(null);
+                GroupList.Focus();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void GroupName_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.CommitRenameCommand.Execute(null);
+        }
+    }
+
+    // The icon and "more" buttons open their menu on a left click as well as a right one.
+    private void OpenOwnMenu_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { ContextMenu: { } menu } button)
+        {
+            menu.PlacementTarget = button;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
+        }
+    }
+
+    private void CopyGroupId_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel { SelectedGroup: { } group })
+        {
+            Clipboard.SetText(group.Id);
         }
     }
 

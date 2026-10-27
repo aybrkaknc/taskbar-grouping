@@ -110,50 +110,73 @@
             <!-- Editor content shown once a group is selected -->
             <DockPanel Margin="24"
                        Visibility="{Binding BoundItem, Converter={x:Static vm:NotNullToVisibilityConverter.Instance}}">
-                <!-- Header: name + live composite preview -->
-                <Grid DockPanel.Dock="Top" Margin="0,0,0,16">
+                <!-- Header: icon, name in place, app count; pin and the overflow menu on the right.
+                     Rename, delete and the window-level commands live on MainWindowViewModel, so
+                     those bindings reach past the Editor DataContext to the window's. -->
+                <Grid DockPanel.Dock="Top" Margin="0,0,0,20">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                        <!-- Rename lives on MainWindowViewModel (it owns the sidebar order),
-                             so these two bind past the Editor DataContext to the window's. -->
-                        <DockPanel>
-                            <Button DockPanel.Dock="Right"
-                                    Content="Rename"
-                                    Margin="8,0,16,0"
-                                    Padding="12,4"
-                                    VerticalAlignment="Center"
-                                    ToolTip="Saves the name typed on the left. Change the name to enable this."
-                                    ToolTipService.ShowOnDisabled="True"
-                                    Command="{Binding DataContext.RenameGroupCommand, RelativeSource={RelativeSource AncestorType=Window}}" />
-                            <TextBox x:Name="GroupNameBox"
-                                     FontSize="22" FontWeight="Light"
-                                     Padding="4,2"
-                                     VerticalContentAlignment="Center"
-                                     ToolTip="Group name — edit and press Enter to rename"
-                                     Text="{Binding DataContext.EditedGroupName, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}"
-                                     KeyDown="GroupName_KeyDown" />
-                        </DockPanel>
-                        <TextBlock Text="{Binding BoundItem.Id}" FontSize="11" Foreground="{DynamicResource ForegroundSubtle}" Margin="0,4,0,0" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1">
-                        <Border Width="96" Height="96"
-                                Background="{DynamicResource SurfaceMuted}"
-                                CornerRadius="12">
-                            <Image Source="{Binding CompositeIconPreview}"
-                                   Stretch="Uniform" Margin="4" />
+
+                    <Button x:Name="GroupIconButton"
+                            Style="{StaticResource SubtleButton}"
+                            Padding="4"
+                            ToolTip="The group's icon on the taskbar — click to change it"
+                            Click="OpenOwnMenu_Click">
+                        <Button.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Change icon…" Click="ChooseGroupIcon_Click" />
+                                <MenuItem Header="Use app icons" Command="{Binding ResetGroupIconCommand}" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                        <Border Width="64" Height="64" CornerRadius="10" Background="{DynamicResource SurfaceMuted}">
+                            <Image Source="{Binding CompositeIconPreview}" Margin="4" Stretch="Uniform"
+                                   RenderOptions.BitmapScalingMode="HighQuality" />
                         </Border>
-                        <Button Content="Change icon..."
-                                Margin="0,8,0,0" Padding="8,2"
-                                ToolTip="Use an image (.ico, .png, .jpg, .bmp) as the group's icon instead of its apps' icons."
-                                Click="ChooseGroupIcon_Click" />
-                        <Button Content="Use app icons"
-                                Margin="0,4,0,0" Padding="8,2"
-                                ToolTip="Go back to the icon built from the group's first four apps. Available once an image was chosen."
-                                ToolTipService.ShowOnDisabled="True"
-                                Command="{Binding ResetGroupIconCommand}" />
+                    </Button>
+
+                    <StackPanel Grid.Column="1" Margin="12,0,16,0" VerticalAlignment="Center">
+                        <!-- Saved on Enter or when the box loses focus; Escape puts the name back. -->
+                        <TextBox x:Name="GroupNameBox"
+                                 Style="{StaticResource HeadingTextBox}"
+                                 ToolTip="Group name — type to rename"
+                                 Text="{Binding DataContext.EditedGroupName, RelativeSource={RelativeSource AncestorType=Window}, UpdateSourceTrigger=PropertyChanged}"
+                                 KeyDown="GroupName_KeyDown"
+                                 LostKeyboardFocus="GroupName_LostKeyboardFocus" />
+                        <TextBlock Text="{Binding BoundItem.AppCountText}" Margin="5,2,0,0"
+                                   Foreground="{DynamicResource ForegroundSubtle}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource AccentButton}"
+                                Padding="14,6"
+                                Command="{Binding PinToTaskbarCommand}"
+                                ToolTip="Windows asks you to allow it. If your Windows does not allow apps to pin themselves, the shortcut folder opens instead: right-click the .lnk there and choose Pin to taskbar.">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE718;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center" />
+                                <TextBlock Text="Pin to taskbar" Margin="8,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
+                        <Button x:Name="MoreButton"
+                                Style="{StaticResource SubtleButton}"
+                                Margin="6,0,0,0"
+                                ToolTip="More"
+                                Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}"
+                                Click="OpenOwnMenu_Click">
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="Show shortcut…" Command="{Binding ShowShortcutCommand}" />
+                                    <MenuItem Header="Copy group id" Click="CopyGroupId_Click" />
+                                    <Separator />
+                                    <MenuItem Header="Delete group…"
+                                              Command="{Binding PlacementTarget.Tag.DeleteGroupCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                              CommandParameter="{Binding PlacementTarget.Tag.SelectedGroup, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                            <TextBlock Text="&#xE712;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="16" />
+                        </Button>
                     </StackPanel>
                 </Grid>
 
@@ -172,30 +195,6 @@
                                 Click="AddAppPicker_Click" />
                         <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource ForegroundSubtle}"
                                    Text="Drop .exe or .lnk files here, or use the button to browse." />
-                    </DockPanel>
-                </Border>
-
-                <!-- Pin-to-taskbar helper: shows shortcut location in Explorer with inline guidance -->
-                <Border DockPanel.Dock="Top"
-                        Padding="12" Margin="0,0,0,12"
-                        Background="{DynamicResource SurfaceMuted}"
-                        BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                        CornerRadius="8">
-                    <DockPanel>
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                            <Button Content="Pin to taskbar"
-                                    Padding="12,4"
-                                    Command="{Binding PinToTaskbarCommand}" />
-                            <Button Content="Show shortcut..."
-                                    Padding="12,4"
-                                    Margin="8,0,0,0"
-                                    Command="{Binding ShowShortcutCommand}" />
-                        </StackPanel>
-                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ForegroundSubtle}" VerticalAlignment="Center">
-                            <Run Text="Pin to taskbar:" FontWeight="SemiBold" />
-                            <LineBreak />
-                            <Run Text="One click — Windows will ask you to allow it. If your build does not support direct pinning, use Show shortcut and right-click the .lnk." />
-                        </TextBlock>
                     </DockPanel>
                 </Border>
 
