@@ -38,6 +38,7 @@ namespace TaskbarFolders.Launcher;
 public partial class App : Application
 {
     private ServiceProvider? _services;
+    private PopupPresence? _presence;
 
     /// <summary>
     /// Gets the application service provider once <see cref="OnStartup"/> has completed.
@@ -269,6 +270,25 @@ public partial class App : Application
         var logger = _services.GetRequiredService<ILogger<App>>();
         logger.LogInformation("Launcher starting for group {GroupId}.", groupId);
 
+        // Claimed before anything is added, so of several launchers started together for one
+        // group (a multi-selection sent from Explorer) exactly one shows the popup.
+        _presence = PopupPresence.Claim(groupId);
+
+        // Files after the group id come from Explorer's "Taskbar Groups" menu or a drop on the
+        // taskbar tile: add them first, so the popup opens already showing them.
+        var filesToAdd = CommandLineParser.ParseFilesToAdd(e.Args);
+        if (filesToAdd.Count > 0)
+        {
+            await _services.GetRequiredService<CommandLineAppAdder>().AddAsync(filesToAdd).ConfigureAwait(true);
+            if (!_presence.IsFirst)
+            {
+                logger.LogInformation("A popup for {GroupId} is already open; asked it to reload.", groupId);
+                _presence.SignalReload();
+                Shutdown(0);
+                return;
+            }
+        }
+
         // Apply the persisted theme before the window is built so DynamicResource bindings
         // paint correctly on the first frame.
         LauncherThemeApplier.Apply(this, settings.Theme);
@@ -354,6 +374,9 @@ public partial class App : Application
         viewModel.StartIconLoad();
         tIcons = Stopwatch.GetTimestamp();
 
+        // Later launchers that add files to this group ask this popup to show them.
+        _presence.ListenForReload(() => Dispatcher.BeginInvoke(new Func<Task>(viewModel.ReloadAsync)));
+
         // Deferred startup IO: prune stale icon-cache PNGs and old log files in the background
         // so the first paint of the popup is not blocked by ~10-70 ms of enumerate-and-delete.
         _services.GetRequiredService<IIconCache>().StartBackgroundPrune();
@@ -371,6 +394,8 @@ public partial class App : Application
     {
         ArgumentNullException.ThrowIfNull(e);
 
+        _presence?.Dispose();
+        _presence = null;
         _services?.Dispose();
         _services = null;
 

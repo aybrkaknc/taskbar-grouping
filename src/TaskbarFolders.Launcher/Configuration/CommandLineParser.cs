@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace TaskbarFolders.Launcher.Configuration;
 
@@ -54,5 +55,38 @@ public static class CommandLineParser
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Returns the positional arguments: files to add to the group. They arrive when a file is
+    /// sent through Explorer's "Taskbar Groups" menu (<c>--group-id &lt;id&gt; "%1"</c>) or dropped
+    /// on the group's taskbar tile, which appends the file to the pinned shortcut's arguments.
+    /// Flags, the value of <see cref="GroupIdArg"/>, and anything starting with <c>--</c> are skipped;
+    /// whether a file is an acceptable app is decided later, by <c>AppEntry.TryCreateFromPath</c>.
+    /// </summary>
+    /// <param name="args">Raw arguments as received from <see cref="System.Windows.StartupEventArgs.Args"/>.</param>
+    public static IReadOnlyList<string> ParseFilesToAdd(string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+
+        var files = new List<string>();
+        for (var i = 0; i < args.Length; i++)
+        {
+            var arg = args[i];
+            if (string.Equals(arg, GroupIdArg, StringComparison.OrdinalIgnoreCase))
+            {
+                i++; // skip its value
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(arg) || arg.StartsWith("--", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            files.Add(arg);
+        }
+
+        return files;
     }
 }

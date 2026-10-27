@@ -93,6 +93,8 @@ If every icon extraction fails, sync stops before writing a shortcut rather than
 
 The popup is the second writer ([ADR-005](adr/005-popup-edits-its-group.md)): adding apps with its **+** or removing them in its edit mode saves the group through the same store and runs the same GroupSyncService, which lives in Core for that reason. The launcher resolves the shortcut target as its own executable (SelfLauncherPathResolver). While the file picker it opens is up, the popup's dismissal triggers — outside click, focus loss, the never-activated fallback — are suspended, or it would close under its own dialog.
 
+Files can also reach a group on the launcher's command line — `--group-id <id> <file>…`, which is what Explorer's *Taskbar Groups* menu runs and what a file dropped on the group's taskbar tile turns into. `CommandLineAppAdder` adds them inside a per-group, machine-wide lock (a named semaphore, since the work awaits), skipping files already in the group, then saves and syncs. Explorer starts one launcher per selected file, so a multi-selection is many launchers at once: each claims the group's `PopupPresence` event before adding anything, the one that created it shows the popup, and the others add their file, signal the event and exit; the open popup reloads its tiles on that signal.
+
 The Manager keeps every group in memory, so it re-reads the store whenever its window is activated and rebuilds the list — reselecting the previous group by id — only if some group differs from the copy in memory. Without that, a change made outside the Manager while it was open would be overwritten by its next save of the same group.
 
 ### Pinning

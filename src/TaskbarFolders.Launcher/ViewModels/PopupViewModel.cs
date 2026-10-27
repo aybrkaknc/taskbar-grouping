@@ -190,6 +190,39 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Re-reads the group after another launcher changed it — a file sent from Explorer while
+    /// this popup is open — and rebuilds the tiles from the stored config. Icons come back from
+    /// the icon cache, so the rebuild is quick.
+    /// </summary>
+    public async Task ReloadAsync()
+    {
+        var config = await _store.LoadAsync(_options.GroupId).ConfigureAwait(true);
+        if (config is null)
+        {
+            return;
+        }
+
+        _config = config;
+        GroupName = config.GroupName;
+        Columns = config.Columns;
+
+        Apps.Clear();
+        foreach (var entry in config.Apps)
+        {
+            Apps.Add(new PopupAppViewModel(entry));
+        }
+
+        IsUnavailable = Apps.Count == 0;
+        if (IsUnavailable)
+        {
+            IsEditing = false;
+        }
+
+        StartIconLoad();
+        _logger?.LogInformation("Reloaded group {GroupId}: {Count} app(s).", _options.GroupId, Apps.Count);
+    }
+
+    /// <summary>
     /// Adds the picked files to the group: anything <see cref="AppEntry.TryCreateFromPath"/>
     /// accepts becomes a tile at the end of the grid, then the group is saved and re-synced so
     /// the taskbar icon and shortcuts follow. Returns how many apps were added.

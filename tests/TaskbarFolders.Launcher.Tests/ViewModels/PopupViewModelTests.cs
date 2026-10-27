@@ -338,6 +338,50 @@ public class PopupViewModelTests
     }
 
     [Fact]
+    public async Task ReloadAsync_RebuildsTheTilesFromTheStoredGroup()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, store, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+
+        // Another launcher added an app and saved the group.
+        store.Setup(s => s.LoadAsync("g", It.IsAny<CancellationToken>())).ReturnsAsync(new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.lnk" } },
+        });
+
+        await sut.ReloadAsync();
+
+        sut.Apps.Select(a => a.Name).Should().Equal("a", "b");
+        sut.IsUnavailable.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ReloadAsync_ThenRemove_RemovesFromTheReloadedGroup()
+    {
+        // After a reload the tiles must refer to the reloaded entries, or removing one would
+        // look for an object the saved group no longer contains.
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, store, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+        var reloaded = new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.lnk" } },
+        };
+        store.Setup(s => s.LoadAsync("g", It.IsAny<CancellationToken>())).ReturnsAsync(reloaded);
+        await sut.ReloadAsync();
+        sut.ToggleEditCommand.Execute(null);
+
+        await sut.RemoveAppCommand.ExecuteAsync(sut.Apps[0]);
+
+        reloaded.Apps.Select(a => a.Path).Should().Equal("b.lnk");
+    }
+
+    [Fact]
     public async Task ToggleEditCommand_SwitchesEditModeOnAndOff()
     {
         var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };

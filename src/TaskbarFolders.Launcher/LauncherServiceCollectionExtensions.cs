@@ -56,6 +56,7 @@ public static class LauncherServiceCollectionExtensions
         services.AddSingleton<IShellChangeNotifier, ShellChangeNotifier>();
         services.AddSingleton<ILauncherPathResolver, SelfLauncherPathResolver>();
         services.AddSingleton<IGroupSyncService, GroupSyncService>();
+        services.AddSingleton<CommandLineAppAdder>();
 
         // Launcher-only services.
         services.AddSingleton<IProcessLauncher, ProcessLauncher>();
