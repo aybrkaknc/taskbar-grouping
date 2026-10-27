@@ -1,5 +1,8 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using TaskbarFolders.Core.Icons;
 using Xunit;
@@ -92,6 +95,37 @@ public class ShellIconExtractorTests
 
         icon.Should().NotBeNull();
         icon!.PixelWidth.Should().Be(256, "largest .ico frame is 256x256");
+    }
+
+    [Fact]
+    public async Task ExtractIcon_FindsEveryIcon_WhenCalledFromManyThreadsAtOnce()
+    {
+        // The popup extracts all of a group's icons concurrently on the thread pool. Before the
+        // shell calls were serialised, 8 of these 9 came back null in a fresh process and the
+        // tiles showed the placeholder (or, before it existed, nothing) at random.
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        var system = Environment.GetFolderPath(Environment.SpecialFolder.System);
+        string[] paths =
+        [
+            Path.Combine(system, "notepad.exe"), Path.Combine(system, "calc.exe"), Path.Combine(system, "Taskmgr.exe"),
+            Path.Combine(system, "cmd.exe"), Path.Combine(windows, "explorer.exe"), Path.Combine(windows, "regedit.exe"),
+            Path.Combine(system, "control.exe"), Path.Combine(system, "charmap.exe"), Path.Combine(system, "magnify.exe"),
+        ];
+        paths = paths.Where(File.Exists).ToArray();
+        var sut = new ShellIconExtractor();
+
+        for (var round = 0; round < 5; round++)
+        {
+            using var start = new Barrier(paths.Length);
+            var results = await Task.WhenAll(paths.Select(path => Task.Run(() =>
+            {
+                start.SignalAndWait();
+                return (path, icon: sut.ExtractIcon(path, 64));
+            })));
+
+            results.Where(r => r.icon is null).Select(r => r.path)
+                .Should().BeEmpty($"every one of these ships an icon (round {round})");
+        }
     }
 
     [Fact]
