@@ -1,12 +1,22 @@
 # TaskbarFolders
 
-[![CI](https://github.com/gianluca-schwekendiek/taskbar-grouping/actions/workflows/ci.yml/badge.svg)](https://github.com/gianluca-schwekendiek/taskbar-grouping/actions/workflows/ci.yml)
+[![CI](https://github.com/aybrkaknc/taskbar-grouping/actions/workflows/ci.yml/badge.svg)](https://github.com/aybrkaknc/taskbar-grouping/actions/workflows/ci.yml)
 [![Release](https://github.com/gianluca-schwekendiek/taskbar-grouping/actions/workflows/release.yml/badge.svg)](https://github.com/gianluca-schwekendiek/taskbar-grouping/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **macOS-style app folders for the Windows 11 taskbar.** Group related apps behind a single pinned tile; click it and they fan out in a popup anchored to the tile.
 
 > **Status:** v0.4.10, in active use. See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
+
+> **This is a fork** of [gianluca-schwekendiek/taskbar-grouping](https://github.com/gianluca-schwekendiek/taskbar-grouping), developed independently. Work in progress lives on the [`feature/send-to-group`](https://github.com/aybrkaknc/taskbar-grouping/tree/feature/send-to-group) branch and is not released yet. It adds, among other things:
+>
+> - groups can be renamed, and renaming no longer leaves a stale Start menu entry (upstream #25, #28);
+> - a popup header with the group name, close, add-apps, edit-mode and **pin-open** buttons, a glass background, and a fade-out;
+> - **Taskbar Groups** in Explorer's right-click menu to send a program or shortcut to a group;
+> - the pinned tile's icon follows the group's apps, a second click on the tile closes the popup, and large groups scroll (upstream #32);
+> - a per-user installer and an uninstaller that leaves nothing behind.
+>
+> See the branch's [CHANGELOG](https://github.com/aybrkaknc/taskbar-grouping/blob/feature/send-to-group/CHANGELOG.md) for details. Releases and the downloads below are still the upstream project's.
 
 <p align="center">
   <img src="assets/screenshots/tbgroup.gif" alt="Clicking a pinned group tile opens the popup and launches an app" width="420">
