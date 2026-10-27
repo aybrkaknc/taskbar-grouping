@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -106,6 +107,72 @@ public sealed class PopupWindowSizingTests
                     + "property then falls back to its default, which is Visible");
             strip.Visibility.Should().Be(Visibility.Visible);
         });
+    }
+
+    [Fact]
+    public void AddingATileThatStartsANewRow_GrowsTheWindowByAFullRow()
+    {
+        // A tile added from the popup used to arrive with its name cut off: the window was
+        // resized before the ItemsControl had laid the new tile out, so the new row only got
+        // as much height as the old layout had, and the label at the bottom of the tile fell
+        // outside the window until the popup was reopened.
+        WithPopup(appCount: 3, columns: 3, (window, viewModel, _) =>
+        {
+            var oneRow = window.Height;
+
+            viewModel.AddAppsAsync([@"C:\does\not\exist\app4.exe"]).GetAwaiter().GetResult();
+            PumpDispatcher(TimeSpan.FromMilliseconds(300));
+
+            window.Height.Should().Be(oneRow + TilePx, "the fourth tile opens a second row of 96 px");
+        });
+    }
+
+    [Fact]
+    public void AddingATileToTheSameRow_ShowsItsLabelInsideTheWindow()
+    {
+        WithPopup(appCount: 1, columns: 3, (window, viewModel, _) =>
+        {
+            viewModel.AddAppsAsync([@"C:\does\not\exist\Second.exe"]).GetAwaiter().GetResult();
+            PumpDispatcher(TimeSpan.FromMilliseconds(300));
+
+            var label = FindDescendants<TextBlock>(window).Single(t => t.Text == "Second");
+            label.IsVisible.Should().BeTrue();
+            label.ActualHeight.Should().BeGreaterThan(0, "the label must have been laid out");
+            var bottom = label.TranslatePoint(new Point(0, label.ActualHeight), window).Y;
+            bottom.Should().BeLessOrEqualTo(window.Height, "the label has to be inside the window, not cut off");
+        });
+    }
+
+    private static System.Collections.Generic.IEnumerable<T> FindDescendants<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (var i = 0; i < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var nested in FindDescendants<T>(child))
+            {
+                yield return nested;
+            }
+        }
+    }
+
+    /// <summary>Runs the dispatcher for a while, so deferred layout and sizing work can happen.</summary>
+    private static void PumpDispatcher(TimeSpan duration)
+    {
+        var frame = new System.Windows.Threading.DispatcherFrame();
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = duration };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            frame.Continue = false;
+        };
+        timer.Start();
+        System.Windows.Threading.Dispatcher.PushFrame(frame);
     }
 
     [Fact]

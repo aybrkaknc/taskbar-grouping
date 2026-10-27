@@ -474,13 +474,24 @@ public sealed partial class PopupWindow : Window, IDisposable
 
     private void OnCloseRequested(object? sender, EventArgs e) => Close();
 
-    // Tiles added or removed from inside the popup change the grid's height.
+    // Tiles added or removed from inside the popup change the grid's height. Deferred to
+    // Loaded priority: this handler can run before the ItemsControl has seen the change, and a
+    // measure taken then sized the window for the old tile count — a tile that opened a new
+    // row was cut off, label first, until the popup was reopened.
     private void OnAppsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (IsLoaded && !_closeAnimating)
+        if (!IsLoaded || _closeAnimating)
         {
-            ApplySizeAndPlacement();
+            return;
         }
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            if (!_closeAnimating && !_closeConfirmed)
+            {
+                ApplySizeAndPlacement();
+            }
+        }));
     }
 
     /// <summary>
