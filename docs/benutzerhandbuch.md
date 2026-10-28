@@ -209,9 +209,15 @@ Der Autostart-Haken zeigt den tatsächlichen Zustand in der Windows-Registrierun
 
 **Uninstall TaskbarFolders…** ganz unten startet das Deinstallationsprogramm dieser Fassung und schließt den Manager — siehe [Deinstallieren](#deinstallieren).
 
-### Spaltenanzahl des Aufklapp-Fensters
+### Aufbau des Aufklapp-Fensters
 
-Jede Gruppe hat einen Wert zwischen 1 und 6 für die Breite des Rasters, standardmäßig 3. Hat eine Gruppe mehr Zeilen, als ins Fenster passen — etwa acht —, lässt sie sich mit dem Mausrad scrollen; ein schmaler Balken rechts zeigt die Position. Dafür gibt es noch keine Bedienoberfläche — Sie können ihn in der Konfigurationsdatei der Gruppe ändern (siehe nächster Abschnitt), Feld `columns`. Schließen Sie den Manager vorher.
+Jede Gruppe legt ihr Aufklapp-Fenster selbst fest, im Manager auf der Registerkarte **Appearance** unter **Popup**:
+
+- **Columns** — 1 bis 6, standardmäßig 3: wie viele Programme nebeneinander stehen.
+- **Icon size** — *Small*, *Medium* (Standard), *Large* oder *Extra large*. Die Kacheln wachsen mit dem Symbol, damit die Namen weiter hineinpassen.
+- **Show app names** — standardmäßig an. Ohne Namen schrumpfen die Kacheln auf ihre Symbole, das Fenster wird deutlich kleiner; zeigt man auf ein Symbol, erscheint sein Name trotzdem.
+
+Änderungen werden sofort gespeichert und gelten beim nächsten Öffnen des Fensters. Hat eine Gruppe mehr Zeilen, als ins Fenster passen — bei Standardgröße etwa acht —, lässt sie sich mit dem Mausrad scrollen; ein schmaler Balken rechts zeigt die Position.
 
 ## Wo Ihre Daten liegen
 
@@ -219,7 +225,7 @@ Alles liegt unter `%APPDATA%\TaskbarFolders\`. Diesen Pfad können Sie in die Ad
 
 | Ordner / Datei | Inhalt |
 |---|---|
-| `groups\<id>.json` | Eine Datei je Gruppe: Name, enthaltene Programme, Spaltenanzahl |
+| `groups\<id>.json` | Eine Datei je Gruppe: Name, enthaltene Programme, Aufbau des Aufklapp-Fensters |
 | `icons\<id>.ico` | Das erzeugte Gruppensymbol |
 | `icons\cache\` | Zwischengespeicherte Programmsymbole. Kann gefahrlos gelöscht werden |
 | `icons\custom\<id>.png` | Das selbst gewählte Bild einer Gruppe, falls vorhanden |

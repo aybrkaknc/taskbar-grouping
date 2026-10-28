@@ -221,6 +221,50 @@ public sealed class ControlStyleTests
         clipped.Should().BeFalse("every tab label is shown in full");
     }
 
+    [Theory]
+    [InlineData("Dark.xaml")]
+    [InlineData("Light.xaml")]
+    public void SegmentedList_LaysItsChoicesOutInARow_AndFillsTheChosenOneWithTheAccent(string themeFile)
+    {
+        // The grid settings on the Appearance tab: a row of choices, one of them filled.
+        var (sameRow, inOrder, chosenFill, chosenText, otherFill, accent, accentText) = StaThread.Run(() =>
+        {
+            var theme = LoadTheme(themeFile);
+            var resources = new ResourceDictionary();
+            resources.MergedDictionaries.Add(theme);
+            resources.MergedDictionaries.Add(LoadControls());
+
+            var list = new ListBox { Resources = resources, ItemsSource = new[] { "Small", "Medium", "Large" } };
+            list.Style = (Style)resources["SegmentedList"];
+            list.SelectedIndex = 1;
+            list.Measure(new Size(400, 60));
+            list.Arrange(new Rect(0, 0, 400, 60));
+            list.UpdateLayout();
+
+            var first = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0);
+            var chosen = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(1);
+            var firstAt = first.TranslatePoint(default, list);
+            var chosenAt = chosen.TranslatePoint(default, list);
+            Color Fill(ListBoxItem item) =>
+                ((Border)item.Template.FindName("Root", item)).Background is SolidColorBrush b ? b.Color : Colors.Transparent;
+
+            return (
+                firstAt.Y == chosenAt.Y,
+                chosenAt.X > firstAt.X,
+                Fill(chosen),
+                ((SolidColorBrush)chosen.Foreground).Color,
+                Fill(first),
+                ((SolidColorBrush)theme["AccentBrush"]).Color,
+                ((SolidColorBrush)theme["AccentForeground"]).Color);
+        });
+
+        sameRow.Should().BeTrue("the choices sit side by side");
+        inOrder.Should().BeTrue();
+        chosenFill.Should().Be(accent, $"the chosen value takes AccentBrush from {themeFile}");
+        chosenText.Should().Be(accentText, "its label must stay readable on the accent");
+        otherFill.A.Should().Be(0, "the other choices are not filled");
+    }
+
     private static ResourceDictionary LoadTheme(string fileName)
     {
         using var stream = File.OpenRead(Path.Combine(

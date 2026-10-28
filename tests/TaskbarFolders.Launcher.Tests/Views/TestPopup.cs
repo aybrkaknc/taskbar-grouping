@@ -32,9 +32,11 @@ internal static class TestPopup
         bool enableAnimations = false,
         bool launchSucceeds = false,
         ResourceDictionary? theme = null,
-        Action<PopupViewModel>? beforeShow = null)
+        Action<PopupViewModel>? beforeShow = null,
+        int iconSize = GroupConfig.DefaultIconSize,
+        bool showNames = true)
     {
-        var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = columns };
+        var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = columns, IconSize = iconSize, ShowNames = showNames };
         for (var i = 0; i < appCount; i++)
         {
             config.Apps.Add(new AppEntry { Name = $"App {i + 1}", Path = $@"C:\does\not\exist\app{i + 1}.exe" });

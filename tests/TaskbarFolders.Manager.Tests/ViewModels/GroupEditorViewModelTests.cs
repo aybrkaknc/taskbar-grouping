@@ -384,6 +384,66 @@ public class GroupEditorViewModelTests
     }
 
     [Fact]
+    public void Bind_ShowsTheGroupsGridSettings_WithoutSavingThem()
+    {
+        var (sut, _, _, _, store, _, _, _, _) = CreateSutWithCollaborators();
+        var config = new GroupConfig { Id = "g", GroupName = "g", Columns = 5, IconSize = 64, ShowNames = false };
+
+        sut.Bind(new GroupListItemViewModel(config));
+
+        sut.Columns.Should().Be(5);
+        sut.IconSize.Should().Be(64);
+        sut.ShowNames.Should().BeFalse();
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never,
+            "selecting a group is not an edit");
+    }
+
+    [Fact]
+    public async Task ChangingAGridSetting_SavesTheGroup_WithoutSyncing()
+    {
+        var (sut, _, _, _, store, syncService, _, _, _) = CreateSutWithCollaborators();
+        var config = new GroupConfig { Id = "g", GroupName = "g" };
+        sut.Bind(new GroupListItemViewModel(config));
+
+        sut.Columns = 4;
+        sut.IconSize = 80;
+        sut.ShowNames = false;
+        await Task.Delay(50);
+
+        config.Columns.Should().Be(4);
+        config.IconSize.Should().Be(80);
+        config.ShowNames.Should().BeFalse();
+        store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Exactly(3));
+        syncService.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never,
+            "the popup reads these when it opens; the taskbar icon does not show them");
+    }
+
+    [Fact]
+    public async Task ChangingAGridSetting_AfterRebinding_SavesOnlyTheNewGroup()
+    {
+        var (sut, _, _, _, store, _, _, _, _) = CreateSutWithCollaborators();
+        var first = new GroupConfig { Id = "a", GroupName = "a", Columns = 2 };
+        var second = new GroupConfig { Id = "b", GroupName = "b", Columns = 6 };
+        sut.Bind(new GroupListItemViewModel(first));
+        sut.Bind(new GroupListItemViewModel(second));
+
+        sut.Columns = 3;
+        await Task.Delay(50);
+
+        first.Columns.Should().Be(2, "the group shown before keeps its own setting");
+        second.Columns.Should().Be(3);
+        store.Verify(s => s.SaveAsync(first, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public void GridOptions_OfferEveryAllowedValue()
+    {
+        GroupEditorViewModel.IconSizeOptions.Select(o => o.Value).Should().Equal(GroupConfig.IconSizes);
+        GroupEditorViewModel.ColumnOptions.Select(o => o.Value)
+            .Should().Equal(Enumerable.Range(GroupConfig.MinColumns, GroupConfig.MaxColumns - GroupConfig.MinColumns + 1));
+    }
+
+    [Fact]
     public async Task ChooseAppIcon_StoresTheImage_UsesIt_AndSyncs()
     {
         var customIcons = new Mock<ICustomGroupIconStore>();

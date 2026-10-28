@@ -16,7 +16,14 @@ public sealed class GroupConfig
     /// <summary>Maximum allowed value for <see cref="Columns"/>.</summary>
     public const int MaxColumns = 6;
 
+    /// <summary>Icon size, in DIPs, of a group that never chose one.</summary>
+    public const int DefaultIconSize = 48;
+
     private int _columns = 3;
+    private int _iconSize = DefaultIconSize;
+
+    /// <summary>The icon sizes, in DIPs, a group can choose from, smallest first.</summary>
+    public static IReadOnlyList<int> IconSizes { get; } = [32, 48, 64, 80];
 
     /// <summary>
     /// Unique identifier for the group.
@@ -42,8 +49,41 @@ public sealed class GroupConfig
     }
 
     /// <summary>
+    /// Size, in DIPs, of the app icons in the popup: one of <see cref="IconSizes"/>. Any other
+    /// value is snapped to the nearest of them on assignment (the smaller one when halfway), so
+    /// a hand-edited file cannot produce a size the popup was not laid out for.
+    /// </summary>
+    [JsonPropertyName("iconSize")]
+    public int IconSize
+    {
+        get => _iconSize;
+        set => _iconSize = Snap(value);
+    }
+
+    /// <summary>
+    /// Whether the popup shows each app's name under its icon. Without names the tiles shrink
+    /// to the icon; the name is still the tile's tooltip.
+    /// </summary>
+    [JsonPropertyName("showNames")]
+    public bool ShowNames { get; set; } = true;
+
+    /// <summary>
     /// Applications contained in this group.
     /// </summary>
     [JsonPropertyName("apps")]
     public List<AppEntry> Apps { get; set; } = [];
+
+    private static int Snap(int value)
+    {
+        var nearest = IconSizes[0];
+        foreach (var size in IconSizes)
+        {
+            if (Math.Abs(size - value) < Math.Abs(nearest - value))
+            {
+                nearest = size;
+            }
+        }
+
+        return nearest;
+    }
 }

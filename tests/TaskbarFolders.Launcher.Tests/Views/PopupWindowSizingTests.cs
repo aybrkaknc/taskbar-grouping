@@ -203,6 +203,42 @@ public sealed class PopupWindowSizingTests
         });
     }
 
+    [Theory]
+    [InlineData(32, true)]
+    [InlineData(64, true)]
+    [InlineData(80, true)]
+    [InlineData(48, false)]
+    [InlineData(80, false)]
+    public void GridSettings_SizeTheTilesAndTheWindow(int iconSize, bool showNames)
+    {
+        var tile = TileMetrics.Compute(iconSize, showNames);
+        WithPopup(appCount: 4, columns: 4, iconSize, showNames, (window, _, _) =>
+        {
+            var tileRoot = FindDescendants<Button>(window).First(b => b.Name == "TileButton").Parent as FrameworkElement;
+            var label = FindDescendants<TextBlock>(window).Single(t => t.Text == "App 1");
+
+            tileRoot!.ActualWidth.Should().Be(tile.Width);
+            tileRoot.ActualHeight.Should().Be(tile.Height);
+            label.Visibility.Should().Be(showNames ? Visibility.Visible : Visibility.Collapsed);
+            window.Width.Should().Be(Math.Max(window.MinWidth, (4 * tile.Width) + (2 * PaddingPx)));
+        });
+    }
+
+    [Fact]
+    public void LargestTiles_AtSixColumns_FitBesideTheScrollBar()
+    {
+        var tile = TileMetrics.Compute(80, showNames: true);
+        WithPopup(appCount: 60, columns: 6, iconSize: 80, showNames: true, (window, _, _) =>
+        {
+            StaThread.Pump(TimeSpan.FromMilliseconds(200));
+            var scroller = (ScrollViewer)window.FindName("TileScroller");
+
+            scroller.ComputedVerticalScrollBarVisibility.Should().Be(Visibility.Visible);
+            window.Width.Should().BeLessOrEqualTo(window.MaxWidth);
+            scroller.ViewportWidth.Should().BeGreaterOrEqualTo(6 * tile.Width, "MaxWidth must leave room for six of the largest tiles and the bar");
+        });
+    }
+
     [Fact]
     public void UnavailableGroup_StaysAtMinHeight()
     {
@@ -220,11 +256,14 @@ public sealed class PopupWindowSizingTests
     /// Builds a popup on an STA thread, shows it off-screen, runs <paramref name="body"/>
     /// against it and closes it again.
     /// </summary>
-    private static void WithPopup(int appCount, int columns, Action<PopupWindow, PopupViewModel, Border> body)
+    private static void WithPopup(int appCount, int columns, Action<PopupWindow, PopupViewModel, Border> body) =>
+        WithPopup(appCount, columns, GroupConfig.DefaultIconSize, showNames: true, body);
+
+    private static void WithPopup(int appCount, int columns, int iconSize, bool showNames, Action<PopupWindow, PopupViewModel, Border> body)
     {
         StaThread.Run(() =>
         {
-            var (window, viewModel, strip) = CreatePopup(appCount, columns);
+            var (window, viewModel, strip) = CreatePopup(appCount, columns, iconSize, showNames);
             try
             {
                 body(window, viewModel, strip);
@@ -238,9 +277,9 @@ public sealed class PopupWindowSizingTests
         });
     }
 
-    private static (PopupWindow window, PopupViewModel viewModel, Border strip) CreatePopup(int appCount, int columns)
+    private static (PopupWindow window, PopupViewModel viewModel, Border strip) CreatePopup(int appCount, int columns, int iconSize, bool showNames)
     {
-        var (window, viewModel) = TestPopup.Show(appCount, columns);
+        var (window, viewModel) = TestPopup.Show(appCount, columns, iconSize: iconSize, showNames: showNames);
         var strip = window.FindName("ErrorStrip") as Border
             ?? throw new InvalidOperationException("PopupWindow.xaml no longer names the error strip 'ErrorStrip'.");
         return (window, viewModel, strip);

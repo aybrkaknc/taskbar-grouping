@@ -361,6 +361,44 @@
                                         ToolTip="Go back to the icon built from the group's apps. Available while an image is in use."
                                         ToolTipService.ShowOnDisabled="True" />
                             </StackPanel>
+
+                            <TextBlock Text="Popup" Margin="0,28,0,0" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock Margin="0,4,0,12" TextWrapping="Wrap" Foreground="{DynamicResource ForegroundSubtle}"
+                                       Text="How the apps are laid out when you click the group on the taskbar. Saved as you change it." />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="Columns" VerticalAlignment="Center" Margin="0,0,16,0" />
+                                <ListBox Grid.Column="1"
+                                         Style="{StaticResource SegmentedList}"
+                                         ItemsSource="{x:Static vm:GroupEditorViewModel.ColumnOptions}"
+                                         DisplayMemberPath="Label"
+                                         SelectedValuePath="Value"
+                                         SelectedValue="{Binding Columns}"
+                                         AutomationProperties.Name="Columns" />
+
+                                <TextBlock Grid.Row="1" Text="Icon size" VerticalAlignment="Center" Margin="0,10,16,0" />
+                                <ListBox Grid.Row="1" Grid.Column="1" Margin="0,10,0,0"
+                                         Style="{StaticResource SegmentedList}"
+                                         ItemsSource="{x:Static vm:GroupEditorViewModel.IconSizeOptions}"
+                                         DisplayMemberPath="Label"
+                                         SelectedValuePath="Value"
+                                         SelectedValue="{Binding IconSize}"
+                                         AutomationProperties.Name="Icon size" />
+
+                                <CheckBox Grid.Row="2" Grid.Column="1" Margin="0,14,0,0"
+                                          Content="Show app names"
+                                          IsChecked="{Binding ShowNames}"
+                                          ToolTip="Without names the tiles shrink to their icons; pointing at one still shows its name." />
+                            </Grid>
                         </StackPanel>
                     </TabItem>
                 </TabControl>
