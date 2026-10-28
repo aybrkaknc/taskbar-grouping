@@ -195,7 +195,11 @@ public sealed class PopupWindowSizingTests
             var rows = (appCount + columns - 1) / columns;
             var scroller = (ScrollViewer)window.FindName("TileScroller");
 
-            window.Height.Should().Be(window.MaxHeight, "the popup must not grow past its ceiling");
+            // Windows caps every window at the screen height plus its frame
+            // (SM_CYMAXTRACK) — 788 on a 1024x768 CI runner — so the ceiling the popup
+            // reaches is the lower of the two.
+            var ceiling = Math.Min(window.MaxHeight, SystemParameters.MaximumWindowTrackHeight);
+            window.ActualHeight.Should().BeApproximately(ceiling, 1, "the popup grows to its ceiling and no further");
             scroller.Should().NotBeNull("tiles past the ceiling have to be reachable");
             scroller.ExtentHeight.Should().BeGreaterOrEqualTo(rows * TilePx, "every row is in the scrollable content");
             scroller.ScrollableHeight.Should().BeGreaterThan(0);
