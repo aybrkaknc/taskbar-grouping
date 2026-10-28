@@ -6,7 +6,7 @@
 
 **macOS-style app folders for the Windows 11 taskbar.** Group related apps behind a single pinned tile; click it and they fan out in a popup anchored to the tile.
 
-> **Status:** v0.4.10, in active use. See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
+> **Status:** v0.5.0, in active use. See [CHANGELOG.md](CHANGELOG.md) for what changed in each release.
 
 > **This is a fork** of [gianluca-schwekendiek/taskbar-grouping](https://github.com/gianluca-schwekendiek/taskbar-grouping), developed independently. Work in progress lives on the [`feature/send-to-group`](https://github.com/aybrkaknc/taskbar-grouping/tree/feature/send-to-group) branch and is not released yet. It adds, among other things:
 >

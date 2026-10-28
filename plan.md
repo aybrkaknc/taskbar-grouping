@@ -8,13 +8,14 @@ finishes it, and a change of order or scope is recorded here when it is agreed, 
 
 ## Where we are
 
-- **`develop`:** everything up to and including the code review before C1 (`e215c55`). B3 and
-  the cleanup are merged locally and **not pushed**. `origin/develop` is at `5a81f60`, the last
-  pushed state (up to the app list step). Pushing waits until the end, as agreed.
-- **Branch:** `feature/settings-instant` — C6 settings and empty state, finished and waiting for
-  the manual test before it is merged. C1 is merged into `develop` (`c3e5cdc`). Every older
-  feature branch is merged; deleting them is part of D.
-- **Next:** D — release v0.5.0, once C6 is merged.
+- **`develop`:** everything up to and including C1 and C6 (settings and empty state), merged
+  locally and **not pushed**. `origin/develop` is at `5a81f60`, the last pushed state (up to the
+  app list step). Pushing waits until the end, as agreed.
+- **Branch:** none open. Every feature branch is merged; deleting them is part of D.
+- **In progress:** D — release v0.5.0. The version is bumped to 0.5.0 and `[Unreleased]` is the
+  `[0.5.0]` section (the bump commit). Still to do, with the user: run the Manager and the pin
+  mode check, then — each only on approval — push `develop`, push the `v0.5.0` tag, fast-forward
+  `main`, delete merged branches, open the `IsPinningAllowed` issue, and the install smoke test.
 
 ## How an item is worked
 
@@ -48,7 +49,7 @@ comes first so that C1–C4 land in their final place instead of being laid out 
   row instead of a *Remove* button on every row, `Del` to remove. *Appearance* holds only the
   group icon choice until C1 + C2 fill it. `90c3ee4`, merged into `develop`.
 - [x] **Settings and empty state** — settings apply as they are changed (no *Save*); with no
-  groups, a three-step "get started" view. On `feature/settings-instant`.
+  groups, a three-step "get started" view. `a6cb480`, merged into `develop`.
 - [ ] **Visual polish** — let the Manager's Mica backdrop show through (it is applied but
   hidden under solid brushes), Fluent icons, consistent spacing; retake the screenshots.
   Ranked #6 below.
@@ -62,8 +63,8 @@ below.
 | # | Item | What it changes and why |
 |---|---|---|
 | 1 | **C1 — grid settings, part 1** — *done, merged* | On *Appearance*: columns, icon size, show/hide names, applied to the popup. Columns were JSON-only (upstream #29). |
-| 2 | **C6 — settings and empty state** — *done, on `feature/settings-instant`* | Settings apply as they change (no *Save*); with no groups, a three-step "get started" view. |
-| 3 | **D — release v0.5.0** | Version bump, installer and portable build, installer smoke test, CHANGELOG section, release notes; open an issue for `IsPinningAllowed = false`; delete merged branches. Puts the work so far in users' hands before the larger items. |
+| 2 | **C6 — settings and empty state** — *done, merged* | Settings apply as they change (no *Save*); with no groups, a three-step "get started" view. |
+| 3 | **D — release v0.5.0** — *version bumped; gates and pushes pending* | Version bump, installer and portable build, installer smoke test, CHANGELOG section, release notes; open an issue for `IsPinningAllowed = false`; delete merged branches. Puts the work so far in users' hands before the larger items. |
 | 4 | **C2 — grid settings, part 2** | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
 | 5 | **C4 — reorder apps by dragging** | Drag rows in the app list, and `Alt+↑` / `Alt+↓` from the keyboard. Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
 | 6 | **C6 — visual polish** | Let the Manager's Mica backdrop show, Fluent icons, spacing; retake screenshots. |
@@ -340,7 +341,7 @@ limits), CHANGELOG, the ADR, and this file.
 
 | Item | Commit | Branch |
 |---|---|---|
-| C6 — settings apply as they change; get-started view when there are no groups | see `git log feature/settings-instant` | `feature/settings-instant` |
+| C6 — settings apply as they change; get-started view when there are no groups | `a6cb480`, merged as `8bec1ae` | merged |
 | C1 — grid settings, part 1: most columns per row, icon size and app names per group on *Appearance* (upstream #29) | `b517f26`, `19587c7`, merged as `c3e5cdc` | merged |
 | C3 — per-app name, arguments and icon (upstream #29, #30); settings close on a click outside | `862bd57`, `b6470f5` | merged |
 | B5 dropped — `GroupConfig.Theme` removed (upstream #30) | `ba95eb7` | merged |

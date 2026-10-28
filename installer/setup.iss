@@ -1,7 +1,7 @@
 ; TaskbarFolders Inno Setup Script
 
 #define MyAppName "TaskbarFolders"
-#define MyAppVersion "0.4.10"
+#define MyAppVersion "0.5.0"
 #define MyAppPublisher "Gian Luca Schwekendiek"
 #define MyAppURL "https://github.com/gianluca-schwekendiek/taskbar-grouping"
 #define MyAppExeName "TaskbarFolders.Manager.exe"

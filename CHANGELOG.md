@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-28
+
 ### Added
 
 - **Each group sets out its own popup.** The Manager's *Appearance* tab has a *Popup* section with the most **columns** per row (1–6), where a group with fewer apps uses only the room they need; the **icon size** (Small, Medium, Large, Extra large) and **Show app names**. The tiles grow with the icon so names still fit, and without names they shrink to the icon. Changes save as they are made and need no sync, since the taskbar icon does not show them. Groups saved before keep their look: 3 columns, medium icons, names shown. The column count could until now be changed only in the group's JSON (upstream #29). Icons are now read at twice their displayed size, so they stay sharp at 150 % scaling.
@@ -368,7 +370,8 @@ First functional release. Everything described in the README is implemented and 
 - Full documentation: README, Contributing Guide, Architecture, User Guide, Developer Guide
 - MIT License
 
-[Unreleased]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.4.10...HEAD
+[Unreleased]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.4.10...v0.5.0
 [0.4.10]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.4.8...v0.4.9
 [0.4.8]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.4.7...v0.4.8
