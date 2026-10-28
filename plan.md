@@ -11,10 +11,10 @@ finishes it, and a change of order or scope is recorded here when it is agreed, 
 - **`develop`:** everything up to and including the code review before C1 (`e215c55`). B3 and
   the cleanup are merged locally and **not pushed**. `origin/develop` is at `5a81f60`, the last
   pushed state (up to the app list step). Pushing waits until the end, as agreed.
-- **Branch:** `feature/grid-settings-1` — C1 is finished there and waits for the manual test
-  before it is merged into `develop`. Every older feature branch is merged; deleting them is
-  part of D.
-- **Next:** C6 — settings and empty state, on `feature/settings-instant` once C1 is merged.
+- **Branch:** `feature/settings-instant` — C6 settings and empty state, finished and waiting for
+  the manual test before it is merged. C1 is merged into `develop` (`c3e5cdc`). Every older
+  feature branch is merged; deleting them is part of D.
+- **Next:** D — release v0.5.0, once C6 is merged.
 
 ## How an item is worked
 
@@ -47,8 +47,8 @@ comes first so that C1–C4 land in their final place instead of being laid out 
   large drop box (the whole tab takes dropped files); a delete icon on the hovered or selected
   row instead of a *Remove* button on every row, `Del` to remove. *Appearance* holds only the
   group icon choice until C1 + C2 fill it. `90c3ee4`, merged into `develop`.
-- [ ] **Settings and empty state** — settings apply as they are changed (no *Save*); with no
-  groups, a three-step "get started" view. Ranked #2 below.
+- [x] **Settings and empty state** — settings apply as they are changed (no *Save*); with no
+  groups, a three-step "get started" view. On `feature/settings-instant`.
 - [ ] **Visual polish** — let the Manager's Mica backdrop show through (it is applied but
   hidden under solid brushes), Fluent icons, consistent spacing; retake the screenshots.
   Ranked #6 below.
@@ -61,8 +61,8 @@ below.
 
 | # | Item | What it changes and why |
 |---|---|---|
-| 1 | **C1 — grid settings, part 1** — *done, on `feature/grid-settings-1`* | On *Appearance*: columns, icon size, show/hide names, applied to the popup. Columns were JSON-only (upstream #29). |
-| 2 | **C6 — settings and empty state** | Settings apply as they change (no *Save*); with no groups, a three-step "get started" view. |
+| 1 | **C1 — grid settings, part 1** — *done, merged* | On *Appearance*: columns, icon size, show/hide names, applied to the popup. Columns were JSON-only (upstream #29). |
+| 2 | **C6 — settings and empty state** — *done, on `feature/settings-instant`* | Settings apply as they change (no *Save*); with no groups, a three-step "get started" view. |
 | 3 | **D — release v0.5.0** | Version bump, installer and portable build, installer smoke test, CHANGELOG section, release notes; open an issue for `IsPinningAllowed = false`; delete merged branches. Puts the work so far in users' hands before the larger items. |
 | 4 | **C2 — grid settings, part 2** | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
 | 5 | **C4 — reorder apps by dragging** | Drag rows in the app list, and `Alt+↑` / `Alt+↓` from the keyboard. Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
@@ -89,7 +89,19 @@ Built as specified, with these differences:
 - **No screenshot changed:** the popup's default look is the same 96 × 96 tile, and the
   *Appearance* tab is not in the screenshots. C6 polish retakes them all.
 
-### 2. C6 — settings apply instantly, empty state (`feature/settings-instant`)
+### 2. C6 — settings apply instantly, empty state — done
+
+Built as specified. Differences and details worth knowing:
+
+- **An auto-start entry that cannot be written is tried before the store is**, and the checkbox is
+  put back to `IAutoStartService.IsEnabled`; the other settings are stored first, then applied.
+- **`WhenIdleAsync`** was added so tests (and anything that must wait for a pending change) can
+  wait for the queue; it takes the same gate the applies do.
+- **The get-started view waits for the groups to be read** (`HasNoGroups` is false until the store
+  has answered), so it does not flash up on every launch.
+- **Close** is both the default and the cancel button of the dialog.
+
+The specification as it was written:
 
 **Goal:** no Save button. Each change takes effect at once. With no groups, the main window
 guides the user.
@@ -328,7 +340,8 @@ limits), CHANGELOG, the ADR, and this file.
 
 | Item | Commit | Branch |
 |---|---|---|
-| C1 — grid settings, part 1: columns, icon size and app names per group on *Appearance* (upstream #29) | see `git log feature/grid-settings-1` | `feature/grid-settings-1` |
+| C6 — settings apply as they change; get-started view when there are no groups | see `git log feature/settings-instant` | `feature/settings-instant` |
+| C1 — grid settings, part 1: most columns per row, icon size and app names per group on *Appearance* (upstream #29) | `b517f26`, `19587c7`, merged as `c3e5cdc` | merged |
 | C3 — per-app name, arguments and icon (upstream #29, #30); settings close on a click outside | `862bd57`, `b6470f5` | merged |
 | B5 dropped — `GroupConfig.Theme` removed (upstream #30) | `ba95eb7` | merged |
 | B3 — keyboard navigation in the popup (upstream #26) | `29f37e6` | merged |

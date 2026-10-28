@@ -31,14 +31,9 @@
     </Window.Resources>
 
     <DockPanel Margin="24">
-        <!-- Footer with Save / Close -->
+        <!-- Every setting is applied and stored as it changes, so there is nothing to save. -->
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-            <TextBlock VerticalAlignment="Center" Margin="0,0,12,0"
-                       Foreground="{DynamicResource ForegroundSubtle}"
-                       Text="Unsaved changes"
-                       Visibility="{Binding HasUnsavedChanges, Converter={x:Static vm:BoolToVisibilityConverter.Instance}}" />
-            <Button Content="Close" MinWidth="80" Margin="0,0,8,0" IsCancel="True" />
-            <Button Content="Save" MinWidth="80" Command="{Binding SaveCommand}" IsDefault="True" />
+            <Button Content="Close" MinWidth="80" IsCancel="True" IsDefault="True" />
         </StackPanel>
 
         <!-- Settings form -->

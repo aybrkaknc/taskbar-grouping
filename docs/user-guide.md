@@ -27,7 +27,7 @@ Neither package needs a .NET runtime installed — both executables are self-con
 
 ## Creating a group
 
-Click **+ New group** at the top of the sidebar. A group called *New group* appears, selected, with its name highlighted at the top of the detail pane — type the name you want and press `Enter`. (A second one is called *New group 2*, and so on.)
+With no groups yet, the Manager shows three steps — create a group, add your apps, pin it — and a **+ New group** button; they give way to the editor as soon as the first group exists. Otherwise, click **+ New group** at the top of the sidebar. A group called *New group* appears, selected, with its name highlighted at the top of the detail pane — type the name you want and press `Enter`. (A second one is called *New group 2*, and so on.)
 
 Groups are listed alphabetically. Each row shows the group's icon as it appears on the taskbar — a folder outline until the group has apps — and its number of apps on the right.
 
@@ -149,7 +149,7 @@ Open with the **⚙** button in the top right.
 | Start TaskbarFolders Manager when Windows starts | on / off | off | Adds or removes the per-user Run registry entry. |
 | Show "Taskbar Groups" in Explorer's right-click menu | on / off | on | Lists your groups under *Show more options* for `.exe` and `.lnk` files. Kept up to date by the Manager. |
 
-Settings apply when you click **Save**. Closing the dialog discards changes; an *Unsaved changes* marker appears while any are pending.
+Every setting takes effect and is stored the moment you change it; there is no Save button, and **Close** only closes the dialog. If Windows refuses a change — for example it cannot write the start-up entry — a message says so and the box goes back to what is really in effect.
 
 The autostart checkbox reflects the registry, not the settings file — if you remove the Run entry by hand, the dialog shows it as off.
 

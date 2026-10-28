@@ -26,6 +26,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IGroupIconReader _iconReader;
     private readonly ILogger<MainWindowViewModel>? _logger;
 
+    // Until the store has answered, an empty list means "not read yet", not "no groups".
+    private bool _groupsLoaded;
+
     /// <summary>Initializes a new instance.</summary>
     public MainWindowViewModel(
         IGroupConfigStore store,
@@ -49,6 +52,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _logger = logger;
 
         Editor.GroupSynced += (_, item) => item.Icon = _iconReader.TryRead(item.Id);
+        Groups.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasNoGroups));
     }
 
     /// <summary>Name given to a group created by <see cref="NewGroupCommand"/>, before the user renames it.</summary>
@@ -96,6 +100,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<GroupListItemViewModel> Groups { get; } = [];
 
     /// <summary>
+    /// True once the groups have been read and there are none: the window then shows the
+    /// get-started steps instead of an empty editor.
+    /// </summary>
+    public bool HasNoGroups => _groupsLoaded && Groups.Count == 0;
+
+    /// <summary>
     /// Replaces <see cref="Groups"/> with the contents of the store. Call once after construction
     /// (App bootstrap or window Loaded event).
     /// </summary>
@@ -109,6 +119,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             Groups.Add(new GroupListItemViewModel(config) { Icon = _iconReader.TryRead(config.Id) });
         }
 
+        _groupsLoaded = true;
+        OnPropertyChanged(nameof(HasNoGroups));
         _logger?.LogInformation("Loaded {Count} group(s) from store.", Groups.Count);
     }
 
