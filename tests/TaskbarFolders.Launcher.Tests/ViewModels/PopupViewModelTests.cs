@@ -500,6 +500,55 @@ public class PopupViewModelTests
     }
 
     [Fact]
+    public async Task EffectiveColumns_IsNoMoreThanTheAppsThatNeedThem()
+    {
+        var config = new GroupConfig
+        {
+            Id = "g1",
+            GroupName = "g",
+            Columns = 5,
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.exe" } },
+        };
+        var (sut, _, _, _, _) = CreateSut("g1", config);
+
+        await sut.LoadAsync();
+
+        sut.Columns.Should().Be(5, "the setting is the most a row may hold, and is kept as chosen");
+        sut.EffectiveColumns.Should().Be(2, "two apps need two columns, not five");
+    }
+
+    [Fact]
+    public async Task EffectiveColumns_FollowsTheAppCount_AndRaisesItWhenItChanges()
+    {
+        var config = new GroupConfig
+        {
+            Id = "g1",
+            GroupName = "g",
+            Columns = 5,
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.exe" } },
+        };
+        var (sut, _, _, _, _) = CreateSut("g1", config);
+        await sut.LoadAsync();
+        var raised = new List<string?>();
+        sut.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        sut.Apps.Add(new PopupAppViewModel(new AppEntry { Name = "c", Path = "c.exe" }));
+
+        sut.EffectiveColumns.Should().Be(3);
+        raised.Should().Contain(nameof(PopupViewModel.EffectiveColumns));
+    }
+
+    [Fact]
+    public async Task EffectiveColumns_IsAtLeastOne_ForAnEmptyGroup()
+    {
+        var (sut, _, _, _, _) = CreateSut("g1", new GroupConfig { Id = "g1", GroupName = "g", Columns = 4 });
+
+        await sut.LoadAsync();
+
+        sut.EffectiveColumns.Should().Be(1);
+    }
+
+    [Fact]
     public async Task ReloadAsync_ThenRemove_RemovesFromTheReloadedGroup()
     {
         // After a reload the tiles must refer to the reloaded entries, or removing one would

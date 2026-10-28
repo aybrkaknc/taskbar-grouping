@@ -79,6 +79,9 @@ item is worked* above.
 
 Built as specified, with these differences:
 
+- **Columns are a limit per row, not a fixed width.** A group with fewer apps than its column
+  count gets only as many columns as it has apps (`PopupViewModel.EffectiveColumns`), so the
+  window is no wider than the apps need. The Manager's control is labelled *Max per row*.
 - **Columns use the same segmented control as the icon size, not a slider.** The Manager has no
   themed `Slider`, and a choice of six saves on each click with no debounce needed.
 - **`TileMetrics` has no `spacing` parameter yet.** C2 adds it; an optional parameter needs no

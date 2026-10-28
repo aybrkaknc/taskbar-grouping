@@ -67,7 +67,11 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         _syncService = syncService;
         _options = options;
         _logger = logger;
+
+        Apps.CollectionChanged += (_, _) => OnPropertyChanged(nameof(EffectiveColumns));
     }
+
+    partial void OnColumnsChanged(int value) => OnPropertyChanged(nameof(EffectiveColumns));
 
     /// <summary>
     /// True once an existing group has been loaded; the popup only offers to edit a group it
@@ -94,9 +98,18 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _groupName = string.Empty;
 
-    /// <summary>Number of grid columns for the popup; mirrors <see cref="GroupConfig.Columns"/>.</summary>
+    /// <summary>
+    /// Most columns a row may hold; mirrors <see cref="GroupConfig.Columns"/>. The grid itself uses
+    /// <see cref="EffectiveColumns"/>, which is this limit capped by the number of apps.
+    /// </summary>
     [ObservableProperty]
     private int _columns = 3;
+
+    /// <summary>
+    /// Columns the grid really uses: <see cref="Columns"/> is a limit, so a group with fewer apps
+    /// gets only as many columns as it has apps, and the window is no wider than they need.
+    /// </summary>
+    public int EffectiveColumns => Math.Max(1, Math.Min(Columns, Apps.Count));
 
     /// <summary>Whether tiles show the app's name; mirrors <see cref="GroupConfig.ShowNames"/>.</summary>
     [ObservableProperty]

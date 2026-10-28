@@ -240,6 +240,18 @@ public sealed class PopupWindowSizingTests
     }
 
     [Fact]
+    public void FewerAppsThanColumns_TakeOnlyTheRoomTheyNeed()
+    {
+        // Columns is the most a row may hold: two apps under a limit of five are two tiles wide,
+        // not five tiles' worth of empty space.
+        WithPopup(appCount: 2, columns: 5, (window, _, _) =>
+        {
+            window.Width.Should().Be(Math.Max(window.MinWidth, (2 * TilePx) + (2 * PaddingPx)),
+                "two tiles and their padding, but never narrower than the window's minimum");
+        });
+    }
+
+    [Fact]
     public void UnavailableGroup_StaysAtMinHeight()
     {
         WithPopup(appCount: 0, columns: 3, (window, viewModel, _) =>

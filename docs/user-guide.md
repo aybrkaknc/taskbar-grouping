@@ -161,7 +161,7 @@ The theme covers the whole interface, including the Settings dialog, the standar
 
 Each group sets out its own popup on the **Appearance** tab of the Manager, under **Popup**:
 
-- **Columns** — 1 to 6, 3 by default: how many apps sit side by side.
+- **Max per row** — 1 to 6, 3 by default: the most apps side by side. A group with fewer apps uses only the room they need, so two apps under *Max per row* 5 make a popup two tiles wide.
 - **Icon size** — *Small*, *Medium* (the default), *Large* or *Extra large*. The tiles grow with the icon so the names still fit.
 - **Show app names** — on by default. Without names the tiles shrink to their icons, so the popup gets much smaller; pointing at an icon still shows its name.
 

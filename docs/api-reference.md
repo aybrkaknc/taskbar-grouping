@@ -31,7 +31,7 @@ One group.
 |---|---|---|
 | `Id` | `string` | New groups get a GUID. **Reconstructed from the file name on load** — the `id` field in the JSON is ignored |
 | `GroupName` | `string` | Display name |
-| `Columns` | `int` | Popup grid columns, clamped to 1–6 on assignment, default 3. Set on the Manager's *Appearance* tab |
+| `Columns` | `int` | Most columns a popup row may hold, clamped to 1–6 on assignment, default 3. The grid uses fewer when the group has fewer apps. Set on the Manager's *Appearance* tab |
 | `IconSize` | `int` | Popup icon size in DIPs, one of `IconSizes` (32, 48, 64, 80); any other value snaps to the nearest on assignment. Default `DefaultIconSize` (48) |
 | `ShowNames` | `bool` | Whether popup tiles show app names, default `true`; without them tiles shrink to the icon |
 | `Apps` | `List<AppEntry>` | Members of the group |

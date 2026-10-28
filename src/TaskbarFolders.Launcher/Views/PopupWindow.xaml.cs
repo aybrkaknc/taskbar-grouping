@@ -194,7 +194,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         }
 
         var current = IndexOfFocusedTile();
-        FocusTile(current < 0 ? 0 : TileNavigator.Move(current, _viewModel.Apps.Count, _viewModel.Columns, move.Value));
+        FocusTile(current < 0 ? 0 : TileNavigator.Move(current, _viewModel.Apps.Count, _viewModel.EffectiveColumns, move.Value));
         e.Handled = true;
     }
 
@@ -421,7 +421,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         // Explicit Width + Height skip the SizeToContent measure pass that pre-v0.4 added
         // ~5-10 ms before placement could be computed. Empty / unavailable groups fall
         // back to MinHeight, keeping the banner-only layout centred.
-        var cols = Math.Max(_viewModel.Columns, 1);
+        var cols = Math.Max(_viewModel.EffectiveColumns, 1);
         Width = Math.Clamp(cols * _viewModel.Tile.Width + 2 * PaddingPx, MinWidth, MaxWidth);
 
         // Height comes from measuring ChromeRoot rather than adding up tile rows, because

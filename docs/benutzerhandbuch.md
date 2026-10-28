@@ -213,7 +213,7 @@ Der Autostart-Haken zeigt den tatsächlichen Zustand in der Windows-Registrierun
 
 Jede Gruppe legt ihr Aufklapp-Fenster selbst fest, im Manager auf der Registerkarte **Appearance** unter **Popup**:
 
-- **Columns** — 1 bis 6, standardmäßig 3: wie viele Programme nebeneinander stehen.
+- **Max per row** — 1 bis 6, standardmäßig 3: höchstens so viele Programme nebeneinander. Eine Gruppe mit weniger Programmen braucht nur den Platz, den sie braucht; zwei Programme bei *Max per row* 5 ergeben ein Fenster von zwei Kacheln Breite.
 - **Icon size** — *Small*, *Medium* (Standard), *Large* oder *Extra large*. Die Kacheln wachsen mit dem Symbol, damit die Namen weiter hineinpassen.
 - **Show app names** — standardmäßig an. Ohne Namen schrumpfen die Kacheln auf ihre Symbole, das Fenster wird deutlich kleiner; zeigt man auf ein Symbol, erscheint sein Name trotzdem.
 

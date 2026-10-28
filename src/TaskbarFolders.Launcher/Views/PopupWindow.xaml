@@ -369,7 +369,7 @@
                         <ItemsControl x:Name="TileList" ItemsSource="{Binding Apps}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <UniformGrid Columns="{Binding Columns}" />
+                                    <UniformGrid Columns="{Binding EffectiveColumns}" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
