@@ -136,6 +136,7 @@ public sealed class GroupSyncService : IGroupSyncService
 
         DeleteGroupIcons(groupId, keepPath: null);
         _customIcons.Delete(groupId);
+        _customIcons.PruneAppIcons(groupId, []);
         TryDelete(_paths.GetGroupShortcutFile(groupId));
         TryDelete(_paths.GetStartMenuShortcutFile(SanitizeForFilename(displayName, fallback: groupId)));
 
@@ -302,7 +303,8 @@ public sealed class GroupSyncService : IGroupSyncService
         {
             // An app without an icon still takes its place in the composite, so a group made
             // only of such apps gets a tile like any other.
-            icons.Add(LoadIcon(app.Path)
+            icons.Add(ImageFile.TryLoad(app.IconPath)
+                ?? LoadIcon(app.Path)
                 ?? PlaceholderIcon.Render(CompositeSourceIconSize, PlaceholderIcon.NeutralColor));
         }
         return icons;

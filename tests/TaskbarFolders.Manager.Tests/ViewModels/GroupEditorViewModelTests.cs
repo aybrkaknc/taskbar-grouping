@@ -343,6 +343,113 @@ public class GroupEditorViewModelTests
     }
 
     [Fact]
+    public void ToggleAppDetails_OpensOneRowAtATime_AndClosesItOnASecondToggle()
+    {
+        var (sut, _, _, _, _) = CreateSut();
+        sut.Bind(new GroupListItemViewModel(new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.exe" } },
+        }));
+        var (a, b) = (sut.Apps[0], sut.Apps[1]);
+
+        sut.ToggleAppDetailsCommand.Execute(a);
+        a.IsExpanded.Should().BeTrue();
+
+        sut.ToggleAppDetailsCommand.Execute(b);
+        a.IsExpanded.Should().BeFalse("opening another row closes this one");
+        b.IsExpanded.Should().BeTrue();
+
+        sut.ToggleAppDetailsCommand.Execute(b);
+        b.IsExpanded.Should().BeFalse("a second toggle closes the open row");
+    }
+
+    [Fact]
+    public void CollapseAppDetails_ClosesTheOpenRow()
+    {
+        var (sut, _, _, _, _) = CreateSut();
+        sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } }));
+        sut.ToggleAppDetailsCommand.Execute(sut.Apps[0]);
+
+        sut.CollapseAppDetailsCommand.Execute(null);
+
+        sut.Apps[0].IsExpanded.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task EditingAnAppsNameOrArguments_SavesTheGroup_WithoutSyncing()
+    {
+        var (sut, _, _, _, store, syncService, _, _, _) = CreateSutWithCollaborators();
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        sut.Bind(new GroupListItemViewModel(config));
+
+        sut.Apps[0].Name = "Alpha";
+        sut.Apps[0].Arguments = "--x";
+        await Task.Delay(50);
+
+        config.Apps[0].Name.Should().Be("Alpha");
+        config.Apps[0].Arguments.Should().Be("--x");
+        store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Exactly(2));
+        syncService.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never,
+            "neither the name nor the arguments are part of the group's icon");
+    }
+
+    [Fact]
+    public async Task ChooseAppIcon_StoresTheImage_UsesIt_AndSyncs()
+    {
+        var customIcons = new Mock<ICustomGroupIconStore>();
+        customIcons.Setup(c => c.TryImportAppIconAsync("g", "pic.png", It.IsAny<CancellationToken>()))
+                   .ReturnsAsync(@"C:\stored\g-0000000a.png");
+        var (sut, _, _, _, store, syncService, _, _, _) = CreateSutWithCollaborators(customIcons);
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        sut.Bind(new GroupListItemViewModel(config));
+        var app = sut.Apps[0];
+
+        await sut.ChooseAppIconCommand.ExecuteAsync(new AppIconChoice(app, "pic.png"));
+
+        config.Apps[0].IconPath.Should().Be(@"C:\stored\g-0000000a.png");
+        app.HasCustomIcon.Should().BeTrue();
+        store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        syncService.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once, "the group's icon shows the app's icon too");
+        customIcons.Verify(c => c.PruneAppIcons("g", It.Is<System.Collections.Generic.IEnumerable<string?>>(k => k.Contains(@"C:\stored\g-0000000a.png"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task ChooseAppIcon_ExplainsAnUnreadableFile_AndChangesNothing()
+    {
+        var customIcons = new Mock<ICustomGroupIconStore>();
+        customIcons.Setup(c => c.TryImportAppIconAsync("g", "bad.png", It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
+        var (sut, _, _, _, store, _, _, userConfirmation, _) = CreateSutWithCollaborators(customIcons);
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        sut.Bind(new GroupListItemViewModel(config));
+
+        await sut.ChooseAppIconCommand.ExecuteAsync(new AppIconChoice(sut.Apps[0], "bad.png"));
+
+        config.Apps[0].IconPath.Should().BeNull();
+        userConfirmation.Verify(u => u.Notify(It.IsAny<string>(), It.Is<string>(m => m.Contains("bad.png"))), Times.Once);
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ResetAppIcon_GoesBackToTheProgramsIcon_AndPrunesTheImage()
+    {
+        var customIcons = new Mock<ICustomGroupIconStore>();
+        var (sut, extractor, _, _, _, syncService, _, _, _) = CreateSutWithCollaborators(customIcons);
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe", IconPath = @"C:\gone.png" } } };
+        sut.Bind(new GroupListItemViewModel(config));
+        var app = sut.Apps[0];
+
+        await sut.ResetAppIconCommand.ExecuteAsync(app);
+
+        config.Apps[0].IconPath.Should().BeNull();
+        app.HasCustomIcon.Should().BeFalse();
+        app.Icon.Should().NotBeNull("the program's own icon is extracted again");
+        syncService.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        customIcons.Verify(c => c.PruneAppIcons("g", It.Is<System.Collections.Generic.IEnumerable<string?>>(k => k.All(p => p == null))), Times.Once);
+    }
+
+    [Fact]
     public void Dispose_StopsRespondingToFurtherCollectionChanges()
     {
         var (sut, _, composer, _, _) = CreateSut();

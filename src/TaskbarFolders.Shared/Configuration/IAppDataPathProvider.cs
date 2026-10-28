@@ -75,6 +75,26 @@ public interface IAppDataPathProvider
     /// <param name="groupId">Group identifier.</param>
     string GetGroupCustomIconFile(string groupId);
 
+    /// <summary>Gets the folder holding the images users chose as individual apps' icons.</summary>
+    string AppCustomIconsDirectory { get; }
+
+    /// <summary>
+    /// Builds the path of an image chosen as the icon of an app in the group
+    /// (<c>icons/custom/apps/&lt;id&gt;-&lt;version&gt;.png</c>). The version is derived from
+    /// the image, so the same image chosen twice is stored once.
+    /// </summary>
+    /// <param name="groupId">Group identifier.</param>
+    /// <param name="version">Eight hex digits.</param>
+    string GetAppCustomIconFile(string groupId, string version);
+
+    /// <summary>
+    /// Whether <paramref name="path"/> names one of the group's app icon images
+    /// (<c>&lt;id&gt;-&lt;8 hex&gt;.png</c>). Pure; touches no files.
+    /// </summary>
+    /// <param name="groupId">Group identifier.</param>
+    /// <param name="path">File path or name to test.</param>
+    bool IsAppCustomIconFile(string groupId, string path);
+
     /// <summary>Builds the full path for a single group's pinnable shortcut (.lnk) file.</summary>
     /// <param name="groupId">Group identifier — used as the file name stem so distinct groups never collide regardless of display name.</param>
     string GetGroupShortcutFile(string groupId);

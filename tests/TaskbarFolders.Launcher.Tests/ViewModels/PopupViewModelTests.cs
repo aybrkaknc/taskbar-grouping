@@ -205,6 +205,51 @@ public class PopupViewModelTests
     }
 
     [Fact]
+    public async Task StartIconLoad_ShowsAnAppsChosenIcon_WithoutAskingTheShell()
+    {
+        var file = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "TaskbarFolders.PopupIcon." + Guid.NewGuid().ToString("N") + ".png");
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(StubIcon()));
+        using (var stream = System.IO.File.Create(file))
+        {
+            encoder.Save(stream);
+        }
+
+        try
+        {
+            var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe", IconPath = file } } };
+            var (sut, _, extractor, _, _) = CreateSut("g", config);
+
+            await sut.LoadAsync();
+            sut.StartIconLoad();
+            await Task.Delay(200);
+
+            sut.Apps[0].Icon.Should().NotBeNull();
+            sut.Apps[0].IconMissing.Should().BeFalse();
+            extractor.Verify(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
+        }
+        finally
+        {
+            System.IO.File.Delete(file);
+        }
+    }
+
+    [Fact]
+    public async Task StartIconLoad_FallsBackToTheProgramsIcon_WhenTheChosenImageIsGone()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe", IconPath = @"C:\does\not\exist.png" } } };
+        var (sut, _, extractor, _, _) = CreateSut("g", config);
+        extractor.Setup(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize)).Returns(StubIcon());
+
+        await sut.LoadAsync();
+        sut.StartIconLoad();
+        await Task.Delay(200);
+
+        sut.Apps[0].Icon.Should().NotBeNull();
+        extractor.Verify(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize), Times.Once);
+    }
+
+    [Fact]
     public async Task StartIconLoad_MarksTheIconMissing_WhenTheAppHasNone()
     {
         var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };

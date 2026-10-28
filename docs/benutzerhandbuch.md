@@ -100,6 +100,16 @@ Der angezeigte Name stammt aus dem Dateinamen, das Symbol aus der Datei selbst �
 
 Der Pfad unter dem Namen wird gekürzt dargestellt: alles innerhalb Ihres Benutzerordners erscheint als `%USERPROFILE%\…`, damit Ihr Kontoname nicht in Screenshots oder bei Bildschirmfreigaben zu sehen ist. Fahren Sie mit der Maus über den Pfad, um ihn vollständig zu sehen. Gespeichert und gestartet wird immer der echte Pfad.
 
+### Name, Startparameter und Symbol eines Programms
+
+Ein Klick auf ein Programm in der Liste oder auf den Pfeil rechts in seiner Zeile öffnet unter der Zeile seine Einstellungen. Ein weiterer Klick auf die Zeile oder den Pfeil, `Esc` oder ein Klick irgendwo außerhalb der Zeile schließt sie wieder; es sind immer nur die Einstellungen eines Programms offen.
+
+- **Name** — die Beschriftung seiner Kachel im Aufklapp-Fenster. Leer gelassen, gilt wieder der Dateiname.
+- **Arguments** — Startparameter, die das Programm beim Start erhält, zum Beispiel `--profile-directory="Profile 2"`, um einen Browser mit einem zweiten Profil zu öffnen. Leer bedeutet: keine.
+- **Icon** — **Change icon…** wählt ein `.ico`, `.png`, `.jpg` oder `.bmp`, das statt des Programmsymbols erscheint: im Aufklapp-Fenster, in dieser Liste und im Gruppensymbol. **Use program icon** kehrt zum Programmsymbol zurück. Gespeichert wird eine Kopie; das Original darf verschoben oder gelöscht werden.
+
+Name und Startparameter werden gespeichert, sobald Sie das Feld verlassen oder `Enter` drücken; `Esc` stellt den gespeicherten Wert wieder her. Ein neues Symbol wird sofort gespeichert und das Gruppensymbol neu erzeugt.
+
 ### Programm entfernen
 
 Zeigen Sie mit der Maus auf die Zeile (oder wählen Sie sie aus) und klicken Sie rechts auf das Papierkorb-Symbol, oder wählen Sie sie aus und drücken Sie `Entf`. Entfernt wird nur der Eintrag in der Gruppe — das Programm selbst bleibt unberührt. Die Gruppe wird sofort gespeichert und ihr Symbol neu erzeugt.
@@ -213,6 +223,7 @@ Alles liegt unter `%APPDATA%\TaskbarFolders\`. Diesen Pfad können Sie in die Ad
 | `icons\<id>.ico` | Das erzeugte Gruppensymbol |
 | `icons\cache\` | Zwischengespeicherte Programmsymbole. Kann gefahrlos gelöscht werden |
 | `icons\custom\<id>.png` | Das selbst gewählte Bild einer Gruppe, falls vorhanden |
+| `icons\custom\apps\` | Selbst gewählte Bilder einzelner Programme |
 | `shortcuts\<id>.lnk` | Die Verknüpfung, die Sie anheften |
 | `settings.json` | Ihre Einstellungen |
 | `logs\` | Eine Protokolldatei je Tag, zwei Wochen aufbewahrt |
@@ -239,7 +250,7 @@ Ausführlicher, mit Zuordnung von Protokollzeilen zu Ursachen: [Troubleshooting]
 
 Keine Fehler, sondern bewusste oder noch offene Grenzen:
 
-- Programme lassen sich **nicht umsortieren**, Startparameter nicht setzen.
+- Programme lassen sich **nicht umsortieren**.
 - Das Aufklapp-Fenster lässt sich **nicht mit den Pfeiltasten** bedienen; nur `Esc` schließt es.
 - Der verschwommene Glas-Hintergrund des Aufklapp-Fensters braucht Windows 11 22H2 oder neuer. Sind in Windows die *Transparenzeffekte* ausgeschaltet, ist er eine einfarbige Fläche.
 - Es gibt **keine ARM64-Fassung**.

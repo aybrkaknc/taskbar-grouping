@@ -63,6 +63,16 @@ Click the group's icon at the top of the detail pane → **Change icon…** (or 
 
 The same menu's **Use app icons** goes back to the icon built from the apps. If a pinned tile keeps the old picture, Windows has not refreshed its icon yet; signing out and in again, or restarting Explorer, makes it re-read.
 
+### An app's name, arguments and icon
+
+Click an app in the list, or the arrow at the right of its row, to open its settings under the row. Clicking the row or the arrow again, pressing `Esc`, or clicking anywhere outside the row closes them; one app's settings are open at a time.
+
+- **Name** — what its tile in the popup says. Clear it to go back to the file name.
+- **Arguments** — passed to the program when it starts, for example `--profile-directory="Profile 2"` to open a browser with a second profile. Leave empty for none.
+- **Icon** — **Change icon…** picks an `.ico`, `.png`, `.jpg` or `.bmp` to show instead of the program's own icon, in the popup, in this list and in the group's icon. **Use program icon** goes back. A copy of the image is stored, so the original can be moved or deleted.
+
+Name and arguments are saved when you leave the box or press `Enter`; `Esc` puts back what was saved. A new icon is saved at once and the group's icon regenerated.
+
 ### Removing an app
 
 Point at its row (or select it) and click the bin icon that appears on the right, or select it and press `Del`. Only the entry in the group goes — the program itself is not touched. The group is saved and its icon regenerated immediately.
@@ -123,7 +133,7 @@ To delete: right-click the group → **Delete group** (or select it and press `D
 
 **Deleting a group does not remove its taskbar tile.** Right-click the tile and choose *Unpin from taskbar* yourself; the confirmation dialog reminds you.
 
-There is currently no way to reorder apps or give an app launch arguments from the interface.
+There is currently no way to reorder apps from the interface.
 
 ## Settings
 
@@ -161,6 +171,7 @@ Everything lives under `%APPDATA%\TaskbarFolders\`. Paste that into Explorer's a
 | `icons\<id>.ico` | The generated composite icon |
 | `icons\cache\` | Cached source icons; safe to delete, they are re-extracted |
 | `icons\custom\<id>.png` | The image you chose as a group's icon, if any |
+| `icons\custom\apps\` | Images you chose as individual apps' icons |
 | `shortcuts\<id>.lnk` | The shortcut you pin |
 | `settings.json` | Your settings |
 | `logs\` | One log file per day, kept for two weeks |

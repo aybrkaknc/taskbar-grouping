@@ -457,13 +457,48 @@ public sealed class GroupSyncServiceTests : IDisposable
     }
 
     [Fact]
-    public void RemoveArtifacts_DeletesTheChosenIcon()
+    public void RemoveArtifacts_DeletesTheChosenIcon_AndTheAppsIcons()
     {
         var sut = CreateSut();
 
         sut.RemoveArtifacts("g", "My Group");
 
         _customIcons.Verify(c => c.Delete("g"), Times.Once);
+        _customIcons.Verify(c => c.PruneAppIcons("g", It.Is<System.Collections.Generic.IEnumerable<string?>>(k => !k.Any())), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncAsync_ComposesAnAppsChosenIcon_InPlaceOfTheProgramsOwn()
+    {
+        var chosenFile = Path.Combine(_tempBase, "chosen.png");
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(StubIcon()));
+        using (var stream = File.Create(chosenFile))
+        {
+            encoder.Save(stream);
+        }
+        System.Collections.Generic.IReadOnlyList<BitmapSource>? composed = null;
+        _composer.Setup(c => c.GenerateComposite(It.IsAny<System.Collections.Generic.IReadOnlyList<BitmapSource>>(), It.IsAny<int>()))
+                 .Callback<System.Collections.Generic.IReadOnlyList<BitmapSource>, int>((icons, _) => composed = icons)
+                 .Returns(StubIcon());
+        var sut = CreateSut();
+        var config = new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Apps =
+            {
+                new AppEntry { Name = "a", Path = "a.exe", IconPath = chosenFile },
+                new AppEntry { Name = "b", Path = "b.exe", IconPath = Path.Combine(_tempBase, "gone.png") },
+            },
+        };
+
+        await sut.SyncAsync(config);
+
+        composed.Should().HaveCount(2);
+        composed![0].PixelWidth.Should().Be(32, "the chosen 32 px image is used as it is");
+        _extractor.Verify(e => e.ExtractIcon("a.exe", It.IsAny<int>()), Times.Never);
+        _extractor.Verify(e => e.ExtractIcon("b.exe", It.IsAny<int>()), Times.Once, "a missing image falls back to the program's icon");
     }
 
     [Fact]

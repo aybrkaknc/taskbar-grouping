@@ -130,7 +130,7 @@ Current, deliberate or not-yet-implemented — not bugs to report:
 - **A portable folder deleted by hand leaves its tiles, menu entry and data behind** — only `Uninstall.cmd` or *Settings → Uninstall TaskbarFolders…* clean up. To do it afterwards, extract the portable ZIP again and run its `Uninstall.cmd`.
 - **On Windows 11 22H2+ the glass panel does not fade when the popup closes.** DWM draws it and does not animate this window's hide, so only the icons fade.
 - **The blurred popup background needs Windows 11 22H2 or later.** Older versions get a plain translucent panel. With Windows' *Transparency effects* turned off, the background is a solid colour instead of glass.
-- **No reordering, custom icons, or launch arguments** from the interface. `arguments` and the per-group `columns` value (1–6, default 3) exist in the JSON only; a per-group `theme` field is serialised but ignored.
+- **No reordering** of apps from the interface. The per-group `columns` value (1–6, default 3) exists in the JSON only; a per-group `theme` field is serialised but ignored.
 - **Deleting a group does not unpin its tile.** Unpin it yourself.
 - **Renaming a group that currently has no apps keeps its old Start menu entry** until an app is added. An empty group writes no shortcuts at all, so there is nothing yet to replace the old entry with.
 - **Renaming a group's JSON file changes its identity**, orphaning its icon, shortcut and any existing pin. Rename from the Manager instead; that changes only the display name.

@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -33,6 +35,7 @@ public partial class MainWindow : Window
         viewModel.RenameRequested += OnRenameRequested;
         SourceInitialized += OnSourceInitialized;
         Activated += OnActivated;
+        PreviewMouseDown += OnPreviewMouseDown;
         Closed += OnClosed;
     }
 
@@ -80,6 +83,7 @@ public partial class MainWindow : Window
             vm.RenameRequested -= OnRenameRequested;
         }
         Activated -= OnActivated;
+        PreviewMouseDown -= OnPreviewMouseDown;
         Closed -= OnClosed;
     }
 
@@ -209,6 +213,115 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) == true)
         {
             vm.Editor.ChooseGroupIconCommand.Execute(dialog.FileName);
+        }
+    }
+
+    // Del removes the selected app and Escape closes its settings — but not while the key
+    // belongs to a text box in the row, where Del edits text and Escape undoes the edit.
+    private void AppList_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.OriginalSource is TextBox || DataContext is not MainWindowViewModel vm)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Delete && AppList.SelectedItem is AppEntryViewModel app)
+        {
+            vm.Editor.RemoveAppCommand.Execute(app);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && vm.Editor.Apps.Any(a => a.IsExpanded))
+        {
+            vm.Editor.CollapseAppDetailsCommand.Execute(null);
+            e.Handled = true;
+        }
+    }
+
+    // A click on the row itself toggles its settings; clicks on its buttons and inside the
+    // settings belong to those.
+    private void AppRow_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || sender is not FrameworkElement { DataContext: AppEntryViewModel app } row)
+        {
+            return;
+        }
+
+        for (var node = e.OriginalSource as DependencyObject; node is not null && node != row; node = VisualOrLogicalParent(node))
+        {
+            if (node is System.Windows.Controls.Primitives.ButtonBase or TextBox ||
+                (node is FrameworkElement { Name: "Details" }))
+            {
+                return;
+            }
+        }
+
+        vm.Editor.ToggleAppDetailsCommand.Execute(app);
+    }
+
+    // Open settings close on a click anywhere outside their row. A text box being edited is
+    // saved first: once its row collapses it could no longer lose focus the usual way.
+    private void OnPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || vm.Editor.Apps.FirstOrDefault(a => a.IsExpanded) is not { } open)
+        {
+            return;
+        }
+
+        if (AppList.ItemContainerGenerator.ContainerFromItem(open) is UIElement { IsMouseOver: true })
+        {
+            return;
+        }
+
+        if (Keyboard.FocusedElement is TextBox box && box.DataContext == open)
+        {
+            box.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        }
+        vm.Editor.CollapseAppDetailsCommand.Execute(null);
+    }
+
+    private static DependencyObject? VisualOrLogicalParent(DependencyObject node) =>
+        node is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D
+            ? System.Windows.Media.VisualTreeHelper.GetParent(node)
+            : LogicalTreeHelper.GetParent(node);
+
+    // Enter saves the box at once (it saves on focus loss anyway); Escape puts the saved
+    // value back.
+    private void AppSetting_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox box || box.GetBindingExpression(TextBox.TextProperty) is not { } binding)
+        {
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case Key.Enter:
+                binding.UpdateSource();
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                binding.UpdateTarget();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void ChooseAppIcon_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || sender is not FrameworkElement { DataContext: AppEntryViewModel app })
+        {
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Images|*.ico;*.png;*.jpg;*.jpeg;*.bmp|All files|*.*",
+            Title = $"Choose an icon for {app.Name}",
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            vm.Editor.ChooseAppIconCommand.Execute(new AppIconChoice(app, dialog.FileName));
         }
     }
 

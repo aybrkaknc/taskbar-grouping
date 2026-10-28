@@ -128,6 +128,55 @@ public sealed class CustomGroupIconStoreTests : IDisposable
         _sut.Exists("g").Should().BeFalse();
     }
 
+    [Fact]
+    public async Task TryImportAppIconAsync_StoresAFittedCopy_NamedAfterItsContent()
+    {
+        var source = WriteImage("app.png", new PngBitmapEncoder(), Solid(Colors.Red, 64, 32));
+
+        var first = await _sut.TryImportAppIconAsync("g", source);
+        var again = await _sut.TryImportAppIconAsync("g", source);
+
+        first.Should().NotBeNull();
+        _paths.IsAppCustomIconFile("g", first!).Should().BeTrue();
+        File.Exists(first).Should().BeTrue();
+        again.Should().Be(first, "the same image chosen twice is one file");
+        var stored = ImageFile.TryLoad(first)!;
+        stored.PixelWidth.Should().Be(CustomGroupIconStore.Size);
+        stored.PixelHeight.Should().Be(CustomGroupIconStore.Size);
+    }
+
+    [Fact]
+    public async Task TryImportAppIconAsync_ReturnsNull_ForAFileThatIsNotAnImage()
+    {
+        var bad = Path.Combine(_tempBase, "bad.png");
+        File.WriteAllText(bad, "hello");
+
+        (await _sut.TryImportAppIconAsync("g", bad)).Should().BeNull();
+        Directory.Exists(_paths.AppCustomIconsDirectory).Should().BeFalse("nothing is written for a rejected file");
+    }
+
+    [Fact]
+    public async Task PruneAppIcons_DeletesOnlyTheGroupsUnusedImages()
+    {
+        var kept = await _sut.TryImportAppIconAsync("g", WriteImage("a.png", new PngBitmapEncoder(), Solid(Colors.Red, 16, 16)));
+        var dropped = await _sut.TryImportAppIconAsync("g", WriteImage("b.png", new PngBitmapEncoder(), Solid(Colors.Blue, 16, 16)));
+        var otherGroup = await _sut.TryImportAppIconAsync("h", WriteImage("c.png", new PngBitmapEncoder(), Solid(Colors.Green, 16, 16)));
+
+        _sut.PruneAppIcons("g", [kept, null]);
+
+        File.Exists(kept).Should().BeTrue();
+        File.Exists(dropped).Should().BeFalse();
+        File.Exists(otherGroup).Should().BeTrue("another group's images are not this group's to prune");
+    }
+
+    [Fact]
+    public void PruneAppIcons_ToleratesAMissingFolder()
+    {
+        var act = () => _sut.PruneAppIcons("g", []);
+
+        act.Should().NotThrow();
+    }
+
     private string WriteImage(string name, BitmapEncoder encoder, BitmapSource image)
     {
         var path = Path.Combine(_tempBase, name);

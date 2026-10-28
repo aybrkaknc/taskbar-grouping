@@ -91,6 +91,31 @@ public class AppDataPathProviderTests
             .Should().Be(Path.Combine("C:/base", "TaskbarFolders", "icons", "custom", "abc.png"));
     }
 
+    [Fact]
+    public void GetAppCustomIconFile_IsAVersionedPngInTheAppsSubfolder()
+    {
+        var sut = new AppDataPathProvider("C:/base");
+
+        sut.GetAppCustomIconFile("abc", "0123abcd")
+            .Should().Be(Path.Combine("C:/base", "TaskbarFolders", "icons", "custom", "apps", "abc-0123abcd.png"));
+        FluentActions.Invoking(() => sut.GetAppCustomIconFile("abc", "nothex!!")).Should().Throw<System.ArgumentException>();
+        FluentActions.Invoking(() => sut.GetAppCustomIconFile("../x", "0123abcd")).Should().Throw<System.ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData("abc-0123abcd.png", true)]
+    [InlineData("ABC-0123ABCD.PNG", true)]
+    [InlineData("abc-other-0123abcd.png", false)]
+    [InlineData("abc-0123abcd.ico", false)]
+    [InlineData("abc.png", false)]
+    [InlineData("abcd-0123abcd.png", false)]
+    public void IsAppCustomIconFile_MatchesOnlyTheGroupsOwnImages(string name, bool expected)
+    {
+        var sut = new AppDataPathProvider("C:/base");
+
+        sut.IsAppCustomIconFile("abc", Path.Combine(sut.AppCustomIconsDirectory, name)).Should().Be(expected);
+    }
+
     [Theory]
     [InlineData("../escape")]
     [InlineData("..\\escape")]

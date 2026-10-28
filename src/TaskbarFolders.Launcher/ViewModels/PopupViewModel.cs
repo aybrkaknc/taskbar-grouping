@@ -380,6 +380,18 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     {
         try
         {
+            // An icon the user chose is a file of ours, read directly; the cache is for what
+            // the shell extracts.
+            if (app.IconPath is not null)
+            {
+                var chosen = await Task.Run(() => ImageFile.TryLoad(app.IconPath), token).ConfigureAwait(true);
+                if (chosen is not null && !token.IsCancellationRequested)
+                {
+                    app.Icon = chosen;
+                    return;
+                }
+            }
+
             if (_cache.TryGet(app.Path, IconSize, out var cached))
             {
                 if (token.IsCancellationRequested)

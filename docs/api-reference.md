@@ -89,6 +89,9 @@ string GetGroupIconFile(string groupId);                  // legacy <id>.ico
 string GetGroupIconFile(string groupId, string version); // <id>-<8 hex>.ico
 bool IsGroupIconFile(string groupId, string path);
 string GetGroupCustomIconFile(string groupId);
+string AppCustomIconsDirectory { get; }
+string GetAppCustomIconFile(string groupId, string version);
+bool IsAppCustomIconFile(string groupId, string path);
 string GetGroupShortcutFile(string groupId);
 string GetStartMenuShortcutFile(string sanitizedFileName);
 ```
@@ -158,9 +161,21 @@ bool Exists(string groupId);
 BitmapSource? TryLoad(string groupId);
 Task<bool> TryImportAsync(string groupId, string sourcePath, CancellationToken cancellationToken = default);
 void Delete(string groupId);
+Task<string?> TryImportAppIconAsync(string groupId, string sourcePath, CancellationToken cancellationToken = default);
+void PruneAppIcons(string groupId, IEnumerable<string?> inUse);
 ```
 
 The image a user chose as a group's icon; `GroupSyncService` uses it in place of the composite while it exists. `CustomGroupIconStore` decodes any WPF-readable image (an `.ico` gives its largest frame), fits it centred into a transparent 256 px square and writes it atomically as `GetGroupCustomIconFile(id)`. `TryImportAsync` returns `false` and leaves any previous choice in place for a file that is not a readable image; `TryLoad` returns `null` for a damaged stored file, so sync falls back to the composite.
+
+The same store keeps the images chosen for individual apps: `TryImportAppIconAsync` normalises the image the same way and returns its stored path (`GetAppCustomIconFile`, named by a hash of the PNG, so the same image chosen twice is one file) for `AppEntry.IconPath`; `PruneAppIcons` deletes the group's stored images that none of the given paths refers to.
+
+#### [`ImageFile`](../src/TaskbarFolders.Core/Icons/ImageFile.cs)
+
+```csharp
+public static BitmapSource? TryLoad(string? path);
+```
+
+Decodes an image file the user chose — the largest frame of an `.ico` — into a frozen bitmap, or returns `null` for a blank path or a missing or unreadable file. Sync, the Manager and the popup try it on `AppEntry.IconPath` before asking `IIconExtractor` for the program's icon.
 
 ### Shortcuts
 
