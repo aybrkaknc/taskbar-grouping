@@ -16,7 +16,7 @@ finishes it, and a change of order or scope is recorded here when it is agreed, 
 - **`origin`:** `feature/send-to-group` (`9ca0245`) and `feature/rename-group-orphan-anchor`
   are the only pushed work branches. The older stacked branches still exist locally; deleting
   them waits for approval.
-- **Next:** C6 — settings and empty state.
+- **Next:** push to `origin` (with approval), then C3 — per-app settings.
 
 ## How an item is worked
 
@@ -48,22 +48,31 @@ comes first so that C1–C4 land in their final place instead of being laid out 
 - [x] **App list** — *Apps* and *Appearance* tabs; a slim **Add apps…** row in place of the
   large drop box (the whole tab takes dropped files); a delete icon on the hovered or selected
   row instead of a *Remove* button on every row, `Del` to remove. *Appearance* holds only the
-  group icon choice until C1 + C2 fill it. Commit below, branch `feature/manager-app-list`.
+  group icon choice until C1 + C2 fill it. `90c3ee4`, branch `feature/manager-app-list`.
 - [ ] **Settings and empty state** — settings apply as they are changed (no *Save*); with no
-  groups, a three-step "get started" view. **Next.**
+  groups, a three-step "get started" view. Ranked #6 below.
 - [ ] **Visual polish** — let the Manager's Mica backdrop show through (it is applied but
   hidden under solid brushes), Fluent icons, consistent spacing; retake the screenshots.
+  Ranked #10 below.
 
 ## Up next, in order
 
-| # | Item | Notes |
+Ranked by importance on 2026-10-28. The C6 steps above that are still open are placed in this
+list where they fall.
+
+| # | Item | What it changes and why |
 |---|---|---|
-| 1 | **C1 + C2 — grid settings per group** | On the *Appearance* tab: rows, columns, icon size (a number, or automatic from rows/columns), spacing, show/hide names — with a live preview of the popup beside them. |
-| 2 | **C3 — per-app settings** | Opens from an app's row: display name, arguments, icon via `AppEntry.IconPath`. Upstream #29, #30. |
-| 3 | **C4 — reorder apps by dragging** | Grip handle on each row of the app list. |
-| 4 | **B3 — keyboard navigation in the popup** | Arrow keys, Enter to launch, visible focus. Upstream #26. |
-| 5 | **B5 — theme per group** | On the *Appearance* tab. Upstream #30. |
-| 6 | **D — release** | Retake screenshots, merge the remaining branches into `develop`, push (with approval), cut v0.5.0, open an issue for `IsPinningAllowed = false`, delete merged branches. |
+| 1 | **Push to `origin`** | Over forty commits exist only on this machine. Sends `develop` and the open branch to the fork. Needs approval at the time. |
+| 2 | **C3 — per-app settings** | An app's row opens a panel for its display name, launch arguments and its own icon (`AppEntry.IconPath`). Names come from file names today ("LDPlayer 14"), and arguments allow e.g. a second browser profile. Upstream #29 (arguments), #30 (icon path). |
+| 3 | **B5 dropped — remove `GroupConfig.Theme`** | The per-group theme is not wanted; the field is saved but never read. Removing it closes the other half of upstream #30. Old files with the field still load. |
+| 4 | **B3 — keyboard navigation in the popup** | First tile focused on open, arrow keys move, Enter launches, a visible focus ring. Upstream #26. |
+| 5 | **C1 — grid settings, part 1** | On *Appearance*: columns, icon size, show/hide names, applied to the popup. Columns are JSON-only today (upstream #29). |
+| 6 | **C6 — settings and empty state** | Settings apply as they change (no *Save*); with no groups, a three-step "get started" view. |
+| 7 | **D — release v0.5.0** | Version bump, installer and portable build, installer smoke test, CHANGELOG section, release notes; open an issue for `IsPinningAllowed = false`; delete merged branches. Puts the work so far in users' hands before the larger items. |
+| 8 | **C2 — grid settings, part 2** | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
+| 9 | **C4 — reorder apps by dragging** | Drag rows in the app list. Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
+| 10 | **C6 — visual polish** | Let the Manager's Mica backdrop show, Fluent icons, spacing; retake screenshots. |
+| 11 | **E — add apps from a list of installed apps (research first)** | Instead of browsing for an `.exe`/`.lnk`, pick from what Windows lists under *Start → All apps*, which also covers Store/packaged apps (Calculator, Settings…) that cannot be added at all today. The research settles the source (the shell's AppsFolder vs. Start menu shortcuts), how a packaged app is stored and launched (`shell:AppsFolder\<AUMID>` rather than a path), and how its icon is read. |
 
 ## Done
 
@@ -81,4 +90,4 @@ comes first so that C1–C4 land in their final place instead of being laid out 
 | Shell icon extraction serialised (random blank popup tiles) | `66a99af` | merged |
 | C6 — group list | `d7d1abd` | merged |
 | C6 — group header, themed menus | `b62aa23`, `88fceff` | merged |
-| C6 — app list: tabs, slim add row, hover delete | see `git log feature/manager-app-list` | `feature/manager-app-list` |
+| C6 — app list: tabs, slim add row, hover delete | `90c3ee4` | `feature/manager-app-list` |
