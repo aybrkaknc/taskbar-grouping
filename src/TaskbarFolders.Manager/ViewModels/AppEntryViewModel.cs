@@ -24,6 +24,7 @@ public sealed partial class AppEntryViewModel : ObservableObject
         _name = entry.Name;
         _path = entry.Path;
         _arguments = entry.Arguments;
+        _iconPath = entry.IconPath;
     }
 
     /// <summary>Underlying entry. Public so the editor view model can persist it.</summary>
@@ -45,11 +46,41 @@ public sealed partial class AppEntryViewModel : ObservableObject
     [ObservableProperty]
     private string? _arguments;
 
-    /// <summary>Icon extracted from <see cref="Path"/>; set asynchronously by the editor.</summary>
+    /// <summary>
+    /// The icon shown for the app: the image in <see cref="IconPath"/> when there is one,
+    /// otherwise the program's own. Set by the editor.
+    /// </summary>
     [ObservableProperty]
     private BitmapSource? _icon;
 
-    partial void OnNameChanged(string value) => Entry.Name = value;
+    /// <summary>The stored copy of an image chosen as this app's icon, or <see langword="null"/>.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCustomIcon))]
+    private string? _iconPath;
+
+    /// <summary>Whether the app shows an image the user chose rather than the program's own icon.</summary>
+    public bool HasCustomIcon => IconPath is not null;
+
+    /// <summary>The name the app gets when its display name is cleared: the file name.</summary>
+    public string DefaultName => System.IO.Path.GetFileNameWithoutExtension(Path);
+
+    // A cleared name falls back to the file name rather than leaving an unlabelled tile.
+    partial void OnNameChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            Name = DefaultName;
+            return;
+        }
+
+        Entry.Name = value.Trim();
+    }
+
     partial void OnPathChanged(string value) => Entry.Path = value;
-    partial void OnArgumentsChanged(string? value) => Entry.Arguments = value;
+
+    // Blank means "no arguments", stored as null so it is left out of the file.
+    partial void OnArgumentsChanged(string? value) =>
+        Entry.Arguments = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    partial void OnIconPathChanged(string? value) => Entry.IconPath = value;
 }

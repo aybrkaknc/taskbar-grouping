@@ -21,6 +21,7 @@ public sealed partial class PopupAppViewModel : ObservableObject
         Name = entry.Name;
         Path = entry.Path;
         Arguments = entry.Arguments;
+        IconPath = entry.IconPath;
     }
 
     /// <summary>Underlying entry. Public so launch logic can dispatch on it.</summary>
@@ -34,6 +35,9 @@ public sealed partial class PopupAppViewModel : ObservableObject
 
     /// <summary>Optional command-line arguments.</summary>
     public string? Arguments { get; }
+
+    /// <summary>The image chosen as this app's icon, used in place of the program's own when it loads.</summary>
+    public string? IconPath { get; }
 
     /// <summary>Extracted icon shown in the grid tile.</summary>
     [ObservableProperty]

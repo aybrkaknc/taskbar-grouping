@@ -17,6 +17,11 @@ using TaskbarFolders.Shared.Models;
 
 namespace TaskbarFolders.Manager.ViewModels;
 
+/// <summary>An image the user picked as the icon of <paramref name="App"/>.</summary>
+/// <param name="App">The app's row.</param>
+/// <param name="ImagePath">The picked file.</param>
+public sealed record AppIconChoice(AppEntryViewModel App, string ImagePath);
+
 /// <summary>
 /// Detail-pane view model for a single selected group. Manages the apps list, debounced
 /// composite-icon preview, and add/remove operations. <see cref="Bind"/> swaps the
@@ -140,6 +145,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
                 var appVm = new AppEntryViewModel(entry);
                 Apps.Add(appVm);
                 LoadIconInto(appVm);
+                SaveOnEdit(item, appVm);
             }
         }
         finally
@@ -180,6 +186,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
             var appVm = new AppEntryViewModel(entry);
             Apps.Add(appVm);
             LoadIconInto(appVm);
+            SaveOnEdit(item, appVm);
             added++;
         }
 
@@ -264,6 +271,80 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         GroupSynced?.Invoke(this, item);
     }
 
+    /// <summary>
+    /// Stores a copy of the chosen image as the app's icon and regenerates the group's icon,
+    /// whose composite shows it too.
+    /// </summary>
+    [RelayCommand]
+    private async Task ChooseAppIconAsync(AppIconChoice? choice)
+    {
+        var item = _boundItem;
+        if (item is null || choice is null || string.IsNullOrWhiteSpace(choice.ImagePath))
+        {
+            return;
+        }
+
+        var stored = await _customIcons.TryImportAppIconAsync(item.Config.Id, choice.ImagePath).ConfigureAwait(true);
+        if (stored is null)
+        {
+            _userConfirmation.Notify(
+                "App icon",
+                $"This file could not be read as an image, so the app's icon is unchanged:\n{choice.ImagePath}");
+            return;
+        }
+
+        choice.App.IconPath = stored;
+        LoadIconInto(choice.App);
+        await SaveAndSyncAsync(item).ConfigureAwait(true);
+        SchedulePreviewRefresh();
+    }
+
+    /// <summary>Goes back to the program's own icon for <paramref name="app"/>.</summary>
+    [RelayCommand]
+    private async Task ResetAppIconAsync(AppEntryViewModel? app)
+    {
+        var item = _boundItem;
+        if (item is null || app is null || app.IconPath is null)
+        {
+            return;
+        }
+
+        app.IconPath = null;
+        LoadIconInto(app);
+        await SaveAndSyncAsync(item).ConfigureAwait(true);
+        SchedulePreviewRefresh();
+    }
+
+    /// <summary>
+    /// Saves the group when an app's name or arguments are edited in its row. Neither shows in
+    /// the group's icon, so there is nothing to sync.
+    /// </summary>
+    private void SaveOnEdit(GroupListItemViewModel item, AppEntryViewModel app)
+    {
+        app.PropertyChanged += async (_, e) =>
+        {
+            if (e.PropertyName is not (nameof(AppEntryViewModel.Name) or nameof(AppEntryViewModel.Arguments)))
+            {
+                return;
+            }
+
+            _pendingSaves++;
+            try
+            {
+                await _store.SaveAsync(item.Config).ConfigureAwait(true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _logger?.LogWarning(ex, "Could not save an edit to an app in {GroupId}.", item.Config.Id);
+                _userConfirmation.Notify("Not saved", $"The change could not be saved:\n{ex.Message}");
+            }
+            finally
+            {
+                _pendingSaves--;
+            }
+        };
+    }
+
     private async Task SaveAndSyncAsync(GroupListItemViewModel item)
     {
         // Every await here resumes on the UI thread, so a plain counter is enough.
@@ -271,6 +352,8 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         try
         {
             await _store.SaveAsync(item.Config).ConfigureAwait(true);
+            // An app's icon image goes when nothing in the group points at it any more.
+            _customIcons.PruneAppIcons(item.Config.Id, item.Config.Apps.Select(a => a.IconPath));
             await _syncService.SyncAsync(item.Config).ConfigureAwait(true);
         }
         finally
@@ -504,7 +587,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
 
     private void LoadIconInto(AppEntryViewModel app)
     {
-        app.Icon = ExtractAndCache(app.Path, PreviewSize);
+        app.Icon = ImageFile.TryLoad(app.IconPath) ?? ExtractAndCache(app.Path, PreviewSize);
     }
 
     private BitmapSource? ExtractAndCache(string path, int size)

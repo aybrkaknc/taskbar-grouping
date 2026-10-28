@@ -207,12 +207,8 @@
                                 <ListBox x:Name="AppList"
                                          ItemsSource="{Binding Apps}"
                                          ItemContainerStyle="{StaticResource ListRowItem}"
-                                         BorderThickness="0" Background="Transparent">
-                                    <ListBox.InputBindings>
-                                        <KeyBinding Key="Delete"
-                                                    Command="{Binding RemoveAppCommand}"
-                                                    CommandParameter="{Binding SelectedItem, ElementName=AppList}" />
-                                    </ListBox.InputBindings>
+                                         BorderThickness="0" Background="Transparent"
+                                         KeyDown="AppList_KeyDown">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate DataType="{x:Type vm:AppEntryViewModel}">
                                             <Grid>
@@ -221,6 +217,10 @@
                                                     <ColumnDefinition Width="*" />
                                                     <ColumnDefinition Width="Auto" />
                                                 </Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
                                                 <Image Grid.Column="0" Source="{Binding Icon}" Width="32" Height="32" Stretch="Uniform" />
                                                 <!-- Icons load synchronously here, so a null icon means the app has none. -->
                                                 <Viewbox Grid.Column="0" Width="32" Height="32">
@@ -257,6 +257,42 @@
                                                         CommandParameter="{Binding}">
                                                     <TextBlock Text="&#xE74D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" />
                                                 </Button>
+
+                                                <!-- The selected app's own settings. Text boxes save when they lose
+                                                     focus or on Enter; Escape puts the saved value back. -->
+                                                <Grid x:Name="Details" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
+                                                      Margin="12,10,8,4" Visibility="Collapsed">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
+                                                    <TextBlock Text="Name" VerticalAlignment="Center" Margin="0,0,16,0" Foreground="{DynamicResource ForegroundSubtle}" />
+                                                    <TextBox Grid.Column="1" Padding="6,3"
+                                                             Text="{Binding Name}"
+                                                             ToolTip="Shown under the app's tile. Leave empty to use the file name."
+                                                             KeyDown="AppSetting_KeyDown" />
+                                                    <TextBlock Grid.Row="1" Text="Arguments" VerticalAlignment="Center" Margin="0,8,16,0" Foreground="{DynamicResource ForegroundSubtle}" />
+                                                    <TextBox Grid.Row="1" Grid.Column="1" Padding="6,3" Margin="0,8,0,0"
+                                                             Text="{Binding Arguments}"
+                                                             ToolTip="Passed to the program when it starts, e.g. --profile-directory=&quot;Profile 2&quot;"
+                                                             KeyDown="AppSetting_KeyDown" />
+                                                    <TextBlock Grid.Row="2" Text="Icon" VerticalAlignment="Center" Margin="0,8,16,0" Foreground="{DynamicResource ForegroundSubtle}" />
+                                                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,8,0,0">
+                                                        <Button Content="Change icon…" Padding="10,3" Click="ChooseAppIcon_Click"
+                                                                ToolTip="Use an .ico, .png, .jpg or .bmp for this app in the popup and the group's icon." />
+                                                        <Button Content="Use program icon" Padding="10,3" Margin="8,0,0,0"
+                                                                IsEnabled="{Binding HasCustomIcon}"
+                                                                ToolTipService.ShowOnDisabled="True"
+                                                                ToolTip="Go back to the icon the program itself carries. Available while an image is in use."
+                                                                Command="{Binding DataContext.ResetAppIconCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                                CommandParameter="{Binding}" />
+                                                    </StackPanel>
+                                                </Grid>
                                             </Grid>
                                             <DataTemplate.Triggers>
                                                 <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
@@ -264,6 +300,7 @@
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
                                                     <Setter TargetName="RemoveButton" Property="Visibility" Value="Visible" />
+                                                    <Setter TargetName="Details" Property="Visibility" Value="Visible" />
                                                 </DataTrigger>
                                             </DataTemplate.Triggers>
                                         </DataTemplate>

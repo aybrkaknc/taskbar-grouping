@@ -83,7 +83,7 @@ The anchor's file name follows the group's display name, but its identity is the
 
 1. The Manager creates a `GroupConfig` with a GUID id and writes `groups/<id>.json`. Writes go to a `.tmp` file and are then moved over the target, so a crash mid-write cannot truncate a config.
 2. Adding apps triggers a sync. Sync **returns early for an empty group** — no apps means no icon and no shortcut, and therefore nothing to pin.
-3. Icons for the first four apps are extracted at 128 px through the icon cache. `.lnk` inputs are resolved to their targets first. An app with no icon contributes `PlaceholderIcon` in its neutral grey; the placeholder is not cached, so an icon that becomes available later replaces it.
+3. Icons for the first four apps are extracted at 128 px through the icon cache. `.lnk` inputs are resolved to their targets first. An app whose `IconPath` image loads (`ImageFile.TryLoad`) contributes that image instead, without going through the shell or the cache; an app with no icon contributes `PlaceholderIcon` in its neutral grey; the placeholder is not cached, so an icon that becomes available later replaces it.
 4. Those icons are composed into one image: one centred, two side by side, three in an iOS-style arrangement, four as a 2×2 grid. If the user chose an image for the group (`ICustomGroupIconStore`, `icons/custom/<id>.png`), that image replaces the composite and steps 3–4 are skipped; everything after treats the two alike, so changing the choice reaches a pinned tile the same way changed apps do.
 5. The composite is written as a multi-resolution PNG-in-ICO container (16/32/48/256 px) to `icons/<id>-<v>.ico`, again atomically. `<v>` is eight hex digits of a hash over the image: Windows caches a shortcut's icon by path, so a changed image needs a new file name or the pinned tile keeps the old one ([ADR-006](adr/006-versioned-group-icons.md)).
 6. The `.lnk` is generated with the AUMID and icon reference described above, and the Start menu anchor is written and announced.
@@ -185,6 +185,7 @@ Placement itself: find the taskbar edge and rectangle, find the monitor under th
 | `icons\<id>.ico` | Generated composite icon. |
 | `icons\cache\<sha256>.png` | Extracted source icons, keyed by source path, last-write time and size. Pruned after 30 days. |
 | `icons\custom\<id>.png` | Image the user chose as the group's icon, normalised to a 256 px square on import. Deleted with the group. |
+| `icons\custom\apps\<id>-<v>.png` | Images chosen as apps' icons (`AppEntry.IconPath`), same normalisation, named by a hash of the image. Pruned after every save of the group to those its apps still use; all deleted with the group. |
 | `shortcuts\<id>.lnk` | The pinnable shortcut. |
 | `settings.json` | Global settings. |
 | `logs\manager-<date>.log`, `logs\launcher-<date>.log` | One file per day per process kind, retained 14 days. |

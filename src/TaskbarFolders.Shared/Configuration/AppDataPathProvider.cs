@@ -23,6 +23,9 @@ public sealed partial class AppDataPathProvider : IAppDataPathProvider
     /// <summary>Sub-folder of <see cref="IconsFolderName"/> holding the images users chose as group icons.</summary>
     public const string CustomIconsFolderName = "custom";
 
+    /// <summary>Sub-folder of <see cref="CustomIconsFolderName"/> holding the images users chose as apps' icons.</summary>
+    public const string AppIconsFolderName = "apps";
+
     /// <summary>Sub-folder containing rotated log files.</summary>
     public const string LogsFolderName = "logs";
 
@@ -191,6 +194,39 @@ public sealed partial class AppDataPathProvider : IAppDataPathProvider
     {
         ValidateGroupId(groupId);
         return Path.Combine(IconsDirectory, CustomIconsFolderName, $"{groupId}.png");
+    }
+
+    /// <inheritdoc/>
+    public string AppCustomIconsDirectory => Path.Combine(IconsDirectory, CustomIconsFolderName, AppIconsFolderName);
+
+    /// <inheritdoc/>
+    public string GetAppCustomIconFile(string groupId, string version)
+    {
+        ValidateGroupId(groupId);
+        if (version is null || !IconVersionPattern().IsMatch(version))
+        {
+            throw new ArgumentException($"Invalid icon version '{version}'. Must be 8 hex digits.", nameof(version));
+        }
+
+        return Path.Combine(AppCustomIconsDirectory, $"{groupId}-{version}.png");
+    }
+
+    /// <inheritdoc/>
+    public bool IsAppCustomIconFile(string groupId, string path)
+    {
+        ValidateGroupId(groupId);
+        var name = Path.GetFileName(path);
+        if (string.IsNullOrEmpty(name))
+        {
+            return false;
+        }
+
+        // Exactly "<id>-<8 hex>.png", for the same reason as IsGroupIconFile.
+        var prefix = groupId + "-";
+        return name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            && name.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+            && name.Length == prefix.Length + 8 + 4
+            && IconVersionPattern().IsMatch(name.AsSpan(prefix.Length, 8));
     }
 
     /// <inheritdoc/>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -209,6 +210,62 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) == true)
         {
             vm.Editor.ChooseGroupIconCommand.Execute(dialog.FileName);
+        }
+    }
+
+    // Del removes the selected app — but not while the key belongs to a text box in its row.
+    private void AppList_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Delete || e.OriginalSource is TextBox)
+        {
+            return;
+        }
+
+        if (DataContext is MainWindowViewModel vm && AppList.SelectedItem is AppEntryViewModel app)
+        {
+            vm.Editor.RemoveAppCommand.Execute(app);
+            e.Handled = true;
+        }
+    }
+
+    // Enter saves the box at once (it saves on focus loss anyway); Escape puts the saved
+    // value back.
+    private void AppSetting_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (sender is not TextBox box || box.GetBindingExpression(TextBox.TextProperty) is not { } binding)
+        {
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case Key.Enter:
+                binding.UpdateSource();
+                e.Handled = true;
+                break;
+            case Key.Escape:
+                binding.UpdateTarget();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void ChooseAppIcon_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || sender is not FrameworkElement { DataContext: AppEntryViewModel app })
+        {
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Images|*.ico;*.png;*.jpg;*.jpeg;*.bmp|All files|*.*",
+            Title = $"Choose an icon for {app.Name}",
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            vm.Editor.ChooseAppIconCommand.Execute(new AppIconChoice(app, dialog.FileName));
         }
     }
 

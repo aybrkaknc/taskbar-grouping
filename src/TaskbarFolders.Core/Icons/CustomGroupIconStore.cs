@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -47,15 +49,12 @@ public sealed class CustomGroupIconStore : ICustomGroupIconStore
             return null;
         }
 
-        try
+        var image = ImageFile.TryLoad(path);
+        if (image is null)
         {
-            return Decode(File.ReadAllBytes(path));
+            _logger?.LogWarning("Custom icon of {GroupId} could not be read; composing one instead.", groupId);
         }
-        catch (Exception ex) when (IsUnreadableImage(ex))
-        {
-            _logger?.LogWarning(ex, "Custom icon of {GroupId} could not be read; composing one instead.", groupId);
-            return null;
-        }
+        return image;
     }
 
     /// <inheritdoc/>
@@ -64,24 +63,87 @@ public sealed class CustomGroupIconStore : ICustomGroupIconStore
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
         var target = _paths.GetGroupCustomIconFile(groupId);
 
-        byte[] png;
-        try
+        var png = await TryNormaliseAsync(sourcePath, cancellationToken).ConfigureAwait(false);
+        if (png is null)
         {
-            var source = Decode(await File.ReadAllBytesAsync(sourcePath, cancellationToken).ConfigureAwait(false));
-            png = EncodePng(FitToSquare(source));
-        }
-        catch (Exception ex) when (IsUnreadableImage(ex))
-        {
-            _logger?.LogWarning(ex, "{Path} could not be read as an image; group icon of {GroupId} unchanged.", sourcePath, groupId);
+            _logger?.LogWarning("{Path} could not be read as an image; group icon of {GroupId} unchanged.", sourcePath, groupId);
             return false;
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-        var temp = target + ".tmp";
-        await File.WriteAllBytesAsync(temp, png, cancellationToken).ConfigureAwait(false);
-        File.Move(temp, target, overwrite: true);
+        await WriteAtomicallyAsync(target, png, cancellationToken).ConfigureAwait(false);
         _logger?.LogInformation("Group {GroupId} now uses the icon from {Path}.", groupId, sourcePath);
         return true;
+    }
+
+    /// <inheritdoc/>
+    public async Task<string?> TryImportAppIconAsync(string groupId, string sourcePath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
+
+        var png = await TryNormaliseAsync(sourcePath, cancellationToken).ConfigureAwait(false);
+        if (png is null)
+        {
+            _logger?.LogWarning("{Path} could not be read as an image; app icon in {GroupId} unchanged.", sourcePath, groupId);
+            return null;
+        }
+
+        // Named after its content: the same image chosen again is the same file.
+        var version = Convert.ToHexString(SHA256.HashData(png).AsSpan(0, 4)).ToLowerInvariant();
+        var target = _paths.GetAppCustomIconFile(groupId, version);
+        await WriteAtomicallyAsync(target, png, cancellationToken).ConfigureAwait(false);
+        _logger?.LogInformation("Stored app icon {Target} from {Path}.", target, sourcePath);
+        return target;
+    }
+
+    /// <inheritdoc/>
+    public void PruneAppIcons(string groupId, IEnumerable<string?> inUse)
+    {
+        ArgumentNullException.ThrowIfNull(inUse);
+
+        var keep = new HashSet<string>(
+            inUse.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => Path.GetFullPath(p!)),
+            StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (!Directory.Exists(_paths.AppCustomIconsDirectory))
+            {
+                return;
+            }
+
+            foreach (var file in Directory.EnumerateFiles(_paths.AppCustomIconsDirectory, "*.png").ToList())
+            {
+                if (_paths.IsAppCustomIconFile(groupId, file) && !keep.Contains(Path.GetFullPath(file)))
+                {
+                    File.Delete(file);
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger?.LogWarning(ex, "Could not prune the app icons of {GroupId}.", groupId);
+        }
+    }
+
+    /// <summary>The image as a PNG fitted into the square, or <see langword="null"/> when unreadable.</summary>
+    private static async Task<byte[]?> TryNormaliseAsync(string sourcePath, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var source = ImageFile.Decode(await File.ReadAllBytesAsync(sourcePath, cancellationToken).ConfigureAwait(false));
+            return EncodePng(FitToSquare(source));
+        }
+        catch (Exception ex) when (ImageFile.IsUnreadableImage(ex))
+        {
+            return null;
+        }
+    }
+
+    private static async Task WriteAtomicallyAsync(string target, byte[] bytes, CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        var temp = target + ".tmp";
+        await File.WriteAllBytesAsync(temp, bytes, cancellationToken).ConfigureAwait(false);
+        File.Move(temp, target, overwrite: true);
     }
 
     /// <inheritdoc/>
@@ -96,23 +158,6 @@ public sealed class CustomGroupIconStore : ICustomGroupIconStore
         {
             _logger?.LogWarning(ex, "Could not delete the custom icon {Path}.", path);
         }
-    }
-
-    /// <summary>
-    /// Decodes every frame and keeps the largest, so an .ico gives its 256 px image rather
-    /// than whichever size happens to come first.
-    /// </summary>
-    private static BitmapSource Decode(byte[] bytes)
-    {
-        using var stream = new MemoryStream(bytes);
-        var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
-        BitmapSource frame = decoder.Frames.MaxBy(f => (long)f.PixelWidth * f.PixelHeight)
-            ?? throw new NotSupportedException("The image has no frames.");
-        if (frame.CanFreeze)
-        {
-            frame.Freeze();
-        }
-        return frame;
     }
 
     private static RenderTargetBitmap FitToSquare(BitmapSource image)
@@ -142,11 +187,4 @@ public sealed class CustomGroupIconStore : ICustomGroupIconStore
         encoder.Save(stream);
         return stream.ToArray();
     }
-
-    // What WPF's decoders and the file system throw for a file that is missing, locked, not
-    // an image or a damaged one.
-    private static bool IsUnreadableImage(Exception ex) =>
-        ex is IOException or UnauthorizedAccessException or NotSupportedException
-            or FileFormatException or ArgumentException or InvalidOperationException
-            or System.Runtime.InteropServices.COMException;
 }
