@@ -125,7 +125,6 @@ On an affected build, avoid clicking Save unless you intend to set every value i
 
 Current, deliberate or not-yet-implemented — not bugs to report:
 
-- **The popup has almost no keyboard support.** Escape leaves edit mode or closes the popup, but no item is focused on open and the arrow keys do nothing.
 - **The "Taskbar Groups" menu is classic-menu only on Windows 11** (*Show more options*). The Manager rewrites it whenever a group is created, renamed or deleted; only a group file edited by hand while the Manager is closed shows its old name there until the Manager next starts.
 - **A portable folder deleted by hand leaves its tiles, menu entry and data behind** — only `Uninstall.cmd` or *Settings → Uninstall TaskbarFolders…* clean up. To do it afterwards, extract the portable ZIP again and run its `Uninstall.cmd`.
 - **On Windows 11 22H2+ the glass panel does not fade when the popup closes.** DWM draws it and does not animate this window's hide, so only the icons fade.

@@ -92,6 +92,19 @@
             </DoubleAnimation>
         </Storyboard>
 
+        <!-- Drawn only when the focus arrived from the keyboard (WPF shows a FocusVisualStyle
+             for keyboard focus, not for a click), so opening the popup with the mouse puts no
+             ring on the first tile even though it holds the focus. -->
+        <Style x:Key="AppTileFocusVisual">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Rectangle RadiusX="8" RadiusY="8" StrokeThickness="2" Stroke="{DynamicResource TileFocusBorder}" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="AppTileButton" TargetType="Button">
             <!-- Required, not redundant: WPF's built-in Button theme style sets Foreground to
                  the system control-text colour (black), and a theme-style setter outranks the
@@ -102,6 +115,7 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="8" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppTileFocusVisual}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -352,7 +366,7 @@
                         <ScrollViewer.Resources>
                             <Style TargetType="ScrollBar" BasedOn="{StaticResource PopupScrollBar}" />
                         </ScrollViewer.Resources>
-                        <ItemsControl ItemsSource="{Binding Apps}">
+                        <ItemsControl x:Name="TileList" ItemsSource="{Binding Apps}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <UniformGrid Columns="{Binding Columns}" />
@@ -364,7 +378,8 @@
                                          Button, so it is its own click target and the tile keeps its
                                          fixed 96 px. -->
                                     <Grid Width="96" Height="96">
-                                        <Button Style="{StaticResource AppTileButton}"
+                                        <Button x:Name="TileButton"
+                                                Style="{StaticResource AppTileButton}"
                                                 ToolTip="{Binding Name}"
                                                 Command="{Binding DataContext.LaunchAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}">

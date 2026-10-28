@@ -29,4 +29,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="TaskbarFolders.Launcher.Tests" />
+  </ItemGroup>
+
 </Project>

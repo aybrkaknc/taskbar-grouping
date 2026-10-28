@@ -5,6 +5,8 @@
     <SolidColorBrush x:Key="ForegroundDefault" Color="#F0F0F0" />
     <SolidColorBrush x:Key="ForegroundSubtle" Color="#A0A0A0" />
     <SolidColorBrush x:Key="TileHoverBackground" Color="#1F4CC2FF" />
+    <!-- Keyboard focus on a tile: the hover fill is too faint to show where the focus is. -->
+    <SolidColorBrush x:Key="TileFocusBorder" Color="#4CC2FF" />
     <!-- Edit mode: the remove badge on each tile, and the edit button while it is active. -->
     <SolidColorBrush x:Key="BadgeBackground" Color="#F0505050" />
     <SolidColorBrush x:Key="EditActiveBackground" Color="#404CC2FF" />
