@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -13,10 +15,10 @@ namespace TaskbarFolders.Manager.ViewModels;
 
 /// <summary>
 /// Backing view model for the Settings window. Loads the current <see cref="AppSettings"/>
-/// and the registry-backed auto-start state, tracks unsaved edits, and reconciles both on
-/// <see cref="SaveCommand"/>.
+/// and the registry-backed auto-start state. A setting takes effect and is stored as soon as it
+/// changes: there is no Save step, so nothing can be left unsaved.
 /// </summary>
-public sealed partial class SettingsViewModel : ObservableObject
+public sealed partial class SettingsViewModel : ObservableObject, IDisposable
 {
     private readonly IAppSettingsStore _store;
     private readonly IAutoStartService _autoStartService;
@@ -26,7 +28,13 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly IUserConfirmation _confirmation;
     private readonly ILogger<SettingsViewModel>? _logger;
 
-    private bool _suppressDirtyTracking;
+    // Changes are applied one at a time. The store takes the whole document, so two overlapping
+    // writes built from different moments would let the later one undo the earlier change.
+    private readonly SemaphoreSlim _applyGate = new(1, 1);
+
+    // Set while the view model changes a property itself — loading, or putting a value back —
+    // which is not something to apply.
+    private bool _suppressApply;
 
     /// <summary>Initializes a new instance.</summary>
     public SettingsViewModel(
@@ -70,7 +78,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private bool _showInExplorerMenu = true;
 
-    /// <summary>Raised after the settings have been written.</summary>
+    /// <summary>
+    /// Raised after a change has been written to the store, once per change — the Explorer menu
+    /// is rewritten on it, and reads the setting back from the store.
+    /// </summary>
     public event EventHandler? Saved;
 
     /// <summary>
@@ -79,16 +90,12 @@ public sealed partial class SettingsViewModel : ObservableObject
     /// </summary>
     public event EventHandler? UninstallStarted;
 
-    /// <summary>Whether any property has been mutated since the last load or save.</summary>
-    [ObservableProperty]
-    private bool _hasUnsavedChanges;
-
-    /// <summary>Loads the current settings into the view model and resets the dirty flag.</summary>
+    /// <summary>Loads the current settings into the view model. Applies nothing.</summary>
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         var settings = await _store.LoadAsync(cancellationToken).ConfigureAwait(true);
 
-        _suppressDirtyTracking = true;
+        _suppressApply = true;
         try
         {
             Theme = settings.Theme;
@@ -101,40 +108,96 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
         finally
         {
-            _suppressDirtyTracking = false;
-            HasUnsavedChanges = false;
+            _suppressApply = false;
         }
     }
 
-    [RelayCommand]
-    private async Task SaveAsync()
+    /// <summary>Completes once every change made so far has been written.</summary>
+    public async Task WhenIdleAsync()
     {
-        var settings = new AppSettings
-        {
-            Theme = Theme,
-            AutoStart = AutoStart,
-            EnableAnimations = EnableAnimations,
-            ShowInExplorerMenu = ShowInExplorerMenu,
-            PopupPosition = PopupPosition,
-        };
+        await _applyGate.WaitAsync().ConfigureAwait(true);
+        _applyGate.Release();
+    }
 
-        await _store.SaveAsync(settings).ConfigureAwait(true);
+    /// <inheritdoc />
+    public void Dispose() => _applyGate.Dispose();
 
-        if (AutoStart)
+    // Never throws: nothing awaits the property setter that starts it, so a failure is logged and
+    // shown to the user, and the setting stays as chosen in memory.
+    private async Task ApplyAsync(string setting)
+    {
+        await _applyGate.WaitAsync().ConfigureAwait(true);
+        try
         {
-            _autoStartService.Enable();
+            // The registry first: a start-up entry that cannot be written must not be stored as
+            // if it had been.
+            if (setting == nameof(AutoStart) && !TryApplyAutoStart())
+            {
+                return;
+            }
+
+            await _store.SaveAsync(new AppSettings
+            {
+                Theme = Theme,
+                AutoStart = AutoStart,
+                EnableAnimations = EnableAnimations,
+                ShowInExplorerMenu = ShowInExplorerMenu,
+                PopupPosition = PopupPosition,
+            }).ConfigureAwait(true);
+
+            if (setting == nameof(Theme))
+            {
+                _themeService.SetPreference(Theme);
+            }
+
+            _logger?.LogInformation("Setting {Setting} applied. Theme={Theme} AutoStart={AutoStart} Animations={Animations} Position={Position}.",
+                setting, Theme, AutoStart, EnableAnimations, PopupPosition);
+            Saved?.Invoke(this, EventArgs.Empty);
         }
-        else
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _autoStartService.Disable();
+            _logger?.LogWarning(ex, "Could not store the {Setting} setting.", setting);
+            _confirmation.Notify("Not saved", $"The setting could not be saved:\n{ex.Message}");
         }
+        finally
+        {
+            _applyGate.Release();
+        }
+    }
 
-        _themeService.SetPreference(Theme);
+    // The checkbox is put back to what the registry says when the entry cannot be written, or it
+    // would show a start-up setting that is not in effect.
+    private bool TryApplyAutoStart()
+    {
+        try
+        {
+            if (AutoStart)
+            {
+                _autoStartService.Enable();
+            }
+            else
+            {
+                _autoStartService.Disable();
+            }
 
-        HasUnsavedChanges = false;
-        _logger?.LogInformation("Settings saved. Theme={Theme} AutoStart={AutoStart} Animations={Animations} Position={Position}.",
-            Theme, AutoStart, EnableAnimations, PopupPosition);
-        Saved?.Invoke(this, EventArgs.Empty);
+            return true;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or SecurityException or IOException)
+        {
+            _logger?.LogWarning(ex, "Could not change the auto-start entry.");
+            _suppressApply = true;
+            try
+            {
+                AutoStart = _autoStartService.IsEnabled;
+            }
+            finally
+            {
+                _suppressApply = false;
+            }
+
+            _confirmation.Notify("Not changed", $"The Windows start-up entry could not be changed:\n{ex.Message}");
+            return false;
+        }
     }
 
     /// <summary>
@@ -169,17 +232,17 @@ public sealed partial class SettingsViewModel : ObservableObject
         UninstallStarted?.Invoke(this, EventArgs.Empty);
     }
 
-    partial void OnThemeChanged(ThemePreference value) => MarkDirty();
-    partial void OnAutoStartChanged(bool value) => MarkDirty();
-    partial void OnEnableAnimationsChanged(bool value) => MarkDirty();
-    partial void OnShowInExplorerMenuChanged(bool value) => MarkDirty();
-    partial void OnPopupPositionChanged(PopupPositionPreference value) => MarkDirty();
+    partial void OnThemeChanged(ThemePreference value) => QueueApply(nameof(Theme));
+    partial void OnAutoStartChanged(bool value) => QueueApply(nameof(AutoStart));
+    partial void OnEnableAnimationsChanged(bool value) => QueueApply(nameof(EnableAnimations));
+    partial void OnShowInExplorerMenuChanged(bool value) => QueueApply(nameof(ShowInExplorerMenu));
+    partial void OnPopupPositionChanged(PopupPositionPreference value) => QueueApply(nameof(PopupPosition));
 
-    private void MarkDirty()
+    private void QueueApply(string setting)
     {
-        if (!_suppressDirtyTracking)
+        if (!_suppressApply)
         {
-            HasUnsavedChanges = true;
+            _ = ApplyAsync(setting);
         }
     }
 }

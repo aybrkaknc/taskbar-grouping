@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -126,95 +128,136 @@ public class SettingsViewModelTests
         sut.EnableAnimations.Should().BeFalse();
         sut.PopupPosition.Should().Be(PopupPositionPreference.Above);
         sut.AutoStart.Should().BeTrue("the registry is the source of truth — wins over the stored AppSettings.AutoStart");
-        sut.HasUnsavedChanges.Should().BeFalse();
     }
 
     [Fact]
-    public async Task LoadAsync_DoesNotMarkDirty()
+    public async Task LoadAsync_AppliesNothing()
     {
-        var sut = CreateSut(new AppSettings { Theme = ThemePreference.Dark }, autoStartEnabled: true, out _, out _, out _);
-
-        await sut.LoadAsync();
-
-        sut.HasUnsavedChanges.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task MutatingAnyProperty_AfterLoad_SetsHasUnsavedChanges()
-    {
-        var sut = CreateSut(new AppSettings(), autoStartEnabled: false, out _, out _, out _);
-        await sut.LoadAsync();
-
-        sut.Theme = ThemePreference.Dark;
-
-        sut.HasUnsavedChanges.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task SaveAsync_PersistsSettings_AndReconcilesAutoStart_AndAppliesTheme()
-    {
-        var sut = CreateSut(new AppSettings(), autoStartEnabled: false, out var store, out var autoStart, out var theme);
-        await sut.LoadAsync();
-        sut.AutoStart = true;
-        sut.Theme = ThemePreference.Light;
-
-        await sut.SaveCommand.ExecuteAsync(null);
-
-        store.Verify(s => s.SaveAsync(
-            It.Is<AppSettings>(x => x.Theme == ThemePreference.Light && x.AutoStart),
-            It.IsAny<CancellationToken>()), Times.Once);
-        autoStart.Verify(a => a.Enable(), Times.Once);
-        autoStart.Verify(a => a.Disable(), Times.Never);
-        theme.Verify(t => t.SetPreference(ThemePreference.Light), Times.Once);
-        sut.HasUnsavedChanges.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task SaveAsync_DisablesAutoStart_WhenToggledOff()
-    {
-        var sut = CreateSut(
-            new AppSettings { AutoStart = true },
-            autoStartEnabled: true,
-            out var store,
-            out var autoStart,
-            out _);
-        await sut.LoadAsync();
-        sut.AutoStart = false;
-
-        await sut.SaveCommand.ExecuteAsync(null);
-
-        store.Verify(s => s.SaveAsync(It.Is<AppSettings>(x => !x.AutoStart), It.IsAny<CancellationToken>()), Times.Once);
-        autoStart.Verify(a => a.Disable(), Times.Once);
-        autoStart.Verify(a => a.Enable(), Times.Never);
-    }
-
-    [Fact]
-    public async Task SaveAsync_ClearsHasUnsavedChanges()
-    {
-        var sut = CreateSut(new AppSettings(), autoStartEnabled: false, out _, out _, out _);
-        await sut.LoadAsync();
-        sut.EnableAnimations = false;
-        sut.HasUnsavedChanges.Should().BeTrue();
-
-        await sut.SaveCommand.ExecuteAsync(null);
-
-        sut.HasUnsavedChanges.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task ShowInExplorerMenu_IsLoaded_Saved_AndAnnounced()
-    {
-        var sut = CreateSut(new AppSettings { ShowInExplorerMenu = false }, autoStartEnabled: false, out var store, out _, out _);
-        await sut.LoadAsync();
-        sut.ShowInExplorerMenu.Should().BeFalse();
+        var sut = CreateSut(new AppSettings { Theme = ThemePreference.Dark }, autoStartEnabled: true, out var store, out var autoStart, out var theme);
         var saved = 0;
         sut.Saved += (_, _) => saved++;
 
-        sut.ShowInExplorerMenu = true;
-        sut.HasUnsavedChanges.Should().BeTrue();
-        await sut.SaveCommand.ExecuteAsync(null);
+        await sut.LoadAsync();
+        await sut.WhenIdleAsync();
 
-        store.Verify(s => s.SaveAsync(It.Is<AppSettings>(a => a.ShowInExplorerMenu), It.IsAny<CancellationToken>()), Times.Once);
-        saved.Should().Be(1, "the Explorer menu is rewritten when the settings are saved");
+        store.Verify(s => s.SaveAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()), Times.Never,
+            "showing the stored settings is not a change");
+        autoStart.Verify(a => a.Enable(), Times.Never);
+        autoStart.Verify(a => a.Disable(), Times.Never);
+        theme.Verify(t => t.SetPreference(It.IsAny<ThemePreference>()), Times.Never);
+        saved.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ChangingTheTheme_SavesAndAppliesItAtOnce_WithoutASaveStep()
+    {
+        var sut = CreateSut(new AppSettings(), autoStartEnabled: false, out var store, out var autoStart, out var theme);
+        await sut.LoadAsync();
+
+        sut.Theme = ThemePreference.Light;
+        await sut.WhenIdleAsync();
+
+        store.Verify(s => s.SaveAsync(It.Is<AppSettings>(x => x.Theme == ThemePreference.Light), It.IsAny<CancellationToken>()), Times.Once);
+        theme.Verify(t => t.SetPreference(ThemePreference.Light), Times.Once);
+        autoStart.Verify(a => a.Enable(), Times.Never, "only the setting that changed has its side effect");
+        autoStart.Verify(a => a.Disable(), Times.Never);
+    }
+
+    [Fact]
+    public async Task TurningAutoStartOnAndOff_TouchesTheRegistryEachTime()
+    {
+        var sut = CreateSut(new AppSettings(), autoStartEnabled: false, out var store, out var autoStart, out _);
+        await sut.LoadAsync();
+
+        sut.AutoStart = true;
+        await sut.WhenIdleAsync();
+        sut.AutoStart = false;
+        await sut.WhenIdleAsync();
+
+        autoStart.Verify(a => a.Enable(), Times.Once);
+        autoStart.Verify(a => a.Disable(), Times.Once);
+        store.Verify(s => s.SaveAsync(It.Is<AppSettings>(x => x.AutoStart), It.IsAny<CancellationToken>()), Times.Once);
+        store.Verify(s => s.SaveAsync(It.Is<AppSettings>(x => !x.AutoStart), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AutoStartThatCannotBeWritten_IsPutBack_ExplainedAndNotSaved()
+    {
+        var confirmation = new Mock<IUserConfirmation>();
+        var store = new Mock<IAppSettingsStore>();
+        store.Setup(s => s.LoadAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new AppSettings());
+        var autoStart = new Mock<IAutoStartService>();
+        autoStart.SetupGet(a => a.IsEnabled).Returns(false);
+        autoStart.Setup(a => a.Enable()).Throws(new UnauthorizedAccessException("Run key is read-only."));
+        var sut = new SettingsViewModel(
+            store.Object, autoStart.Object, Mock.Of<IThemeService>(), new InstallLocation(Path.GetTempPath()),
+            Mock.Of<IProcessRunner>(), confirmation.Object);
+        await sut.LoadAsync();
+
+        sut.AutoStart = true;
+        await sut.WhenIdleAsync();
+
+        sut.AutoStart.Should().BeFalse("a box that says on while the registry says off would lie");
+        confirmation.Verify(c => c.Notify(It.IsAny<string>(), It.Is<string>(m => m.Contains("read-only"))), Times.Once);
+        store.Verify(s => s.SaveAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()), Times.Never);
+        autoStart.Verify(a => a.Disable(), Times.Never, "putting the box back must not apply again");
+    }
+
+    [Fact]
+    public async Task TwoChangesInARow_KeepBoth()
+    {
+        // The store writes the whole document: a second write built from stale values would
+        // undo the first change.
+        var sut = CreateSut(new AppSettings(), autoStartEnabled: false, out var store, out _, out _);
+        var written = new List<AppSettings>();
+        store.Setup(s => s.SaveAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+             .Callback<AppSettings, CancellationToken>((a, _) => written.Add(a))
+             .Returns(Task.CompletedTask);
+        await sut.LoadAsync();
+
+        sut.Theme = ThemePreference.Dark;
+        sut.EnableAnimations = false;
+        await sut.WhenIdleAsync();
+
+        written.Last().Theme.Should().Be(ThemePreference.Dark);
+        written.Last().EnableAnimations.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Saved_IsRaisedOnlyAfterTheStoreHasBeenWritten()
+    {
+        // ExplorerContextMenuService reads the setting back from the store when Saved fires.
+        var sut = CreateSut(new AppSettings { ShowInExplorerMenu = false }, autoStartEnabled: false, out var store, out _, out _);
+        var order = new List<string>();
+        store.Setup(s => s.SaveAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+             .Callback(() => order.Add("store"))
+             .Returns(Task.CompletedTask);
+        await sut.LoadAsync();
+        sut.Saved += (_, _) => order.Add("saved");
+
+        sut.ShowInExplorerMenu = true;
+        await sut.WhenIdleAsync();
+
+        order.Should().Equal("store", "saved");
+    }
+
+    [Fact]
+    public async Task ASettingThatCannotBeStored_IsExplained_AndTheManagerKeepsRunning()
+    {
+        var confirmation = new Mock<IUserConfirmation>();
+        var store = new Mock<IAppSettingsStore>();
+        store.Setup(s => s.LoadAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new AppSettings());
+        store.Setup(s => s.SaveAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+             .ThrowsAsync(new IOException("disk full"));
+        var sut = new SettingsViewModel(
+            store.Object, Mock.Of<IAutoStartService>(), Mock.Of<IThemeService>(), new InstallLocation(Path.GetTempPath()),
+            Mock.Of<IProcessRunner>(), confirmation.Object);
+        await sut.LoadAsync();
+
+        sut.EnableAnimations = false;
+        var act = () => sut.WhenIdleAsync();
+
+        await act.Should().NotThrowAsync("nothing awaits a property setter that could catch it");
+        confirmation.Verify(c => c.Notify(It.IsAny<string>(), It.Is<string>(m => m.Contains("disk full"))), Times.Once);
     }
 }

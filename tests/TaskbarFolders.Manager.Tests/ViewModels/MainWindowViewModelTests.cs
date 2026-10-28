@@ -65,6 +65,47 @@ public class MainWindowViewModelTests
     private static System.Windows.Media.Imaging.BitmapSource StubIcon() => TestImages.Solid(System.Windows.Media.Colors.Gray, 1, 1);
 
     [Fact]
+    public async Task HasNoGroups_IsFalseUntilTheGroupsHaveBeenRead()
+    {
+        // Before the store has answered, an empty list means "not read yet", not "no groups":
+        // the get-started view must not flash up on every launch.
+        var sut = CreateSut(CreateStoreWith());
+        sut.HasNoGroups.Should().BeFalse();
+
+        await sut.LoadGroupsAsync();
+
+        sut.HasNoGroups.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task HasNoGroups_FollowsTheList_AndSaysSoWhenItChanges()
+    {
+        var sut = CreateSut(CreateStoreWith());
+        await sut.LoadGroupsAsync();
+        var raised = new List<string?>();
+        sut.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        await sut.NewGroupCommand.ExecuteAsync(null);
+
+        sut.HasNoGroups.Should().BeFalse();
+        raised.Should().Contain(nameof(MainWindowViewModel.HasNoGroups));
+
+        await sut.DeleteGroupCommand.ExecuteAsync(sut.Groups[0]);
+
+        sut.HasNoGroups.Should().BeTrue("deleting the last group brings the get-started view back");
+    }
+
+    [Fact]
+    public async Task HasNoGroups_IsFalse_WhenTheStoreHasGroups()
+    {
+        var sut = CreateSut(CreateStoreWith(new GroupConfig { Id = "a", GroupName = "A" }));
+
+        await sut.LoadGroupsAsync();
+
+        sut.HasNoGroups.Should().BeFalse();
+    }
+
+    [Fact]
     public void Title_HasDefaultValue()
     {
         var store = CreateStoreWith();

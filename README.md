@@ -107,7 +107,7 @@ Full detail in [docs/architecture.md](docs/architecture.md), and the reasoning b
 
 ## Settings
 
-Open with the **⚙** button. Changes apply when you click **Save**; closing the dialog discards them.
+Open with the **⚙** button. Each setting applies and is stored as soon as you change it.
 
 | Setting | Options | Default |
 |---|---|---|

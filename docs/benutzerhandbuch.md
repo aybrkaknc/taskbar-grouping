@@ -81,7 +81,7 @@ Eine neue Version installieren Sie einfach über die alte. Der Installer erkennt
 
 ### Gruppe anlegen
 
-Klicken Sie oben in der Liste links auf **+ New group**. Es erscheint eine Gruppe namens *New group*, bereits ausgewählt, und ihr Name oben im rechten Bereich ist markiert — tippen Sie einfach den gewünschten Namen und drücken Sie `Enter`. (Eine zweite heißt *New group 2* und so weiter.)
+Solange es keine Gruppe gibt, zeigt der Manager drei Schritte — Gruppe anlegen, Programme hinzufügen, anheften — und eine Schaltfläche **+ New group**; sobald die erste Gruppe existiert, übernimmt der Editor. Sonst klicken Sie oben in der Liste links auf **+ New group**. Es erscheint eine Gruppe namens *New group*, bereits ausgewählt, und ihr Name oben im rechten Bereich ist markiert — tippen Sie einfach den gewünschten Namen und drücken Sie `Enter`. (Eine zweite heißt *New group 2* und so weiter.)
 
 In der Liste links stehen alle Gruppen alphabetisch. Jede Zeile zeigt das Symbol der Gruppe, wie es in der Taskleiste erscheint — einen Ordnerumriss, solange die Gruppe leer ist —, und rechts die Anzahl der enthaltenen Programme.
 
@@ -203,7 +203,7 @@ Zu erreichen über den **⚙**-Knopf oben rechts.
 | Start TaskbarFolders Manager when Windows starts | ein / aus | aus | Startet den Manager bei der Anmeldung. |
 | Show "Taskbar Groups" in Explorer's right-click menu | ein / aus | ein | Zeigt Ihre Gruppen unter *Weitere Optionen anzeigen* für `.exe`- und `.lnk`-Dateien. Der Manager hält die Liste aktuell. |
 
-Änderungen werden erst mit **Save** übernommen. Schließen Sie das Fenster ohne zu speichern, verfallen sie. Solange etwas offen ist, erscheint der Hinweis *Unsaved changes*.
+Jede Einstellung wirkt und wird gespeichert, sobald Sie sie ändern; es gibt keine Save-Schaltfläche, **Close** schließt nur das Fenster. Lehnt Windows eine Änderung ab — etwa weil der Autostart-Eintrag nicht geschrieben werden kann —, erklärt eine Meldung das, und der Haken springt auf den tatsächlichen Zustand zurück.
 
 Der Autostart-Haken zeigt den tatsächlichen Zustand in der Windows-Registrierung. Wenn Sie den Eintrag von Hand entfernen, erscheint der Haken beim nächsten Öffnen ausgeschaltet.
 
