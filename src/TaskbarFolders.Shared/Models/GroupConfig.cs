@@ -42,13 +42,6 @@ public sealed class GroupConfig
     }
 
     /// <summary>
-    /// Theme override for this group.
-    /// </summary>
-    [JsonPropertyName("theme")]
-    [JsonConverter(typeof(CamelCaseEnumConverter<ThemePreference>))]
-    public ThemePreference Theme { get; set; } = ThemePreference.System;
-
-    /// <summary>
     /// Applications contained in this group.
     /// </summary>
     [JsonPropertyName("apps")]

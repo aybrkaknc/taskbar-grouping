@@ -50,7 +50,6 @@ public sealed class JsonGroupConfigStoreTests : IDisposable
             Id = "grp-1",
             GroupName = "Dev Tools",
             Columns = 4,
-            Theme = ThemePreference.Dark,
             Apps =
             {
                 new AppEntry { Name = "VS Code", Path = "C:/code/code.exe", IconPath = "C:/code/code.ico", Arguments = "--no-sandbox" },
@@ -65,7 +64,6 @@ public sealed class JsonGroupConfigStoreTests : IDisposable
         loaded!.Id.Should().Be("grp-1");
         loaded.GroupName.Should().Be("Dev Tools");
         loaded.Columns.Should().Be(4);
-        loaded.Theme.Should().Be(ThemePreference.Dark);
         loaded.Apps.Should().HaveCount(2);
         loaded.Apps[0].Name.Should().Be("VS Code");
         loaded.Apps[0].Path.Should().Be("C:/code/code.exe");

@@ -32,7 +32,6 @@ One group.
 | `Id` | `string` | New groups get a GUID. **Reconstructed from the file name on load** — the `id` field in the JSON is ignored |
 | `GroupName` | `string` | Display name |
 | `Columns` | `int` | Popup grid columns, clamped to 1–6 on assignment, default 3. No UI |
-| `Theme` | `ThemePreference` | Serialised but **not read**; both applications use the global setting |
 | `Apps` | `List<AppEntry>` | Members of the group |
 
 #### [`AppSettings`](../src/TaskbarFolders.Shared/Models/AppSettings.cs)

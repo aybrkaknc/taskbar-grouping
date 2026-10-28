@@ -14,11 +14,11 @@ public class PreferencesSerializationTests
     [InlineData(ThemePreference.System, "\"system\"")]
     [InlineData(ThemePreference.Light, "\"light\"")]
     [InlineData(ThemePreference.Dark, "\"dark\"")]
-    public void GroupConfig_Theme_SerialisesAsCamelCase(ThemePreference value, string expectedFragment)
+    public void AppSettings_Theme_SerialisesAsCamelCase(ThemePreference value, string expectedFragment)
     {
-        var config = new GroupConfig { Id = "g1", GroupName = "n", Theme = value };
+        var settings = new AppSettings { Theme = value };
 
-        var json = JsonSerializer.Serialize(config, JsonOptions.Default);
+        var json = JsonSerializer.Serialize(settings, JsonOptions.Default);
 
         json.Should().Contain($"\"theme\": {expectedFragment}");
     }
@@ -41,14 +41,30 @@ public class PreferencesSerializationTests
     [InlineData("SYSTEM", ThemePreference.System)]
     [InlineData("Light", ThemePreference.Light)]
     [InlineData("dark", ThemePreference.Dark)]
-    public void GroupConfig_Theme_DeserialisesCaseInsensitively(string written, ThemePreference expected)
+    public void AppSettings_Theme_DeserialisesCaseInsensitively(string written, ThemePreference expected)
     {
-        var json = $"{{\"id\":\"x\",\"groupName\":\"n\",\"theme\":\"{written}\"}}";
+        var json = $"{{\"theme\":\"{written}\"}}";
+
+        var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions.Default);
+
+        settings.Should().NotBeNull();
+        settings!.Theme.Should().Be(expected);
+    }
+
+    // --- GroupConfig's per-group "theme" was never read and is gone (upstream #30) -----
+
+    [Fact]
+    public void GroupConfig_FromAFileThatStillHasATheme_LoadsAndDropsIt()
+    {
+        // Every group file written before the field was removed carries it.
+        var json = "{\"id\":\"x\",\"groupName\":\"n\",\"columns\":4,\"theme\":\"dark\",\"apps\":[]}";
 
         var config = JsonSerializer.Deserialize<GroupConfig>(json, JsonOptions.Default);
+        var rewritten = JsonSerializer.Serialize(config, JsonOptions.Default);
 
         config.Should().NotBeNull();
-        config!.Theme.Should().Be(expected);
+        config!.Columns.Should().Be(4, "the rest of the file still applies");
+        rewritten.Should().NotContain("\"theme\"", "the next save leaves the field out");
     }
 
     // --- GroupConfig.Columns clamps to [MinColumns..MaxColumns] ---------------------
