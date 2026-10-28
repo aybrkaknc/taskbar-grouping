@@ -380,6 +380,7 @@
                                     <Grid Width="{Binding DataContext.Tile.Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                           Height="{Binding DataContext.Tile.Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
                                         <Button x:Name="TileButton"
+                                                AutomationProperties.Name="{Binding Name}"
                                                 Style="{StaticResource AppTileButton}"
                                                 ToolTip="{Binding Name}"
                                                 Command="{Binding DataContext.LaunchAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"

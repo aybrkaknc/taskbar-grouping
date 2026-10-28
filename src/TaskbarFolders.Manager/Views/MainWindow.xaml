@@ -47,6 +47,7 @@
 
             <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderSubtle}" Padding="6">
                 <Button Style="{StaticResource SidebarFooterButton}"
+                        AutomationProperties.Name="Settings"
                         ToolTip="Theme, popup position, start with Windows, uninstall"
                         Click="OpenSettings_Click">
                     <StackPanel Orientation="Horizontal">
@@ -196,6 +197,7 @@
                     </Grid.ColumnDefinitions>
 
                     <Button x:Name="GroupIconButton"
+                            AutomationProperties.Name="Group icon"
                             Style="{StaticResource SubtleButton}"
                             Padding="4"
                             ToolTip="The group's icon on the taskbar — click to change it"
@@ -226,6 +228,7 @@
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Style="{StaticResource AccentButton}"
+                                AutomationProperties.Name="Pin to taskbar"
                                 Padding="14,6"
                                 Command="{Binding PinToTaskbarCommand}"
                                 ToolTip="Windows asks you to allow it. If your Windows does not allow apps to pin themselves, the shortcut folder opens instead: right-click the .lnk there and choose Pin to taskbar.">
@@ -235,6 +238,7 @@
                             </StackPanel>
                         </Button>
                         <Button x:Name="MoreButton"
+                                AutomationProperties.Name="More"
                                 Style="{StaticResource SubtleButton}"
                                 Margin="6,0,0,0"
                                 ToolTip="More"
@@ -268,7 +272,7 @@
                               Drop="Editor_Drop">
                             <DockPanel>
                                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,14,0,8">
-                                    <Button Padding="12,4" Click="AddAppPicker_Click">
+                                    <Button Padding="12,4" Click="AddAppPicker_Click" AutomationProperties.Name="Add apps…">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" />
                                             <TextBlock Text="Add apps…" Margin="8,0,0,0" VerticalAlignment="Center" />
@@ -326,6 +330,7 @@
                                                      width when it appears. -->
                                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                                                     <Button x:Name="RemoveButton"
+                                                            AutomationProperties.Name="{Binding Name, StringFormat='Remove {0}'}"
                                                             Style="{StaticResource SubtleButton}"
                                                             Padding="8"
                                                             Visibility="Hidden"
@@ -335,6 +340,7 @@
                                                         <TextBlock Text="&#xE74D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" />
                                                     </Button>
                                                     <Button x:Name="ExpandButton"
+                                                            AutomationProperties.Name="{Binding Name, StringFormat='Settings for {0}'}"
                                                             Style="{StaticResource SubtleButton}"
                                                             Padding="8"
                                                             ToolTip="Name, arguments and icon"

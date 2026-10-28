@@ -13,9 +13,13 @@ finishes it, and a change of order or scope is recorded here when it is agreed, 
   app list step). Pushing waits until the end, as agreed.
 - **Branch:** none open. Every feature branch is merged; deleting them is part of D.
 - **In progress:** D — release v0.5.0. The version is bumped to 0.5.0 and `[Unreleased]` is the
-  `[0.5.0]` section (the bump commit). Still to do, with the user: run the Manager and the pin
-  mode check, then — each only on approval — push `develop`, push the `v0.5.0` tag, fast-forward
-  `main`, delete merged branches, open the `IsPinningAllowed` issue, and the install smoke test.
+  `[0.5.0]` section (the bump commit). Manual check so far: Settings (Close only) and the
+  *Appearance* tab seen in the published build, both logs clean since the exit-code-4 fix. It
+  found eight buttons without an accessible name, fixed with a test before tagging. Still to
+  do, with the user: the pin mode check, then — each only on approval — push `develop`, push
+  the `v0.5.0` tag, fast-forward `main`, delete merged branches, open the `IsPinningAllowed`
+  issue, and the install smoke test. `assets/screenshots/settings.png` still shows the Save
+  button; retaking it needs 150 % scaling (C6 polish retakes all of them).
 
 ## How an item is worked
 
