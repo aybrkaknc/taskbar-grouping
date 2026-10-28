@@ -157,9 +157,15 @@ The autostart checkbox reflects the registry, not the settings file — if you r
 
 The theme covers the whole interface, including the Settings dialog, the standard controls and the window title bar. Switching it takes effect immediately; there is no restart.
 
-### Popup grid width
+### Popup layout
 
-Each group has a `columns` value between 1 and 6, defaulting to 3, controlling how wide its popup grid is. A group with more rows than fit on screen — about eight — scrolls with the mouse wheel; a thin bar on the right shows where you are. There is no interface for it yet — edit the group's JSON file directly (see below) and reopen the popup.
+Each group sets out its own popup on the **Appearance** tab of the Manager, under **Popup**:
+
+- **Max per row** — 1 to 6, 3 by default: the most apps side by side. A group with fewer apps uses only the room they need, so two apps under *Max per row* 5 make a popup two tiles wide.
+- **Icon size** — *Small*, *Medium* (the default), *Large* or *Extra large*. The tiles grow with the icon so the names still fit.
+- **Show app names** — on by default. Without names the tiles shrink to their icons, so the popup gets much smaller; pointing at an icon still shows its name.
+
+Changes are saved as you make them and show the next time you open the popup. A group with more rows than fit on screen — about eight at the default size — scrolls with the mouse wheel; a thin bar on the right shows where you are.
 
 ## Where your files are
 
@@ -167,7 +173,7 @@ Everything lives under `%APPDATA%\TaskbarFolders\`. Paste that into Explorer's a
 
 | Path | Contents |
 |---|---|
-| `groups\<id>.json` | One file per group — its name, its apps, its column count |
+| `groups\<id>.json` | One file per group — its name, its apps, its popup layout |
 | `icons\<id>.ico` | The generated composite icon |
 | `icons\cache\` | Cached source icons; safe to delete, they are re-extracted |
 | `icons\custom\<id>.png` | The image you chose as a group's icon, if any |

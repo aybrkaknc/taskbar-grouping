@@ -92,6 +92,61 @@ public class PreferencesSerializationTests
         config!.Columns.Should().Be(GroupConfig.MaxColumns);
     }
 
+    // --- GroupConfig.IconSize snaps to a preset; ShowNames defaults on --------------
+
+    [Theory]
+    [InlineData(32, 32)]
+    [InlineData(48, 48)]
+    [InlineData(64, 64)]
+    [InlineData(80, 80)]
+    [InlineData(0, 32)]
+    [InlineData(40, 32)]   // halfway: the smaller preset
+    [InlineData(41, 48)]
+    [InlineData(70, 64)]
+    [InlineData(500, 80)]
+    public void IconSize_SnapsToTheNearestPreset(int input, int expected)
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "n", IconSize = input };
+
+        config.IconSize.Should().Be(expected);
+    }
+
+    [Fact]
+    public void GroupConfig_FromAFileWrittenBeforeTheGridSettings_GetsTheDefaults()
+    {
+        var json = "{\"id\":\"x\",\"groupName\":\"n\",\"columns\":4,\"apps\":[]}";
+
+        var config = JsonSerializer.Deserialize<GroupConfig>(json, JsonOptions.Default);
+
+        config.Should().NotBeNull();
+        config!.IconSize.Should().Be(GroupConfig.DefaultIconSize);
+        config.ShowNames.Should().BeTrue("a group that never chose otherwise keeps its names");
+    }
+
+    [Fact]
+    public void GroupConfig_GridSettings_RoundTrip()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "n", Columns = 5, IconSize = 64, ShowNames = false };
+
+        var json = JsonSerializer.Serialize(config, JsonOptions.Default);
+        var back = JsonSerializer.Deserialize<GroupConfig>(json, JsonOptions.Default);
+
+        json.Should().Contain("\"iconSize\": 64").And.Contain("\"showNames\": false");
+        back!.Columns.Should().Be(5);
+        back.IconSize.Should().Be(64);
+        back.ShowNames.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IconSize_DeserialisedOffPresetValueIsSnapped()
+    {
+        var json = "{\"id\":\"x\",\"groupName\":\"n\",\"iconSize\":1000}";
+
+        var config = JsonSerializer.Deserialize<GroupConfig>(json, JsonOptions.Default);
+
+        config!.IconSize.Should().Be(80);
+    }
+
     // --- AppEntry.Arguments null is omitted on write --------------------------------
 
     [Fact]

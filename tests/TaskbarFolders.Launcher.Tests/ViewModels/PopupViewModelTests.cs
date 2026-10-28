@@ -10,6 +10,7 @@ using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
+using TaskbarFolders.Launcher.Views;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
 using TaskbarFolders.TestSupport;
@@ -150,8 +151,8 @@ public class PopupViewModelTests
         sut.StartIconLoad();
         await allDone.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        extractor.Verify(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize), Times.Once);
-        extractor.Verify(e => e.ExtractIcon("b.exe", PopupViewModel.IconSize), Times.Once);
+        extractor.Verify(e => e.ExtractIcon("a.exe", TileMetrics.Default.ExtractPx), Times.Once);
+        extractor.Verify(e => e.ExtractIcon("b.exe", TileMetrics.Default.ExtractPx), Times.Once);
     }
 
     [Fact]
@@ -162,7 +163,7 @@ public class PopupViewModelTests
 
         var stub = StubIcon();
         BitmapSource? hit = stub;
-        cache.Setup(c => c.TryGet("a.exe", PopupViewModel.IconSize, out hit)).Returns(true);
+        cache.Setup(c => c.TryGet("a.exe", TileMetrics.Default.ExtractPx, out hit)).Returns(true);
 
         await sut.LoadAsync();
         sut.StartIconLoad();
@@ -182,13 +183,13 @@ public class PopupViewModelTests
         var (sut, _, extractor, cache, _) = CreateSut("g", config);
 
         var stub = StubIcon();
-        extractor.Setup(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize)).Returns(stub);
+        extractor.Setup(e => e.ExtractIcon("a.exe", TileMetrics.Default.ExtractPx)).Returns(stub);
 
         await sut.LoadAsync();
         sut.StartIconLoad();
         await Task.Delay(100);
 
-        cache.Verify(c => c.Set("a.exe", PopupViewModel.IconSize, stub), Times.Once);
+        cache.Verify(c => c.Set("a.exe", TileMetrics.Default.ExtractPx, stub), Times.Once);
         sut.Apps[0].Icon.Should().BeSameAs(stub);
     }
 
@@ -227,14 +228,14 @@ public class PopupViewModelTests
     {
         var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe", IconPath = @"C:\does\not\exist.png" } } };
         var (sut, _, extractor, _, _) = CreateSut("g", config);
-        extractor.Setup(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize)).Returns(StubIcon());
+        extractor.Setup(e => e.ExtractIcon("a.exe", TileMetrics.Default.ExtractPx)).Returns(StubIcon());
 
         await sut.LoadAsync();
         sut.StartIconLoad();
         await Task.Delay(200);
 
         sut.Apps[0].Icon.Should().NotBeNull();
-        extractor.Verify(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize), Times.Once);
+        extractor.Verify(e => e.ExtractIcon("a.exe", TileMetrics.Default.ExtractPx), Times.Once);
     }
 
     [Fact]
@@ -258,7 +259,7 @@ public class PopupViewModelTests
     {
         var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
         var (sut, _, extractor, _, _) = CreateSut("g", config);
-        extractor.Setup(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize)).Throws(new InvalidOperationException("shell"));
+        extractor.Setup(e => e.ExtractIcon("a.exe", TileMetrics.Default.ExtractPx)).Throws(new InvalidOperationException("shell"));
 
         await sut.LoadAsync();
         sut.StartIconLoad();
@@ -272,7 +273,7 @@ public class PopupViewModelTests
     {
         var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
         var (sut, _, extractor, _, _) = CreateSut("g", config);
-        extractor.Setup(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize)).Returns(StubIcon());
+        extractor.Setup(e => e.ExtractIcon("a.exe", TileMetrics.Default.ExtractPx)).Returns(StubIcon());
 
         await sut.LoadAsync();
         sut.StartIconLoad();
@@ -289,7 +290,7 @@ public class PopupViewModelTests
         var (sut, _, extractor, _, _) = CreateSut("g", config);
 
         var release = new TaskCompletionSource();
-        extractor.Setup(e => e.ExtractIcon("a.exe", PopupViewModel.IconSize))
+        extractor.Setup(e => e.ExtractIcon("a.exe", TileMetrics.Default.ExtractPx))
                  .Returns(() =>
                  {
                      release.Task.GetAwaiter().GetResult();
@@ -433,6 +434,118 @@ public class PopupViewModelTests
 
         sut.Apps.Select(a => a.Name).Should().Equal("a", "b");
         sut.IsUnavailable.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task LoadAsync_TakesTheTileSizeAndNamesFromTheGroup()
+    {
+        var config = new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            IconSize = 80,
+            ShowNames = false,
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" } },
+        };
+        var (sut, _, _, _, _) = CreateSut("g", config);
+
+        await sut.LoadAsync();
+
+        sut.ShowNames.Should().BeFalse();
+        sut.Tile.Should().Be(TileMetrics.Compute(80, showNames: false));
+    }
+
+    [Fact]
+    public async Task ReloadAsync_TakesTheChangedGridSettings()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, store, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+
+        store.Setup(s => s.LoadAsync("g", It.IsAny<CancellationToken>())).ReturnsAsync(new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Columns = 5,
+            IconSize = 32,
+            ShowNames = false,
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" } },
+        });
+
+        await sut.ReloadAsync();
+
+        sut.Columns.Should().Be(5);
+        sut.ShowNames.Should().BeFalse();
+        sut.Tile.Should().Be(TileMetrics.Compute(32, showNames: false));
+    }
+
+    [Fact]
+    public async Task StartIconLoad_AsksForTheGroupsIconSize()
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "g", IconSize = 80, Apps = { new AppEntry { Name = "a", Path = "a.exe" } } };
+        var (sut, _, extractor, _, _) = CreateSut("g", config);
+        var done = new TaskCompletionSource();
+        extractor.Setup(e => e.ExtractIcon("a.exe", It.IsAny<int>()))
+                 .Returns(() =>
+                 {
+                     done.TrySetResult();
+                     return null;
+                 });
+
+        await sut.LoadAsync();
+        sut.StartIconLoad();
+        await done.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        extractor.Verify(e => e.ExtractIcon("a.exe", 160), Times.Once);
+    }
+
+    [Fact]
+    public async Task EffectiveColumns_IsNoMoreThanTheAppsThatNeedThem()
+    {
+        var config = new GroupConfig
+        {
+            Id = "g1",
+            GroupName = "g",
+            Columns = 5,
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.exe" } },
+        };
+        var (sut, _, _, _, _) = CreateSut("g1", config);
+
+        await sut.LoadAsync();
+
+        sut.Columns.Should().Be(5, "the setting is the most a row may hold, and is kept as chosen");
+        sut.EffectiveColumns.Should().Be(2, "two apps need two columns, not five");
+    }
+
+    [Fact]
+    public async Task EffectiveColumns_FollowsTheAppCount_AndRaisesItWhenItChanges()
+    {
+        var config = new GroupConfig
+        {
+            Id = "g1",
+            GroupName = "g",
+            Columns = 5,
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.exe" } },
+        };
+        var (sut, _, _, _, _) = CreateSut("g1", config);
+        await sut.LoadAsync();
+        var raised = new List<string?>();
+        sut.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        sut.Apps.Add(new PopupAppViewModel(new AppEntry { Name = "c", Path = "c.exe" }));
+
+        sut.EffectiveColumns.Should().Be(3);
+        raised.Should().Contain(nameof(PopupViewModel.EffectiveColumns));
+    }
+
+    [Fact]
+    public async Task EffectiveColumns_IsAtLeastOne_ForAnEmptyGroup()
+    {
+        var (sut, _, _, _, _) = CreateSut("g1", new GroupConfig { Id = "g1", GroupName = "g", Columns = 4 });
+
+        await sut.LoadAsync();
+
+        sut.EffectiveColumns.Should().Be(1);
     }
 
     [Fact]

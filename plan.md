@@ -11,8 +11,10 @@ finishes it, and a change of order or scope is recorded here when it is agreed, 
 - **`develop`:** everything up to and including the code review before C1 (`e215c55`). B3 and
   the cleanup are merged locally and **not pushed**. `origin/develop` is at `5a81f60`, the last
   pushed state (up to the app list step). Pushing waits until the end, as agreed.
-- **Branches:** every feature branch is merged into `develop`. Deleting them is part of D.
-- **Next:** C1 — grid settings, part 1, on `feature/grid-settings-1` from `develop`.
+- **Branch:** `feature/grid-settings-1` — C1 is finished there and waits for the manual test
+  before it is merged into `develop`. Every older feature branch is merged; deleting them is
+  part of D.
+- **Next:** C6 — settings and empty state, on `feature/settings-instant` once C1 is merged.
 
 ## How an item is worked
 
@@ -59,7 +61,7 @@ below.
 
 | # | Item | What it changes and why |
 |---|---|---|
-| 1 | **C1 — grid settings, part 1** | On *Appearance*: columns, icon size, show/hide names, applied to the popup. Columns are JSON-only today (upstream #29). |
+| 1 | **C1 — grid settings, part 1** — *done, on `feature/grid-settings-1`* | On *Appearance*: columns, icon size, show/hide names, applied to the popup. Columns were JSON-only (upstream #29). |
 | 2 | **C6 — settings and empty state** | Settings apply as they change (no *Save*); with no groups, a three-step "get started" view. |
 | 3 | **D — release v0.5.0** | Version bump, installer and portable build, installer smoke test, CHANGELOG section, release notes; open an issue for `IsPinningAllowed = false`; delete merged branches. Puts the work so far in users' hands before the larger items. |
 | 4 | **C2 — grid settings, part 2** | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
@@ -73,73 +75,19 @@ Each specification is written before any code, so that the item can start from t
 alone. The decisions under **Decided** were agreed on 2026-10-28. Every item follows *How an
 item is worked* above.
 
-### 1. C1 — grid settings, part 1 (`feature/grid-settings-1`)
+### 1. C1 — grid settings, part 1 — done
 
-**Goal:** the popup's grid is configurable from *Appearance*: columns, icon size, and names
-shown or hidden. Closes upstream #29 for columns.
+Built as specified, with these differences:
 
-**Decided:** icon size is one of four presets, 32 / 48 (default) / 64 / 80 DIP. Hiding the names
-makes the tiles narrower (compact, icon first).
-
-**Changes**
-- `GroupConfig` (`src/TaskbarFolders.Shared/Models/GroupConfig.cs`): `IconSize` (int, default 48;
-  the setter snaps to the nearest of `IconSizes = { 32, 48, 64, 80 }`) and `ShowNames` (bool,
-  default true). JSON `iconSize` / `showNames`. Old JSON without them gets the defaults. Both are
-  non-nullable, because `WhenWritingNull` would drop a null value.
-- `TileMetrics` (new, `src/TaskbarFolders.Launcher/Views/TileMetrics.cs`), a pure helper like
-  `TileNavigator`: `Compute(iconSize, showNames, spacing = 0)` returns `Width`, `Height`,
-  `LabelMaxWidth` and `ExtractPx`.
-  - Names shown: `Width = max(96, icon + 32)`, `Height = icon + 48`. At 48 this is 96 × 96,
-    the current look.
-  - Names hidden: `Width = Height = icon + 24`.
-  - `ExtractPx = icon * 2`, so the icon stays sharp at 150 % DPI.
-  - `spacing` is in the signature already, so C2 does not rewrite the helper.
-- `PopupViewModel` (`src/TaskbarFolders.Launcher/ViewModels/PopupViewModel.cs`): `IconSize`
-  changes from a `const` (line 31) to an instance value. `IconSize`, `ShowNames`, `TileWidth`,
-  `TileHeight` and `LabelMaxWidth` become observable. Both `LoadAsync` (about line 140) and
-  `ReloadAsync` (about line 215) copy them from the config. `LoadIconForAsync` requests `ExtractPx`.
-- `PopupWindow.xaml` and `.xaml.cs`: the hard-coded 96 × 96 tile, the 48 icon box, the
-  `MaxWidth=80` label and `TilePx` (`.xaml.cs` line 37) come from `TileMetrics` through bindings.
-  The name `TextBlock` collapses when `ShowNames` is false; the tooltip already shows the name.
-  `Window.MaxWidth` goes from 640 to 720, so six columns of 112 px fit with the scrollbar.
-  `ApplySizeAndPlacement` keeps its measuring logic and runs again when the column count or the
-  size changes.
-- Manager `GroupEditorViewModel` (`src/TaskbarFolders.Manager/ViewModels/GroupEditorViewModel.cs`):
-  `Columns`, `IconSize`, `ShowNames`. They save the way `SaveOnEdit` does: save only, no sync,
-  with `_pendingSaves` set so `IsSaving` stays true. A `_binding` flag stops `Bind` from saving.
-  The column slider is debounced by 300 ms; the radio buttons and the checkbox save at once.
-- `MainWindow.xaml` *Appearance* tab (about lines 341–365): a "Grid" section below "Group icon".
-  A column `Slider` from 1 to 6 with snapping and a value label; icon size as four segmented
-  `RadioButton`s; a "Show names" `CheckBox`.
-
-**Tests first** (each must fail before the change)
-- `PreferencesSerializationTests`: old JSON gives the defaults; `IconSize` snaps; the new fields
-  round-trip.
-- `TileMetricsTests` (new): the three formulas, and the invariant that 48 gives 96 × 96.
-- `PopupViewModelTests`: the fields load, and update on reload.
-- `PopupWindowSizingTests`: the constants now come from `TileMetrics`; new cases at 80 DIP, with
-  names hidden, and at six columns; width stays at or below `MaxWidth`.
-- `TestPopup.Show`: optional `iconSize` and `showNames` parameters.
-- `GroupEditorViewModelTests`: edits save, sync is not called, `Bind` does not save.
-- `ControlStyleTests`: the segmented button style.
-
-**Docs**
-- `docs/user-guide.md` (about line 162) and `docs/benutzerhandbuch.md` (about line 214): the
-  "edit the JSON" sentence goes; the new controls are described.
-- `docs/api-reference.md` (about line 34): the new `GroupConfig` fields.
-- `docs/troubleshooting.md` (about line 132): the columns known limitation is removed.
-- `README.md` (about line 138): "There is no UI for it yet" is removed.
-- `CHANGELOG.md` under `[Unreleased]`: Added (columns, icon size, names).
-- Screenshots: the popup and the Appearance tab, in both themes, with the recipe from `CLAUDE.md`.
-
-**Verify:** all tests; `dotnet format --verify-no-changes`; a PrintWindow capture of the popup in
-the four sizes, with and without names; `publish/` rebuilt, then a manual test by the user.
-
-**Risks**
-- At 150 % DPI a 64 px source is slightly upscaled; `ExtractPx = icon * 2` avoids it. The default
-  moves the extraction from 64 to 96 px, so each icon misses the cache once. Harmless.
-- The slider saves often; the debounce keeps that down.
-- `PopupWindowSizingTests` constants are the most fragile part of the change.
+- **Columns are a limit per row, not a fixed width.** A group with fewer apps than its column
+  count gets only as many columns as it has apps (`PopupViewModel.EffectiveColumns`), so the
+  window is no wider than the apps need. The Manager's control is labelled *Max per row*.
+- **Columns use the same segmented control as the icon size, not a slider.** The Manager has no
+  themed `Slider`, and a choice of six saves on each click with no debounce needed.
+- **`TileMetrics` has no `spacing` parameter yet.** C2 adds it; an optional parameter needs no
+  rewrite of the callers.
+- **No screenshot changed:** the popup's default look is the same 96 × 96 tile, and the
+  *Appearance* tab is not in the screenshots. C6 polish retakes them all.
 
 ### 2. C6 — settings apply instantly, empty state (`feature/settings-instant`)
 
@@ -380,6 +328,7 @@ limits), CHANGELOG, the ADR, and this file.
 
 | Item | Commit | Branch |
 |---|---|---|
+| C1 — grid settings, part 1: columns, icon size and app names per group on *Appearance* (upstream #29) | see `git log feature/grid-settings-1` | `feature/grid-settings-1` |
 | C3 — per-app name, arguments and icon (upstream #29, #30); settings close on a click outside | `862bd57`, `b6470f5` | merged |
 | B5 dropped — `GroupConfig.Theme` removed (upstream #30) | `ba95eb7` | merged |
 | B3 — keyboard navigation in the popup (upstream #26) | `29f37e6` | merged |

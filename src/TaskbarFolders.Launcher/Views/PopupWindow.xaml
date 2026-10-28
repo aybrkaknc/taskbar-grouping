@@ -8,7 +8,7 @@
         mc:Ignorable="d"
         Title="{Binding GroupName}"
         MinWidth="220"
-        MaxWidth="640"
+        MaxWidth="720"
         MinHeight="120"
         MaxHeight="800"
         WindowStyle="None"
@@ -336,7 +336,7 @@
                 <!-- App grid + transient launch-failure banner -->
                 <DockPanel Visibility="{Binding IsUnavailable, Converter={x:Static vm:LauncherInverseBoolToVisibilityConverter.Instance}}">
                     <!-- Docks Bottom in a fill-last DockPanel, so at a grid-only window height it
-                         takes its space out of the fixed 96 px tiles. PopupWindow sizes the window
+                         takes its space out of the fixed-size tiles. PopupWindow sizes the window
                          from ChromeRoot's DesiredSize instead, which already accounts for it.
                          Visibility must stay a plain binding and must never be written from code:
                          a local value discards a OneWay binding permanently, and the property then
@@ -358,7 +358,7 @@
 
                     <!-- Issue #32: a group taller than MaxHeight scrolls instead of losing its last
                          rows. Auto shows no bar for a group that fits; PopupWindow widens the window
-                         by the bar's width when one is needed, so the 96 px tiles are not squeezed. -->
+                         by the bar's width when one is needed, so the tiles are not squeezed. -->
                     <ScrollViewer x:Name="TileScroller"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
@@ -369,22 +369,24 @@
                         <ItemsControl x:Name="TileList" ItemsSource="{Binding Apps}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <UniformGrid Columns="{Binding Columns}" />
+                                    <UniformGrid Columns="{Binding EffectiveColumns}" />
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type vm:PopupAppViewModel}">
                                     <!-- The badge overlays the tile rather than sitting inside its
                                          Button, so it is its own click target and the tile keeps its
-                                         fixed 96 px. -->
-                                    <Grid Width="96" Height="96">
+                                         size, which is the group's (TileMetrics, via Tile). -->
+                                    <Grid Width="{Binding DataContext.Tile.Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                          Height="{Binding DataContext.Tile.Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
                                         <Button x:Name="TileButton"
                                                 Style="{StaticResource AppTileButton}"
                                                 ToolTip="{Binding Name}"
                                                 Command="{Binding DataContext.LaunchAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}">
                                             <StackPanel>
-                                                <Grid Width="48" Height="48">
+                                                <Grid Width="{Binding DataContext.Tile.IconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                      Height="{Binding DataContext.Tile.IconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
                                                     <Image Source="{Binding Icon}" Stretch="Uniform" />
                                                     <Viewbox
                                                              Visibility="{Binding IconMissing, Converter={x:Static vm:LauncherBoolToVisibilityConverter.Instance}}">
@@ -401,7 +403,8 @@
                                                            FontSize="11"
                                                            FontWeight="SemiBold"
                                                            TextTrimming="CharacterEllipsis"
-                                                           MaxWidth="80"
+                                                           MaxWidth="{Binding DataContext.Tile.LabelMaxWidth, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                           Visibility="{Binding DataContext.ShowNames, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={x:Static vm:LauncherBoolToVisibilityConverter.Instance}}"
                                                            Effect="{DynamicResource LabelShadow}" />
                                             </StackPanel>
                                         </Button>

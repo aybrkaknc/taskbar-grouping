@@ -13,6 +13,7 @@ using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
+using TaskbarFolders.Launcher.Views;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
 
@@ -27,9 +28,6 @@ namespace TaskbarFolders.Launcher.ViewModels;
 /// </summary>
 public sealed partial class PopupViewModel : ObservableObject, IDisposable
 {
-    /// <summary>Pixel size requested from the icon extractor for tiles.</summary>
-    public const int IconSize = 64;
-
     private readonly IGroupConfigStore _store;
     private readonly IIconExtractor _extractor;
     private readonly IIconCache _cache;
@@ -69,7 +67,11 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         _syncService = syncService;
         _options = options;
         _logger = logger;
+
+        Apps.CollectionChanged += (_, _) => OnPropertyChanged(nameof(EffectiveColumns));
     }
+
+    partial void OnColumnsChanged(int value) => OnPropertyChanged(nameof(EffectiveColumns));
 
     /// <summary>
     /// True once an existing group has been loaded; the popup only offers to edit a group it
@@ -96,9 +98,29 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string _groupName = string.Empty;
 
-    /// <summary>Number of grid columns for the popup; mirrors <see cref="GroupConfig.Columns"/>.</summary>
+    /// <summary>
+    /// Most columns a row may hold; mirrors <see cref="GroupConfig.Columns"/>. The grid itself uses
+    /// <see cref="EffectiveColumns"/>, which is this limit capped by the number of apps.
+    /// </summary>
     [ObservableProperty]
     private int _columns = 3;
+
+    /// <summary>
+    /// Columns the grid really uses: <see cref="Columns"/> is a limit, so a group with fewer apps
+    /// gets only as many columns as it has apps, and the window is no wider than they need.
+    /// </summary>
+    public int EffectiveColumns => Math.Max(1, Math.Min(Columns, Apps.Count));
+
+    /// <summary>Whether tiles show the app's name; mirrors <see cref="GroupConfig.ShowNames"/>.</summary>
+    [ObservableProperty]
+    private bool _showNames = true;
+
+    /// <summary>
+    /// Size of each tile and of its icon, from <see cref="GroupConfig.IconSize"/> and
+    /// <see cref="GroupConfig.ShowNames"/>.
+    /// </summary>
+    [ObservableProperty]
+    private TileMetrics _tile = TileMetrics.Default;
 
     /// <summary>True when the loaded group does not exist or is empty — used by the UI to show an inline error.</summary>
     [ObservableProperty]
@@ -137,7 +159,7 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         _config = config;
         CanEditGroup = true;
         GroupName = config.GroupName;
-        Columns = config.Columns;
+        ApplyGrid(config);
 
         Apps.Clear();
         foreach (var entry in config.Apps)
@@ -212,7 +234,7 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
 
         _config = config;
         GroupName = config.GroupName;
-        Columns = config.Columns;
+        ApplyGrid(config);
 
         Apps.Clear();
         foreach (var entry in config.Apps)
@@ -376,13 +398,22 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void Close() => CloseRequested?.Invoke(this, EventArgs.Empty);
 
+    // Before the tiles are rebuilt, so the window sizes them with the new metrics.
+    private void ApplyGrid(GroupConfig config)
+    {
+        Columns = config.Columns;
+        ShowNames = config.ShowNames;
+        Tile = TileMetrics.Compute(config.IconSize, config.ShowNames);
+    }
+
     private async Task LoadIconForAsync(PopupAppViewModel app, CancellationToken token)
     {
         try
         {
             // Off the UI thread: the chosen image, the cache and the shell all read files. The
             // result comes back frozen, so it can cross to the UI thread.
-            var icon = await Task.Run(() => AppIcons.Load(app.Entry, IconSize, _extractor, _cache), token)
+            var size = Tile.ExtractPx;
+            var icon = await Task.Run(() => AppIcons.Load(app.Entry, size, _extractor, _cache), token)
                 .ConfigureAwait(true);
 
             if (token.IsCancellationRequested)

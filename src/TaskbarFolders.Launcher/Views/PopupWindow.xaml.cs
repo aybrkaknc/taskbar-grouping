@@ -33,9 +33,6 @@ namespace TaskbarFolders.Launcher.Views;
 /// </remarks>
 public sealed partial class PopupWindow : Window, IDisposable
 {
-    /// <summary>Tile width + height in DIPs. Mirrors the Image width in the data template.</summary>
-    private const int TilePx = 96;
-
     /// <summary>Outer padding on the popup Border in DIPs.</summary>
     private const int PaddingPx = 12;
 
@@ -121,7 +118,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         _viewModel.LaunchSucceeded += OnLaunchSucceeded;
         _viewModel.CloseRequested += OnCloseRequested;
         // LastError toggles the docked strip after open; height must grow/shrink with it
-        // or the strip clips the fixed 96 px tiles (issue #24).
+        // or the strip clips the fixed-size tiles (issue #24).
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         _viewModel.Apps.CollectionChanged += OnAppsChanged;
         Activated += OnActivated;
@@ -197,7 +194,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         }
 
         var current = IndexOfFocusedTile();
-        FocusTile(current < 0 ? 0 : TileNavigator.Move(current, _viewModel.Apps.Count, _viewModel.Columns, move.Value));
+        FocusTile(current < 0 ? 0 : TileNavigator.Move(current, _viewModel.Apps.Count, _viewModel.EffectiveColumns, move.Value));
         e.Handled = true;
     }
 
@@ -424,12 +421,12 @@ public sealed partial class PopupWindow : Window, IDisposable
         // Explicit Width + Height skip the SizeToContent measure pass that pre-v0.4 added
         // ~5-10 ms before placement could be computed. Empty / unavailable groups fall
         // back to MinHeight, keeping the banner-only layout centred.
-        var cols = Math.Max(_viewModel.Columns, 1);
-        Width = Math.Clamp(cols * TilePx + 2 * PaddingPx, MinWidth, MaxWidth);
+        var cols = Math.Max(_viewModel.EffectiveColumns, 1);
+        Width = Math.Clamp(cols * _viewModel.Tile.Width + 2 * PaddingPx, MinWidth, MaxWidth);
 
         // Height comes from measuring ChromeRoot rather than adding up tile rows, because
         // the error strip docks Bottom in a fill-last DockPanel: at a grid-only height it
-        // takes its space out of the fixed 96 px tiles and clips the last row (issue #24).
+        // takes its space out of the fixed-size tiles and clips the last row (issue #24).
         // ChromeRoot's DesiredSize already carries the grid, its padding and whatever the
         // LastError binding has currently made of the strip, so nothing here needs to know
         // the strip exists.
@@ -460,10 +457,11 @@ public sealed partial class PopupWindow : Window, IDisposable
         UpdateLayout();
 
         // Past MaxHeight the tile grid scrolls (issue #32), and the vertical bar takes its width
-        // out of the viewport, which would squeeze the fixed 96 px tiles; widen the window by
+        // out of the viewport, which would squeeze the fixed-size tiles; widen the window by
         // exactly that much instead (the bar's width and margin, PopupScrollBar). Asked of the
         // laid-out scroller rather than worked out from DesiredSize, which does not yet carry the
-        // tiles on the first pass. MaxWidth leaves room for the bar at six columns.
+        // tiles on the first pass. MaxWidth leaves room for the bar at six columns of the widest
+        // tile (TileMetrics at 80 DIPs with names).
         if (TileScroller.ComputedVerticalScrollBarVisibility == Visibility.Visible)
         {
             var barWidth = TileScroller.ActualWidth - TileScroller.ViewportWidth;

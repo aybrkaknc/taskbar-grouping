@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,6 +22,11 @@ namespace TaskbarFolders.Manager.ViewModels;
 /// <param name="App">The app's row.</param>
 /// <param name="ImagePath">The picked file.</param>
 public sealed record AppIconChoice(AppEntryViewModel App, string ImagePath);
+
+/// <summary>One choice of a grid setting on the Appearance tab.</summary>
+/// <param name="Value">The value stored in the group.</param>
+/// <param name="Label">What the choice reads as.</param>
+public sealed record GridOption(int Value, string Label);
 
 /// <summary>
 /// Detail-pane view model for a single selected group. Manages the apps list, debounced
@@ -51,6 +57,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? _previewCts;
     private readonly object _previewCtsLock = new();
     private int _pendingSaves;
+    private bool _binding;
     private bool _disposed;
 
     /// <summary>Initializes a new instance with the dependencies it needs to render previews and persist edits.</summary>
@@ -116,6 +123,33 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     [NotifyCanExecuteChangedFor(nameof(ResetGroupIconCommand))]
     private bool _hasCustomIcon;
 
+    /// <summary>The column counts a group can choose, <see cref="GroupConfig.MinColumns"/> to <see cref="GroupConfig.MaxColumns"/>.</summary>
+    public static IReadOnlyList<GridOption> ColumnOptions { get; } = Enumerable
+        .Range(GroupConfig.MinColumns, GroupConfig.MaxColumns - GroupConfig.MinColumns + 1)
+        .Select(c => new GridOption(c, c.ToString(CultureInfo.CurrentCulture)))
+        .ToArray();
+
+    /// <summary>The icon sizes a group can choose, one per <see cref="GroupConfig.IconSizes"/>.</summary>
+    public static IReadOnlyList<GridOption> IconSizeOptions { get; } =
+    [
+        new(32, "Small"),
+        new(48, "Medium"),
+        new(64, "Large"),
+        new(80, "Extra large"),
+    ];
+
+    /// <summary>Columns of the bound group's popup. Saved as it changes.</summary>
+    [ObservableProperty]
+    private int _columns = 3;
+
+    /// <summary>Icon size of the bound group's popup, in DIPs. Saved as it changes.</summary>
+    [ObservableProperty]
+    private int _iconSize = GroupConfig.DefaultIconSize;
+
+    /// <summary>Whether the bound group's popup shows app names. Saved as it changes.</summary>
+    [ObservableProperty]
+    private bool _showNames = true;
+
     /// <summary>Re-routes the editor to a new group selection.</summary>
     /// <param name="item">The new selection, or <see langword="null"/> to clear.</param>
     public void Bind(GroupListItemViewModel? item)
@@ -134,6 +168,19 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         {
             CompositeIconPreview = null;
             return;
+        }
+
+        // Showing the group's settings is not an edit; the change handlers must not save.
+        _binding = true;
+        try
+        {
+            Columns = item.Config.Columns;
+            IconSize = item.Config.IconSize;
+            ShowNames = item.Config.ShowNames;
+        }
+        finally
+        {
+            _binding = false;
         }
 
         // Rebuild Apps inside a try/finally so an exception in LoadIconInto cannot leave
@@ -350,26 +397,52 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     {
         app.PropertyChanged += async (_, e) =>
         {
-            if (e.PropertyName is not (nameof(AppEntryViewModel.Name) or nameof(AppEntryViewModel.Arguments)))
+            if (e.PropertyName is nameof(AppEntryViewModel.Name) or nameof(AppEntryViewModel.Arguments))
             {
-                return;
-            }
-
-            _pendingSaves++;
-            try
-            {
-                await _store.SaveAsync(item.Config).ConfigureAwait(true);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                _logger?.LogWarning(ex, "Could not save an edit to an app in {GroupId}.", item.Config.Id);
-                _userConfirmation.Notify("Not saved", $"The change could not be saved:\n{ex.Message}");
-            }
-            finally
-            {
-                _pendingSaves--;
+                await SaveWithoutSyncAsync(item).ConfigureAwait(true);
             }
         };
+    }
+
+    partial void OnColumnsChanged(int value) => SaveGridSetting(c => c.Columns = value);
+
+    partial void OnIconSizeChanged(int value) => SaveGridSetting(c => c.IconSize = value);
+
+    partial void OnShowNamesChanged(bool value) => SaveGridSetting(c => c.ShowNames = value);
+
+    /// <summary>
+    /// Writes a grid setting into the bound group and saves it. The popup reads the settings
+    /// each time it opens and the taskbar icon does not show them, so there is nothing to sync.
+    /// </summary>
+    private void SaveGridSetting(Action<GroupConfig> apply)
+    {
+        var item = _boundItem;
+        if (_binding || item is null)
+        {
+            return;
+        }
+
+        apply(item.Config);
+        _ = SaveWithoutSyncAsync(item);
+    }
+
+    // Never throws: a failed save is logged and reported, and the edit stays in memory.
+    private async Task SaveWithoutSyncAsync(GroupListItemViewModel item)
+    {
+        _pendingSaves++;
+        try
+        {
+            await _store.SaveAsync(item.Config).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _logger?.LogWarning(ex, "Could not save an edit to {GroupId}.", item.Config.Id);
+            _userConfirmation.Notify("Not saved", $"The change could not be saved:\n{ex.Message}");
+        }
+        finally
+        {
+            _pendingSaves--;
+        }
     }
 
     private async Task SaveAndSyncAsync(GroupListItemViewModel item)

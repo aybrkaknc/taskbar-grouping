@@ -135,7 +135,7 @@ Everything is under `%APPDATA%\TaskbarFolders\`:
 | `settings.json` | Global settings. |
 | `logs\manager-*.log`, `logs\launcher-*.log` | One file per day, kept 14 days. |
 
-A per-group `columns` value (1–6, default 3) controls the popup grid width. There is no UI for it yet — edit the group's JSON to change it.
+Each group's popup layout — columns (1–6), icon size, and whether names are shown — is set on the Manager's *Appearance* tab.
 
 Uninstalling — through *Installed apps*, the portable `Uninstall.cmd`, or *Settings → Uninstall TaskbarFolders…* — deletes this folder too, along with the group tiles, the Explorer menu entry, the Start menu entries and the autostart entry. Back up `groups\` first if you want to keep your groups.
 
