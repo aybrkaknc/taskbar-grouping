@@ -128,6 +128,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         Closing += OnClosing;
         Closed += OnClosed;
         KeyDown += OnKeyDown;
+        PreviewKeyDown += OnPreviewKeyDown;
         ContentRendered += OnContentRendered;
         SourceInitialized += OnSourceInitialized;
     }
@@ -141,6 +142,13 @@ public sealed partial class PopupWindow : Window, IDisposable
     private void OnContentRendered(object? sender, EventArgs e)
     {
         ContentRendered -= OnContentRendered;
+
+        // The first tile takes the focus, so Enter launches it without a click (upstream #26).
+        // Focus inside the popup does not deactivate it, so dismiss-on-focus-loss is unaffected.
+        if (_viewModel.Apps.Count > 0)
+        {
+            Dispatcher.BeginInvoke(() => FocusTile(0), DispatcherPriority.Loaded);
+        }
         if (_closeAnimating || _closeConfirmed)
         {
             return;
@@ -163,6 +171,66 @@ public sealed partial class PopupWindow : Window, IDisposable
                 Dispatcher.BeginInvoke(new Action(Close));
             }
         });
+    }
+
+    /// <summary>
+    /// Arrow keys, Home and End move the focus between tiles by <see cref="TileNavigator"/>'s
+    /// rules — WPF's own directional navigation stops at row ends. Handled in the preview pass
+    /// so that navigation never sees the keys. From anywhere else in the popup (the header's
+    /// buttons) they go to the first tile.
+    /// </summary>
+    private void OnPreviewKeyDown(object? sender, KeyEventArgs e)
+    {
+        TileMove? move = e.Key switch
+        {
+            Key.Left => TileMove.Left,
+            Key.Right => TileMove.Right,
+            Key.Up => TileMove.Up,
+            Key.Down => TileMove.Down,
+            Key.Home => TileMove.Home,
+            Key.End => TileMove.End,
+            _ => null,
+        };
+        if (move is null || _viewModel.Apps.Count == 0)
+        {
+            return;
+        }
+
+        var current = IndexOfFocusedTile();
+        FocusTile(current < 0 ? 0 : TileNavigator.Move(current, _viewModel.Apps.Count, _viewModel.Columns, move.Value));
+        e.Handled = true;
+    }
+
+    /// <summary>Index of the tile holding the focus, or -1 when the focus is elsewhere.</summary>
+    internal int IndexOfFocusedTile()
+    {
+        // Logical focus, not keyboard focus: it is what Enter acts on once the window is
+        // active, and it is set even while the window is not.
+        if (FocusManager.GetFocusedElement(this) is not DependencyObject focused)
+        {
+            return -1;
+        }
+
+        for (var i = 0; i < _viewModel.Apps.Count; i++)
+        {
+            if (TileList.ItemContainerGenerator.ContainerFromIndex(i) is Visual container &&
+                (ReferenceEquals(container, focused) || container.IsAncestorOf(focused)))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /// <summary>Moves the focus to the tile at <paramref name="index"/> and scrolls it into view.</summary>
+    internal void FocusTile(int index)
+    {
+        if (TileList.ItemContainerGenerator.ContainerFromIndex(index) is ContentPresenter container &&
+            container.ContentTemplate?.FindName("TileButton", container) is Button tile)
+        {
+            tile.Focus();
+            tile.BringIntoView();
+        }
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -588,6 +656,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         Closing -= OnClosing;
         Closed -= OnClosed;
         KeyDown -= OnKeyDown;
+        PreviewKeyDown -= OnPreviewKeyDown;
         ContentRendered -= OnContentRendered;
         SourceInitialized -= OnSourceInitialized;
         _closeSafetyTimer?.Stop();

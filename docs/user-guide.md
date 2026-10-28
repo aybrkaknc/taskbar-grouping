@@ -115,7 +115,7 @@ Click the pinned tile. A popup opens next to the taskbar, anchored near the tile
 
 With *Enable popup animations* on, the popup fades out briefly as it closes. On Windows 11 22H2 and later the glass panel itself cannot fade, so it disappears right after the icons have.
 
-Escape is the only keyboard shortcut; in edit mode the first press leaves edit mode. No icon is focused when the popup opens, and the arrow keys do not move between icons.
+The popup works from the keyboard. The first app holds the focus when it opens, so `Enter` starts it straight away. The arrow keys move between apps — left and right run on across the ends of rows, up and down keep the column and wrap round from the bottom row to the top — and `Home`/`End` jump to the first and last app; the app you are on is outlined. `Escape` closes the popup; in edit mode the first press leaves edit mode. The outline appears only once you use the keyboard, so opening the popup with the mouse shows no outline.
 
 ### Sending files from Explorer
 

@@ -171,7 +171,7 @@ Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fe
 
 Ist *Enable popup animations* eingeschaltet, blendet sich das Fenster beim Schließen kurz aus. Unter Windows 11 22H2 und neuer kann die Glasfläche selbst nicht ausblenden; sie verschwindet unmittelbar nach den Symbolen.
 
-`Esc` ist die einzige Taste (im Bearbeitungsmodus beendet der erste Druck die Bearbeitung): Beim Öffnen ist kein Symbol vorausgewählt, und die Pfeiltasten wechseln nicht zwischen den Symbolen.
+Das Aufklapp-Fenster lässt sich mit der Tastatur bedienen. Beim Öffnen hat das erste Programm den Fokus, `Enter` startet es also sofort. Die Pfeiltasten wechseln zwischen den Programmen — links und rechts laufen über das Zeilenende hinweg, hoch und runter bleiben in der Spalte und springen von der untersten Zeile wieder nach oben —, `Pos1`/`Ende` springen zum ersten und letzten Programm; das aktuelle ist umrandet. `Esc` schließt das Fenster (im Bearbeitungsmodus beendet der erste Druck die Bearbeitung). Die Umrandung erscheint erst, wenn Sie die Tastatur benutzen; wer mit der Maus öffnet, sieht keine.
 
 ### Dateien aus dem Explorer senden
 
@@ -251,7 +251,6 @@ Ausführlicher, mit Zuordnung von Protokollzeilen zu Ursachen: [Troubleshooting]
 Keine Fehler, sondern bewusste oder noch offene Grenzen:
 
 - Programme lassen sich **nicht umsortieren**.
-- Das Aufklapp-Fenster lässt sich **nicht mit den Pfeiltasten** bedienen; nur `Esc` schließt es.
 - Der verschwommene Glas-Hintergrund des Aufklapp-Fensters braucht Windows 11 22H2 oder neuer. Sind in Windows die *Transparenzeffekte* ausgeschaltet, ist er eine einfarbige Fläche.
 - Es gibt **keine ARM64-Fassung**.
 - Nichts hindert daran, den Manager **zweimal gleichzeitig** zu starten. Die zweite Instanz kann Änderungen der ersten überschreiben.
