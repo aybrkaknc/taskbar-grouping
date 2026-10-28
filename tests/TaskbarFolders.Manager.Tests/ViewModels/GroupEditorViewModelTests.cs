@@ -343,6 +343,41 @@ public class GroupEditorViewModelTests
     }
 
     [Fact]
+    public void ToggleAppDetails_OpensOneRowAtATime_AndClosesItOnASecondToggle()
+    {
+        var (sut, _, _, _, _) = CreateSut();
+        sut.Bind(new GroupListItemViewModel(new GroupConfig
+        {
+            Id = "g",
+            GroupName = "g",
+            Apps = { new AppEntry { Name = "a", Path = "a.exe" }, new AppEntry { Name = "b", Path = "b.exe" } },
+        }));
+        var (a, b) = (sut.Apps[0], sut.Apps[1]);
+
+        sut.ToggleAppDetailsCommand.Execute(a);
+        a.IsExpanded.Should().BeTrue();
+
+        sut.ToggleAppDetailsCommand.Execute(b);
+        a.IsExpanded.Should().BeFalse("opening another row closes this one");
+        b.IsExpanded.Should().BeTrue();
+
+        sut.ToggleAppDetailsCommand.Execute(b);
+        b.IsExpanded.Should().BeFalse("a second toggle closes the open row");
+    }
+
+    [Fact]
+    public void CollapseAppDetails_ClosesTheOpenRow()
+    {
+        var (sut, _, _, _, _) = CreateSut();
+        sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g", Apps = { new AppEntry { Name = "a", Path = "a.exe" } } }));
+        sut.ToggleAppDetailsCommand.Execute(sut.Apps[0]);
+
+        sut.CollapseAppDetailsCommand.Execute(null);
+
+        sut.Apps[0].IsExpanded.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task EditingAnAppsNameOrArguments_SavesTheGroup_WithoutSyncing()
     {
         var (sut, _, _, _, store, syncService, _, _, _) = CreateSutWithCollaborators();

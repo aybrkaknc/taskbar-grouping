@@ -272,6 +272,33 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Opens <paramref name="app"/>'s settings under its row, closing any other row's, or closes
+    /// them when they are already open.
+    /// </summary>
+    [RelayCommand]
+    private void ToggleAppDetails(AppEntryViewModel? app)
+    {
+        if (app is null)
+        {
+            return;
+        }
+
+        var open = !app.IsExpanded;
+        CollapseAppDetails();
+        app.IsExpanded = open;
+    }
+
+    /// <summary>Closes whichever app's settings are open.</summary>
+    [RelayCommand]
+    private void CollapseAppDetails()
+    {
+        foreach (var other in Apps)
+        {
+            other.IsExpanded = false;
+        }
+    }
+
+    /// <summary>
     /// Stores a copy of the chosen image as the app's icon and regenerates the group's icon,
     /// whose composite shows it too.
     /// </summary>

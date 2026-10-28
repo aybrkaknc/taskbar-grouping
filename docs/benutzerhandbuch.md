@@ -102,7 +102,7 @@ Der Pfad unter dem Namen wird gekürzt dargestellt: alles innerhalb Ihres Benutz
 
 ### Name, Startparameter und Symbol eines Programms
 
-Ein Klick auf ein Programm in der Liste öffnet unter der Zeile seine Einstellungen:
+Ein Klick auf ein Programm in der Liste oder auf den Pfeil rechts in seiner Zeile öffnet unter der Zeile seine Einstellungen. Ein weiterer Klick auf die Zeile oder den Pfeil, `Esc` oder ein Klick irgendwo außerhalb der Zeile schließt sie wieder; es sind immer nur die Einstellungen eines Programms offen.
 
 - **Name** — die Beschriftung seiner Kachel im Aufklapp-Fenster. Leer gelassen, gilt wieder der Dateiname.
 - **Arguments** — Startparameter, die das Programm beim Start erhält, zum Beispiel `--profile-directory="Profile 2"`, um einen Browser mit einem zweiten Profil zu öffnen. Leer bedeutet: keine.

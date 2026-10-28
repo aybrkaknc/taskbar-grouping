@@ -211,7 +211,9 @@
                                          KeyDown="AppList_KeyDown">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate DataType="{x:Type vm:AppEntryViewModel}">
-                                            <Grid>
+                                            <!-- A click on the row (not on its buttons or its settings) opens or
+                                                 closes the settings; so does the chevron. -->
+                                            <Grid x:Name="Row" Background="Transparent" MouseLeftButtonUp="AppRow_MouseLeftButtonUp">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="32" />
                                                     <ColumnDefinition Width="*" />
@@ -247,21 +249,32 @@
                                                 <!-- Shown for the row under the mouse or the selected one; Del removes
                                                      the selected app as well. Hidden, not collapsed, so rows keep their
                                                      width when it appears. -->
-                                                <Button Grid.Column="2"
-                                                        x:Name="RemoveButton"
-                                                        Style="{StaticResource SubtleButton}"
-                                                        Padding="8"
-                                                        Visibility="Hidden"
-                                                        ToolTip="Remove from the group (Del). The program itself is not touched."
-                                                        Command="{Binding DataContext.RemoveAppCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}">
-                                                    <TextBlock Text="&#xE74D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" />
-                                                </Button>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Button x:Name="RemoveButton"
+                                                            Style="{StaticResource SubtleButton}"
+                                                            Padding="8"
+                                                            Visibility="Hidden"
+                                                            ToolTip="Remove from the group (Del). The program itself is not touched."
+                                                            Command="{Binding DataContext.RemoveAppCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                            CommandParameter="{Binding}">
+                                                        <TextBlock Text="&#xE74D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="14" />
+                                                    </Button>
+                                                    <Button x:Name="ExpandButton"
+                                                            Style="{StaticResource SubtleButton}"
+                                                            Padding="8"
+                                                            ToolTip="Name, arguments and icon"
+                                                            Command="{Binding DataContext.ToggleAppDetailsCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                            CommandParameter="{Binding}">
+                                                        <TextBlock x:Name="ExpandGlyph" Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" />
+                                                    </Button>
+                                                </StackPanel>
 
-                                                <!-- The selected app's own settings. Text boxes save when they lose
-                                                     focus or on Enter; Escape puts the saved value back. -->
+                                                <!-- The app's own settings. Text boxes save when they lose focus or on
+                                                     Enter; Escape puts the saved value back. A click anywhere outside the
+                                                     row closes them (MainWindow.OnPreviewMouseDown). -->
                                                 <Grid x:Name="Details" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"
-                                                      Margin="12,10,8,4" Visibility="Collapsed">
+                                                      Margin="12,10,8,4"
+                                                      Visibility="{Binding IsExpanded, Converter={x:Static vm:BoolToVisibilityConverter.Instance}}">
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
@@ -300,7 +313,9 @@
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
                                                     <Setter TargetName="RemoveButton" Property="Visibility" Value="Visible" />
-                                                    <Setter TargetName="Details" Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                                                    <Setter TargetName="ExpandGlyph" Property="Text" Value="&#xE70E;" />
                                                 </DataTrigger>
                                             </DataTemplate.Triggers>
                                         </DataTemplate>

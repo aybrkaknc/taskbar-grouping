@@ -58,6 +58,10 @@ public sealed partial class AppEntryViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasCustomIcon))]
     private string? _iconPath;
 
+    /// <summary>Whether the app's settings are open under its row. At most one row is open.</summary>
+    [ObservableProperty]
+    private bool _isExpanded;
+
     /// <summary>Whether the app shows an image the user chose rather than the program's own icon.</summary>
     public bool HasCustomIcon => IconPath is not null;
 

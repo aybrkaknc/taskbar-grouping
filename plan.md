@@ -74,7 +74,7 @@ list where they fall.
 
 | Item | Commit | Branch |
 |---|---|---|
-| C3 — per-app name, arguments and icon (upstream #29, #30) | see `git log feature/per-app-settings` | `feature/per-app-settings` |
+| C3 — per-app name, arguments and icon (upstream #29, #30); settings close on a click outside | `862bd57` + follow-up | `feature/per-app-settings` |
 | Pushed `develop` and `feature/manager-app-list` to `origin` | `1da190a`, `9f18df6` | — |
 | CI sizing test expects the window height Windows allows | `10e8698` | `develop` |
 | Adding an app in the Manager no longer closes it | `3fa414a` | merged |

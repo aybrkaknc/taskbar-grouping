@@ -65,7 +65,7 @@ The same menu's **Use app icons** goes back to the icon built from the apps. If 
 
 ### An app's name, arguments and icon
 
-Click an app in the list to open its settings under the row:
+Click an app in the list, or the arrow at the right of its row, to open its settings under the row. Clicking the row or the arrow again, pressing `Esc`, or clicking anywhere outside the row closes them; one app's settings are open at a time.
 
 - **Name** — what its tile in the popup says. Clear it to go back to the file name.
 - **Arguments** — passed to the program when it starts, for example `--profile-directory="Profile 2"` to open a browser with a second profile. Leave empty for none.
