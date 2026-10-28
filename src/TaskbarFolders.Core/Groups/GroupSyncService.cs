@@ -303,31 +303,10 @@ public sealed class GroupSyncService : IGroupSyncService
         {
             // An app without an icon still takes its place in the composite, so a group made
             // only of such apps gets a tile like any other.
-            icons.Add(ImageFile.TryLoad(app.IconPath)
-                ?? LoadIcon(app.Path)
+            icons.Add(AppIcons.Load(app, CompositeSourceIconSize, _extractor, _cache)
                 ?? PlaceholderIcon.Render(CompositeSourceIconSize, PlaceholderIcon.NeutralColor));
         }
         return icons;
-    }
-
-    private BitmapSource? LoadIcon(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return null;
-        }
-
-        if (_cache.TryGet(path, CompositeSourceIconSize, out var cached))
-        {
-            return cached;
-        }
-
-        var icon = _extractor.ExtractIcon(path, CompositeSourceIconSize);
-        if (icon is not null)
-        {
-            _cache.Set(path, CompositeSourceIconSize, icon);
-        }
-        return icon;
     }
 
     /// <summary>

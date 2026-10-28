@@ -74,8 +74,8 @@ Two features degrade gracefully on older builds rather than failing:
 ## Quick start
 
 1. Open **TaskbarFolders Manager**.
-2. Type a group name in the sidebar box and click **+ Add**. The button stays disabled until the name is non-empty.
-3. Drop `.exe` or `.lnk` files onto the group's app list, or use **Add app…**. The composite icon preview updates as you go.
+2. Click **+ New group**, type a name over *New group* and press `Enter`.
+3. Drop `.exe` or `.lnk` files onto the **Apps** tab, or use **Add apps…**. The group's icon at the top updates as you go.
 4. Click **Pin to taskbar**. Windows asks you to confirm — that prompt comes from Windows and cannot be skipped.
 5. Click the new taskbar tile. The popup opens; click any icon to launch it.
 

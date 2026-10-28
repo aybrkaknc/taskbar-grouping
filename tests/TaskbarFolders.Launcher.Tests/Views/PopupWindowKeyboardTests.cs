@@ -1,20 +1,17 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using FluentAssertions;
-using Moq;
 using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Launcher.Views;
-using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Launcher.Tests.Views;
@@ -98,13 +95,14 @@ public sealed class PopupWindowKeyboardTests
 
     private static void WithPopup(int appCount, int columns, Action<PopupWindow> body)
     {
-        OnStaThread(() =>
+        StaThread.Run(() =>
         {
             var window = CreatePopup(appCount, columns);
             try
             {
-                // ContentRendered, then the Loaded-priority focus it queues.
-                PumpDispatcher(TimeSpan.FromMilliseconds(300));
+                // ContentRendered, then the Loaded-priority focus it queues; on a loaded machine
+                // that takes longer than any fixed wait, so wait for the focus itself.
+                StaThread.PumpUntil(() => window.IndexOfFocusedTile() >= 0, TimeSpan.FromSeconds(10));
                 body(window);
             }
             finally
@@ -115,78 +113,5 @@ public sealed class PopupWindowKeyboardTests
         });
     }
 
-    private static PopupWindow CreatePopup(int appCount, int columns)
-    {
-        var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = columns };
-        for (var i = 0; i < appCount; i++)
-        {
-            config.Apps.Add(new AppEntry { Name = $"App {i + 1}", Path = $@"C:\does\not\exist\app{i + 1}.exe" });
-        }
-
-        var store = new Mock<IGroupConfigStore>();
-        store.Setup(s => s.LoadAsync("g1", It.IsAny<CancellationToken>())).ReturnsAsync(config);
-        var extractor = new Mock<IIconExtractor>();
-        extractor.Setup(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>())).Returns((BitmapSource?)null);
-        var cache = new Mock<IIconCache>();
-        BitmapSource? unused;
-        cache.Setup(c => c.TryGet(It.IsAny<string>(), It.IsAny<int>(), out unused)).Returns(false);
-
-        var viewModel = new PopupViewModel(
-            store.Object,
-            extractor.Object,
-            cache.Object,
-            Mock.Of<IProcessLauncher>(),
-            Mock.Of<IGroupSyncService>(),
-            new LauncherOptions("g1"));
-        viewModel.LoadAsync().GetAwaiter().GetResult();
-
-        // Off any real desktop, so running the suite never flashes a window.
-        var positionHelper = new Mock<ITaskbarPositionHelper>();
-        positionHelper
-            .Setup(h => h.ComputePlacement(It.IsAny<Size>(), It.IsAny<PopupPositionPreference>()))
-            .Returns(new PopupPlacement(-32000, -32000));
-
-        var window = new PopupWindow(viewModel, positionHelper.Object, new AppSettings { EnableAnimations = false });
-        window.ShowActivated = false;
-        window.Show();
-        return window;
-    }
-
-    private static void PumpDispatcher(TimeSpan duration)
-    {
-        var frame = new DispatcherFrame();
-        var timer = new DispatcherTimer { Interval = duration };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            frame.Continue = false;
-        };
-        timer.Start();
-        Dispatcher.PushFrame(frame);
-    }
-
-    private static T OnStaThread<T>(Func<T> body)
-    {
-        T result = default!;
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                result = body();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            throw new InvalidOperationException("STA test body failed.", failure);
-        }
-        return result;
-    }
+    private static PopupWindow CreatePopup(int appCount, int columns) => TestPopup.Show(appCount, columns).Window;
 }

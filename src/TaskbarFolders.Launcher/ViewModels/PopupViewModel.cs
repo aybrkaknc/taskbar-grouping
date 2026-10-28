@@ -380,41 +380,10 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     {
         try
         {
-            // An icon the user chose is a file of ours, read directly; the cache is for what
-            // the shell extracts.
-            if (app.IconPath is not null)
-            {
-                var chosen = await Task.Run(() => ImageFile.TryLoad(app.IconPath), token).ConfigureAwait(true);
-                if (chosen is not null && !token.IsCancellationRequested)
-                {
-                    app.Icon = chosen;
-                    return;
-                }
-            }
-
-            if (_cache.TryGet(app.Path, IconSize, out var cached))
-            {
-                if (token.IsCancellationRequested)
-                {
-                    return;
-                }
-                app.Icon = cached;
-                return;
-            }
-
-            // Extract + freeze on the thread-pool thread so the BitmapSource can safely cross
-            // threads when assignment marshals back to the UI thread via ConfigureAwait(true).
-            var icon = await Task.Run(
-                () =>
-                {
-                    var bitmap = _extractor.ExtractIcon(app.Path, IconSize);
-                    if (bitmap is not null && bitmap.CanFreeze && !bitmap.IsFrozen)
-                    {
-                        bitmap.Freeze();
-                    }
-                    return bitmap;
-                },
-                token).ConfigureAwait(true);
+            // Off the UI thread: the chosen image, the cache and the shell all read files. The
+            // result comes back frozen, so it can cross to the UI thread.
+            var icon = await Task.Run(() => AppIcons.Load(app.Entry, IconSize, _extractor, _cache), token)
+                .ConfigureAwait(true);
 
             if (token.IsCancellationRequested)
             {
@@ -423,7 +392,6 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
 
             if (icon is not null)
             {
-                _cache.Set(app.Path, IconSize, icon);
                 app.Icon = icon;
             }
             else

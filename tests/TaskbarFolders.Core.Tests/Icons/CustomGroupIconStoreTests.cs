@@ -1,12 +1,11 @@
-﻿using System;
-using System.IO;
-using System.Threading.Tasks;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using FluentAssertions;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Shared.Configuration;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Core.Tests.Icons;
@@ -186,18 +185,7 @@ public sealed class CustomGroupIconStoreTests : IDisposable
         return path;
     }
 
-    private static BitmapSource Solid(Color color, int width, int height)
-    {
-        var visual = new DrawingVisual();
-        using (var ctx = visual.RenderOpen())
-        {
-            ctx.DrawRectangle(new SolidColorBrush(color), null, new Rect(0, 0, width, height));
-        }
-        var bitmap = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(visual);
-        bitmap.Freeze();
-        return bitmap;
-    }
+    private static BitmapSource Solid(Color color, int width, int height) => TestImages.Solid(color, width, height);
 
     private static Color Pixel(BitmapSource image, int x, int y)
     {

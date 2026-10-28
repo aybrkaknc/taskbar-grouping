@@ -1,20 +1,17 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Media.Imaging;
 using FluentAssertions;
-using Moq;
 using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Launcher.Views;
-using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Launcher.Tests.Views;
@@ -121,7 +118,7 @@ public sealed class PopupWindowSizingTests
             var oneRow = window.Height;
 
             viewModel.AddAppsAsync([@"C:\does\not\exist\app4.exe"]).GetAwaiter().GetResult();
-            PumpDispatcher(TimeSpan.FromMilliseconds(300));
+            StaThread.Pump(TimeSpan.FromMilliseconds(300));
 
             window.Height.Should().Be(oneRow + TilePx, "the fourth tile opens a second row of 96 px");
         });
@@ -133,7 +130,7 @@ public sealed class PopupWindowSizingTests
         WithPopup(appCount: 1, columns: 3, (window, viewModel, _) =>
         {
             viewModel.AddAppsAsync([@"C:\does\not\exist\Second.exe"]).GetAwaiter().GetResult();
-            PumpDispatcher(TimeSpan.FromMilliseconds(300));
+            StaThread.Pump(TimeSpan.FromMilliseconds(300));
 
             var label = FindDescendants<TextBlock>(window).Single(t => t.Text == "Second");
             label.IsVisible.Should().BeTrue();
@@ -161,20 +158,6 @@ public sealed class PopupWindowSizingTests
         }
     }
 
-    /// <summary>Runs the dispatcher for a while, so deferred layout and sizing work can happen.</summary>
-    private static void PumpDispatcher(TimeSpan duration)
-    {
-        var frame = new System.Windows.Threading.DispatcherFrame();
-        var timer = new System.Windows.Threading.DispatcherTimer { Interval = duration };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            frame.Continue = false;
-        };
-        timer.Start();
-        System.Windows.Threading.Dispatcher.PushFrame(frame);
-    }
-
     // Issue #32: past eight rows the grid used to be clipped at MaxHeight with nothing to show
     // that more apps existed.
     [Theory]
@@ -191,7 +174,7 @@ public sealed class PopupWindowSizingTests
             }
 
             // Let the layout the real popup gets from its dispatcher catch up with the size.
-            PumpDispatcher(TimeSpan.FromMilliseconds(200));
+            StaThread.Pump(TimeSpan.FromMilliseconds(200));
             var rows = (appCount + columns - 1) / columns;
             var scroller = (ScrollViewer)window.FindName("TileScroller");
 
@@ -239,7 +222,7 @@ public sealed class PopupWindowSizingTests
     /// </summary>
     private static void WithPopup(int appCount, int columns, Action<PopupWindow, PopupViewModel, Border> body)
     {
-        OnStaThread(() =>
+        StaThread.Run(() =>
         {
             var (window, viewModel, strip) = CreatePopup(appCount, columns);
             try
@@ -255,96 +238,11 @@ public sealed class PopupWindowSizingTests
         });
     }
 
-    private static (PopupWindow window, PopupViewModel viewModel, Border strip) CreatePopup(
-        int appCount,
-        int columns)
+    private static (PopupWindow window, PopupViewModel viewModel, Border strip) CreatePopup(int appCount, int columns)
     {
-        var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = columns };
-        for (var i = 0; i < appCount; i++)
-        {
-            config.Apps.Add(new AppEntry { Name = $"App {i + 1}", Path = $@"C:\does\not\exist\app{i + 1}.exe" });
-        }
-
-        var store = new Mock<IGroupConfigStore>();
-        store.Setup(s => s.LoadAsync("g1", It.IsAny<CancellationToken>())).ReturnsAsync(config);
-
-        var extractor = new Mock<IIconExtractor>();
-        extractor.Setup(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>())).Returns((BitmapSource?)null);
-
-        var cache = new Mock<IIconCache>();
-        BitmapSource? unused;
-        cache.Setup(c => c.TryGet(It.IsAny<string>(), It.IsAny<int>(), out unused)).Returns(false);
-
-        var launcher = new Mock<IProcessLauncher>();
-        launcher.Setup(l => l.Launch(It.IsAny<string>(), It.IsAny<string?>())).Returns(false);
-
-        var viewModel = new PopupViewModel(
-            store.Object,
-            extractor.Object,
-            cache.Object,
-            launcher.Object,
-            Mock.Of<IGroupSyncService>(),
-            new LauncherOptions("g1"));
-        viewModel.LoadAsync().GetAwaiter().GetResult();
-
-        // Park the popup far off any real desktop: these tests must not flash a window in
-        // front of whoever is running them.
-        var positionHelper = new Mock<ITaskbarPositionHelper>();
-        positionHelper
-            .Setup(h => h.ComputePlacement(It.IsAny<Size>(), It.IsAny<PopupPositionPreference>()))
-            .Returns(new PopupPlacement(-32000, -32000));
-
-        // Animations off so SourceInitialized takes the SnapToEndState path instead of
-        // arming a storyboard that no dispatcher loop here would ever run.
-        var window = new PopupWindow(
-            viewModel,
-            positionHelper.Object,
-            new AppSettings { EnableAnimations = false });
-
-        // Shown deliberately. An ItemsControl only realises its containers inside a real
-        // layout pass, and without one the tile grid measures to nothing — which is the
-        // whole quantity these tests are about. UpdateLayout on a window with no
-        // PresentationSource is a no-op, so there is no headless shortcut here.
-        //
-        // ShowActivated=false is load-bearing, not tidiness: an activated popup gets a
-        // Deactivated from the window manager as the test thread tears it down, and
-        // OnDeactivated calls Close() on a window that is already closing, which throws out
-        // of a WndProc and takes the whole test host with it.
-        window.ShowActivated = false;
-        window.Show();
-
+        var (window, viewModel) = TestPopup.Show(appCount, columns);
         var strip = window.FindName("ErrorStrip") as Border
             ?? throw new InvalidOperationException("PopupWindow.xaml no longer names the error strip 'ErrorStrip'.");
-
         return (window, viewModel, strip);
-    }
-
-    private static T OnStaThread<T>(Func<T> body)
-    {
-        T result = default!;
-        Exception? failure = null;
-
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                result = body();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (failure is not null)
-        {
-            throw new InvalidOperationException("STA test body failed.", failure);
-        }
-
-        return result;
     }
 }

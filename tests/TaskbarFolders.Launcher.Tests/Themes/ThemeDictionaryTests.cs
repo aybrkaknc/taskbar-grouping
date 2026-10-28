@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Xml.Linq;
 using FluentAssertions;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Launcher.Tests.Themes;
@@ -35,7 +34,7 @@ public sealed class ThemeDictionaryTests
     {
         var defined = KeysIn(themeFile);
         var referenced = DynamicResourceKeysIn(
-            Path.Combine(FindRepoRoot(), "src", "TaskbarFolders.Launcher", "Views", "PopupWindow.xaml"));
+            Path.Combine(RepoRoot.Path, "src", "TaskbarFolders.Launcher", "Views", "PopupWindow.xaml"));
 
         referenced.Should().NotBeEmpty("the popup is expected to resolve themed brushes");
         referenced.Except(defined).Should().BeEmpty($"{themeFile} must define every resource the popup resolves");
@@ -52,7 +51,7 @@ public sealed class ThemeDictionaryTests
     }
 
     private static IReadOnlyCollection<string> KeysIn(string fileName) =>
-        XDocument.Load(Path.Combine(FindRepoRoot(), "src", "TaskbarFolders.Launcher", "Themes", fileName))
+        XDocument.Load(Path.Combine(RepoRoot.Path, "src", "TaskbarFolders.Launcher", "Themes", fileName))
             .Descendants()
             .Select(e => e.Attribute(_xamlNamespace + "Key")?.Value)
             .Where(v => v is not null)
@@ -64,16 +63,4 @@ public sealed class ThemeDictionaryTests
             .Matches(File.ReadAllText(path), @"\{DynamicResource\s+([A-Za-z0-9_]+)\s*\}")
             .Select(m => m.Groups[1].Value)
             .ToHashSet(StringComparer.Ordinal);
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "TaskbarFolders.sln")))
-        {
-            dir = dir.Parent;
-        }
-
-        return dir?.FullName
-            ?? throw new InvalidOperationException("Could not locate TaskbarFolders.sln above the test assembly.");
-    }
 }

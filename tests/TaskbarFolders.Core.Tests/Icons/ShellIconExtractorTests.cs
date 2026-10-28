@@ -1,10 +1,9 @@
-﻿using System;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using TaskbarFolders.Core.Icons;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Core.Tests.Icons;
@@ -15,22 +14,10 @@ public class ShellIconExtractorTests
     private static readonly string _cmd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe");
 
     private static readonly string _icoFile = Path.Combine(
-        FindRepoRoot(),
+        RepoRoot.Path,
         "assets",
         "icons",
         "manager.ico");
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "TaskbarFolders.sln")))
-        {
-            dir = dir.Parent;
-        }
-
-        return dir?.FullName
-            ?? throw new InvalidOperationException("Could not locate TaskbarFolders.sln above the test assembly.");
-    }
 
     [Fact]
     public void ExtractIcon_ReturnsBitmap_ForNotepadExe()

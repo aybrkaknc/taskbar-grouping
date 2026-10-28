@@ -228,7 +228,16 @@ public sealed partial class PopupWindow : Window, IDisposable
         if (TileList.ItemContainerGenerator.ContainerFromIndex(index) is ContentPresenter container &&
             container.ContentTemplate?.FindName("TileButton", container) is Button tile)
         {
-            tile.Focus();
+            // Keyboard focus would activate an inactive window. Logical focus does not, and the
+            // window hands it the keyboard focus as soon as it is activated.
+            if (IsActive)
+            {
+                tile.Focus();
+            }
+            else
+            {
+                FocusManager.SetFocusedElement(this, tile);
+            }
             tile.BringIntoView();
         }
     }
@@ -563,12 +572,17 @@ public sealed partial class PopupWindow : Window, IDisposable
         _safetyTimer.Start();
     }
 
-    private void OnDeactivated(object? sender, EventArgs e)
+    internal void OnDeactivated(object? sender, EventArgs e)
     {
         // Only dismiss after the window has genuinely held activation once. A spurious
         // deactivation before first activation would otherwise close the popup before
         // the user ever saw it.
-        if (_wasActivated && DismissesOnOutsideInteraction)
+        //
+        // Not once the close is confirmed: an active window that closes (Escape, the close
+        // button, a launch) is deactivated while it is being destroyed, and Close() on a
+        // closing window throws from inside a WndProc — the launcher then exited with code 4
+        // after every such close.
+        if (_wasActivated && !_closeConfirmed && DismissesOnOutsideInteraction)
         {
             Close();
         }

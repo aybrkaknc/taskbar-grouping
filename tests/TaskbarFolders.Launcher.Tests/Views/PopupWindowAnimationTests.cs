@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -14,6 +13,7 @@ using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Launcher.Views;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Launcher.Tests.Views;
@@ -38,7 +38,7 @@ public sealed class PopupWindowAnimationTests
     [Fact]
     public void OpenAnimation_StartsFromTheStateTheFirstFramePaints()
     {
-        OnStaThread(() =>
+        StaThread.Run(() =>
         {
             var window = CreatePopup();
             try
@@ -78,7 +78,7 @@ public sealed class PopupWindowAnimationTests
     [Fact]
     public void FirstFrame_IsAlreadyVisible()
     {
-        OnStaThread(() =>
+        StaThread.Run(() =>
         {
             var window = CreatePopup();
             try
@@ -122,31 +122,5 @@ public sealed class PopupWindowAnimationTests
             new LauncherOptions("g1"));
 
         return new PopupWindow(viewModel, Mock.Of<ITaskbarPositionHelper>(), new AppSettings());
-    }
-
-    private static void OnStaThread(Action body)
-    {
-        Exception? failure = null;
-
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                body();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (failure is not null)
-        {
-            throw new InvalidOperationException("STA test body failed.", failure);
-        }
     }
 }

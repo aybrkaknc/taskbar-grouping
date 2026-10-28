@@ -1,7 +1,7 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using FluentAssertions;
 using TaskbarFolders.Core.Shortcuts;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Core.Tests.Shortcuts;
@@ -26,7 +26,7 @@ public sealed class ShortcutReaderTests : IDisposable
         _tempDir = Path.Combine(Path.GetTempPath(), "TaskbarFolders.ShortcutRead." + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_tempDir);
 
-        _iconFile = Path.Combine(FindRepoRoot(), "assets", "icons", "manager.ico");
+        _iconFile = Path.Combine(RepoRoot.Path, "assets", "icons", "manager.ico");
         _targetExe = Path.Combine(_tempDir, "FakeLauncher.exe");
         File.WriteAllBytes(_targetExe, [0x4D, 0x5A]);
     }
@@ -78,17 +78,5 @@ public sealed class ShortcutReaderTests : IDisposable
     public void TryReadAumid_ReturnsNull_ForAMissingFile()
     {
         new ShortcutReader().TryReadAumid(Path.Combine(_tempDir, "nope.lnk")).Should().BeNull();
-    }
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "TaskbarFolders.sln")))
-        {
-            dir = dir.Parent;
-        }
-
-        return dir?.FullName
-            ?? throw new InvalidOperationException("Could not locate TaskbarFolders.sln above the test assembly.");
     }
 }

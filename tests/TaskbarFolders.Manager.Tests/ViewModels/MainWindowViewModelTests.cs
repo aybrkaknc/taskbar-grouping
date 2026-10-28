@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +10,7 @@ using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Manager.ViewModels;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Manager.Tests.ViewModels;
@@ -62,13 +62,7 @@ public class MainWindowViewModelTests
             iconReader ?? Mock.Of<IGroupIconReader>());
     }
 
-    private static System.Windows.Media.Imaging.BitmapSource StubIcon()
-    {
-        var bitmap = System.Windows.Media.Imaging.BitmapSource.Create(
-            1, 1, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, new byte[4], 4);
-        bitmap.Freeze();
-        return bitmap;
-    }
+    private static System.Windows.Media.Imaging.BitmapSource StubIcon() => TestImages.Solid(System.Windows.Media.Colors.Gray, 1, 1);
 
     [Fact]
     public void Title_HasDefaultValue()

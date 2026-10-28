@@ -1,29 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using FluentAssertions;
 using TaskbarFolders.Core.Icons;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Core.Tests.Icons;
 
 public class CompositeIconGeneratorTests
 {
-    private static RenderTargetBitmap SolidIcon(Color color, int size = 64)
-    {
-        var rect = new Rect(0, 0, size, size);
-        var visual = new DrawingVisual();
-        using (var ctx = visual.RenderOpen())
-        {
-            ctx.DrawRectangle(new SolidColorBrush(color), null, rect);
-        }
-        var bmp = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
-        bmp.Render(visual);
-        bmp.Freeze();
-        return bmp;
-    }
+    private static RenderTargetBitmap SolidIcon(Color color, int size = 64) => TestImages.Solid(color, size, size);
 
     // --- ComputeTileRects geometry --------------------------------------------------
 

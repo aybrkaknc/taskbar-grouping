@@ -605,7 +605,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
 
             // Same substitution as GroupSyncService, so the preview matches the pinned tile.
             icons.Add(app.Icon
-                ?? ExtractAndCache(app.Path, PreviewSize)
+                ?? AppIcons.Load(app.Entry, PreviewSize, _extractor, _cache)
                 ?? PlaceholderIcon.Render(PreviewSize, PlaceholderIcon.NeutralColor));
         }
 
@@ -614,27 +614,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
 
     private void LoadIconInto(AppEntryViewModel app)
     {
-        app.Icon = ImageFile.TryLoad(app.IconPath) ?? ExtractAndCache(app.Path, PreviewSize);
-    }
-
-    private BitmapSource? ExtractAndCache(string path, int size)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return null;
-        }
-
-        if (_cache.TryGet(path, size, out var cached))
-        {
-            return cached;
-        }
-
-        var icon = _extractor.ExtractIcon(path, size);
-        if (icon is not null)
-        {
-            _cache.Set(path, size, icon);
-        }
-        return icon;
+        app.Icon = AppIcons.Load(app.Entry, PreviewSize, _extractor, _cache);
     }
 
     /// <inheritdoc/>

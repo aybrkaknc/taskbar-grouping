@@ -17,7 +17,6 @@
 
     <!-- Borders -->
     <SolidColorBrush x:Key="BorderSubtle" Color="#E0E0E0" />
-    <SolidColorBrush x:Key="BorderEmphasis" Color="#D0D0D0" />
 
     <!-- Accent -->
     <SolidColorBrush x:Key="AccentBrush" Color="#0078D4" />

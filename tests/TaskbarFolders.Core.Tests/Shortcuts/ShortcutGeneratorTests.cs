@@ -1,10 +1,10 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using FluentAssertions;
 using TaskbarFolders.Core.Interop;
 using TaskbarFolders.Core.Shortcuts;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Core.Tests.Shortcuts;
@@ -22,7 +22,7 @@ public sealed class ShortcutGeneratorTests : IDisposable
 
         // Use the M0 assets/icons/manager.ico as a real icon file — its existence is
         // verified by the existing icon-extractor tests.
-        var repoRoot = FindRepoRoot();
+        var repoRoot = RepoRoot.Path;
         _iconFile = Path.Combine(repoRoot, "assets", "icons", "manager.ico");
         File.Exists(_iconFile).Should().BeTrue($"the M0 manager.ico must live at {_iconFile} for shortcut-icon tests");
 
@@ -38,18 +38,6 @@ public sealed class ShortcutGeneratorTests : IDisposable
             Directory.Delete(_tempDir, recursive: true);
         }
         GC.SuppressFinalize(this);
-    }
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "TaskbarFolders.sln")))
-        {
-            dir = dir.Parent;
-        }
-
-        return dir?.FullName
-            ?? throw new InvalidOperationException("Could not locate TaskbarFolders.sln above the test assembly.");
     }
 
     [Theory]
