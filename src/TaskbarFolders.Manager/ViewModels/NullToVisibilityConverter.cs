@@ -41,23 +41,6 @@ public sealed class NotNullToVisibilityConverter : IValueConverter
         throw new NotSupportedException();
 }
 
-/// <summary>
-/// Returns <see cref="Visibility.Visible"/> when the bound string is null, empty or
-/// whitespace. Used for TextBox watermark hints.
-/// </summary>
-public sealed class StringEmptyToVisibilityConverter : IValueConverter
-{
-    /// <summary>Shared singleton instance.</summary>
-    public static readonly StringEmptyToVisibilityConverter Instance = new();
-
-    /// <inheritdoc/>
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        string.IsNullOrWhiteSpace(value as string) ? Visibility.Visible : Visibility.Collapsed;
-
-    /// <inheritdoc/>
-    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
-        throw new NotSupportedException();
-}
 
 /// <summary>
 /// Returns <see cref="Visibility.Visible"/> when the bound boolean is <see langword="true"/>.

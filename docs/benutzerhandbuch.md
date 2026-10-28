@@ -71,9 +71,9 @@ Eine neue Version installieren Sie einfach über die alte. Der Installer erkennt
 
 ## Schnelleinstieg
 
-1. **TaskbarFolders Manager** öffnen. Der Schreibcursor steht bereits im Namensfeld.
-2. Einen Namen tippen, zum Beispiel `Dev Tools`, und auf **+ Add** klicken oder `Enter` drücken.
-3. Programme in die Liste ziehen oder über **Add app…** auswählen.
+1. **TaskbarFolders Manager** öffnen.
+2. Auf **+ New group** klicken, einen Namen tippen, zum Beispiel `Dev Tools`, und `Enter` drücken.
+3. Programme auf die Registerkarte **Apps** ziehen oder über **Add apps…** auswählen.
 4. Auf **Pin to taskbar** klicken und die Rückfrage von Windows bestätigen.
 5. Auf die neue Kachel in der Taskleiste klicken — das Aufklapp-Fenster erscheint.
 

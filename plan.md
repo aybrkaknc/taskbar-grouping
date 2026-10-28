@@ -8,10 +8,9 @@ finishes it, and a change of order or scope is recorded here when it is agreed, 
 
 ## Where we are
 
-- **`develop`:** everything up to and including C3 and the removal of the per-group theme,
-  merged locally (`aaaf1f2`). **Not pushed** since the app list step; `origin/develop` lacks
-  C3 and B5.
-- **Branch:** `feature/popup-keyboard` — B3, waiting for a manual test; not pushed.
+- **`develop`:** everything up to and including B3 (popup keyboard navigation), merged locally
+  (`e9beb1e`). **Not pushed** since the app list step — pushing waits until the end, as agreed.
+- **Branch:** `chore/cleanup` — the code review before C1; not pushed.
 - **Older branches:** the stacked feature branches are all merged into `develop`; deleting them
   is part of D.
 - **Next:** C1 — grid settings, part 1.
@@ -74,7 +73,8 @@ list where they fall.
 |---|---|---|
 | C3 — per-app name, arguments and icon (upstream #29, #30); settings close on a click outside | `862bd57`, `b6470f5` | merged |
 | B5 dropped — `GroupConfig.Theme` removed (upstream #30) | `ba95eb7` | merged |
-| B3 — keyboard navigation in the popup (upstream #26) | see `git log feature/popup-keyboard` | `feature/popup-keyboard` |
+| B3 — keyboard navigation in the popup (upstream #26) | `29f37e6` | merged |
+| Code review before C1: one icon lookup (`AppIcons`), dead code and stale docs removed, shared test helpers; found and fixed the launcher's exit code 4 on closing an active popup | see `git log chore/cleanup` | `chore/cleanup` |
 | Pushed `develop` and `feature/manager-app-list` to `origin` | `1da190a`, `9f18df6` | — |
 | CI sizing test expects the window height Windows allows | `10e8698` | `develop` |
 | Adding an app in the Manager no longer closes it | `3fa414a` | merged |

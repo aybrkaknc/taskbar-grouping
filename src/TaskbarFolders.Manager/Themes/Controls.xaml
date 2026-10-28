@@ -19,7 +19,6 @@
         restart. Every key used here is defined in BOTH Light.xaml and Dark.xaml.
     -->
 
-    <sys:Double x:Key="ControlCornerRadiusValue">4</sys:Double>
     <CornerRadius x:Key="ControlCornerRadius">4</CornerRadius>
 
     <!-- Button -->
@@ -660,8 +659,8 @@
         </Setter>
     </Style>
 
-    <!-- Tooltips. The + Add button's tooltip is the only explanation of its disabled state,
-         so it has to be readable in both themes. -->
+    <!-- Tooltips. Several of them are the only explanation of a disabled control (the "Use app
+         icons" and "Use program icon" buttons), so they have to be readable in both themes. -->
     <Style TargetType="ToolTip">
         <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
         <Setter Property="Background" Value="{DynamicResource ControlBackground}" />

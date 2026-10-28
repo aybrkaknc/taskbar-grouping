@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Xml.Linq;
 using FluentAssertions;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Manager.Tests.Themes;
@@ -80,17 +79,5 @@ public sealed class ThemeDictionaryTests
     }
 
     private static string ThemePath(string fileName) =>
-        Path.Combine(FindRepoRoot(), "src", "TaskbarFolders.Manager", "Themes", fileName);
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "TaskbarFolders.sln")))
-        {
-            dir = dir.Parent;
-        }
-
-        return dir?.FullName
-            ?? throw new InvalidOperationException("Could not locate TaskbarFolders.sln above the test assembly.");
-    }
+        Path.Combine(RepoRoot.Path, "src", "TaskbarFolders.Manager", "Themes", fileName);
 }

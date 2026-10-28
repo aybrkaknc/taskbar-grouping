@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -14,24 +12,14 @@ using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Manager.ViewModels;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Manager.Tests.ViewModels;
 
 public class GroupEditorViewModelTests
 {
-    private static BitmapSource StubIcon()
-    {
-        var bmp = new RenderTargetBitmap(32, 32, 96, 96, PixelFormats.Pbgra32);
-        var visual = new DrawingVisual();
-        using (var ctx = visual.RenderOpen())
-        {
-            ctx.DrawRectangle(Brushes.Red, null, new Rect(0, 0, 32, 32));
-        }
-        bmp.Render(visual);
-        bmp.Freeze();
-        return bmp;
-    }
+    private static System.Windows.Media.Imaging.BitmapSource StubIcon() => TestImages.Solid(System.Windows.Media.Colors.Red);
 
     private static (GroupEditorViewModel sut,
                     Mock<IIconExtractor> extractor,

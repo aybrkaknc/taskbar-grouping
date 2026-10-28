@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -9,6 +7,7 @@ using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using FluentAssertions;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Manager.Tests.Themes;
@@ -32,7 +31,7 @@ public sealed class ControlStyleTests
     [Fact]
     public void ControlsDictionary_Parses()
     {
-        var keys = OnStaThread(() =>
+        var keys = StaThread.Run(() =>
         {
             var dictionary = LoadControls();
             var found = new List<string>();
@@ -62,7 +61,7 @@ public sealed class ControlStyleTests
     [InlineData(typeof(TabItem))]
     public void EveryStyledControl_HasAnImplicitStyleThatApplies(Type controlType)
     {
-        OnStaThread(() =>
+        StaThread.Run(() =>
         {
             var dictionary = LoadControls();
 
@@ -95,7 +94,7 @@ public sealed class ControlStyleTests
     {
         // WPF's own ContextMenu template draws a light icon gutter down the left edge in fixed
         // colours; in dark mode the header's "more" menu showed it as a white strip.
-        var (gutter, expected) = OnStaThread(() =>
+        var (gutter, expected) = StaThread.Run(() =>
         {
             var theme = LoadTheme(themeFile);
             var resources = new ResourceDictionary();
@@ -131,7 +130,7 @@ public sealed class ControlStyleTests
     {
         // WPF's own TabControl template paints white tab faces and a white content box in
         // fixed colours. The editor's Apps/Appearance tabs sit on the window background.
-        var (contentArea, tabFace, indicatorShown, accent, underline, hasContentHost) = OnStaThread(() =>
+        var (contentArea, tabFace, indicatorShown, accent, underline, hasContentHost) = StaThread.Run(() =>
         {
             var theme = LoadTheme(themeFile);
             var resources = new ResourceDictionary();
@@ -192,7 +191,7 @@ public sealed class ControlStyleTests
     {
         // Set on the TabItem, the header's size and weight were inherited by everything on the
         // tab; a Margin on it was taken out of the label's width by TabPanel ("Ap" for "Apps").
-        var (contentWeight, contentSize, defaultSize, clipped) = OnStaThread(() =>
+        var (contentWeight, contentSize, defaultSize, clipped) = StaThread.Run(() =>
         {
             var resources = new ResourceDictionary();
             resources.MergedDictionaries.Add(LoadTheme("Dark.xaml"));
@@ -225,55 +224,14 @@ public sealed class ControlStyleTests
     private static ResourceDictionary LoadTheme(string fileName)
     {
         using var stream = File.OpenRead(Path.Combine(
-            FindRepoRoot(), "src", "TaskbarFolders.Manager", "Themes", fileName));
+            RepoRoot.Path, "src", "TaskbarFolders.Manager", "Themes", fileName));
         return (ResourceDictionary)XamlReader.Load(stream);
     }
 
     private static ResourceDictionary LoadControls()
     {
         using var stream = File.OpenRead(Path.Combine(
-            FindRepoRoot(), "src", "TaskbarFolders.Manager", "Themes", "Controls.xaml"));
+            RepoRoot.Path, "src", "TaskbarFolders.Manager", "Themes", "Controls.xaml"));
         return (ResourceDictionary)XamlReader.Load(stream);
-    }
-
-    private static T OnStaThread<T>(Func<T> body)
-    {
-        T result = default!;
-        Exception? failure = null;
-
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                result = body();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (failure is not null)
-        {
-            throw new InvalidOperationException("STA test body failed.", failure);
-        }
-
-        return result;
-    }
-
-    private static string FindRepoRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "TaskbarFolders.sln")))
-        {
-            dir = dir.Parent;
-        }
-
-        return dir?.FullName
-            ?? throw new InvalidOperationException("Could not locate TaskbarFolders.sln above the test assembly.");
     }
 }

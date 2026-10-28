@@ -1,20 +1,16 @@
-﻿using System;
-using System.Diagnostics;
-using System.Threading;
+﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using FluentAssertions;
-using Moq;
 using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Launcher.Views;
-using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Launcher.Tests.Views;
@@ -34,7 +30,7 @@ public sealed class PopupWindowCloseTests
     [Fact]
     public void Close_WithAnimationsOff_ClosesAtOnce()
     {
-        var closed = OnStaThread(() =>
+        var closed = StaThread.Run(() =>
         {
             var window = CreatePopup(enableAnimations: false);
             var wasClosed = false;
@@ -48,10 +44,53 @@ public sealed class PopupWindowCloseTests
         closed.Should().BeTrue("with animations off there is nothing to wait for");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Deactivation_WhileTheWindowIsBeingDestroyed_IsIgnored(bool enableAnimations)
+    {
+        // An active popup closed by Escape, its close button or a launch is deactivated by
+        // Windows while it is being destroyed. OnDeactivated then called Close() on a closing
+        // window, which threw from the WndProc: exit code 4 in the launcher log after such
+        // closes, and a crashed test host once the first tile took the focus.
+        var failure = StaThread.Run(() =>
+        {
+            var window = CreatePopup(enableAnimations);
+            typeof(PopupWindow)
+                .GetField("_wasActivated", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .SetValue(window, true);
+
+            // Raised from inside the real close, after the popup's own OnClosing has run.
+            var closing = false;
+            window.Closing += (_, e) =>
+            {
+                if (!e.Cancel)
+                {
+                    closing = true;
+                    window.OnDeactivated(window, EventArgs.Empty);
+                }
+            };
+
+            try
+            {
+                window.Close();
+                return StaThread.PumpUntil(() => closing, TimeSpan.FromSeconds(5))
+                    ? null
+                    : "the window never reached its real close";
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ex.Message;
+            }
+        });
+
+        failure.Should().BeNull();
+    }
+
     [Fact]
     public void Close_WithAnimationsOn_FadesFirstAndThenCloses()
     {
-        var (closedAtOnce, stillVisible, closedAfterFade, elapsedMs) = OnStaThread(() =>
+        var (closedAtOnce, stillVisible, closedAfterFade, elapsedMs) = StaThread.Run(() =>
         {
             var window = CreatePopup(enableAnimations: true);
             var closed = false;
@@ -88,7 +127,7 @@ public sealed class PopupWindowCloseTests
     [Fact]
     public void Escape_ClosesThePopup()
     {
-        var closed = OnStaThread(() =>
+        var closed = StaThread.Run(() =>
         {
             var window = CreatePopup(enableAnimations: false);
             var wasClosed = false;
@@ -110,7 +149,7 @@ public sealed class PopupWindowCloseTests
     [Fact]
     public void Escape_LeavesEditModeFirst_ThenCloses()
     {
-        var (editingAfterFirst, closedAfterFirst, closedAfterSecond) = OnStaThread(() =>
+        var (editingAfterFirst, closedAfterFirst, closedAfterSecond) = StaThread.Run(() =>
         {
             var window = CreatePopup(enableAnimations: false);
             var viewModel = (PopupViewModel)window.DataContext;
@@ -134,7 +173,7 @@ public sealed class PopupWindowCloseTests
     [Fact]
     public void Pinned_StaysOpenAfterALaunch_AndIgnoresOutsideInteraction_ButEscapeStillCloses()
     {
-        var (dismissesWhilePinned, closedByLaunch, dismissesUnpinned, closedByEscape) = OnStaThread(() =>
+        var (dismissesWhilePinned, closedByLaunch, dismissesUnpinned, closedByEscape) = StaThread.Run(() =>
         {
             var window = CreatePopup(enableAnimations: false, launchSucceeds: true);
             var viewModel = (PopupViewModel)window.DataContext;
@@ -163,7 +202,7 @@ public sealed class PopupWindowCloseTests
     [Fact]
     public void Unpinned_ClosesAfterALaunch()
     {
-        var closed = OnStaThread(() =>
+        var closed = StaThread.Run(() =>
         {
             var window = CreatePopup(enableAnimations: false, launchSucceeds: true);
             var viewModel = (PopupViewModel)window.DataContext;
@@ -202,74 +241,6 @@ public sealed class PopupWindowCloseTests
             .Should().Be(expected);
     }
 
-    private static PopupWindow CreatePopup(bool enableAnimations, bool launchSucceeds = false)
-    {
-        var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = 3 };
-        config.Apps.Add(new AppEntry { Name = "App 1", Path = @"C:\does\not\exist\app1.exe" });
-
-        var store = new Mock<IGroupConfigStore>();
-        store.Setup(s => s.LoadAsync("g1", It.IsAny<CancellationToken>())).ReturnsAsync(config);
-
-        var extractor = new Mock<IIconExtractor>();
-        extractor.Setup(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>())).Returns((BitmapSource?)null);
-
-        var cache = new Mock<IIconCache>();
-        BitmapSource? unused;
-        cache.Setup(c => c.TryGet(It.IsAny<string>(), It.IsAny<int>(), out unused)).Returns(false);
-
-        var viewModel = new PopupViewModel(
-            store.Object,
-            extractor.Object,
-            cache.Object,
-            Mock.Of<IProcessLauncher>(l => l.Launch(It.IsAny<string>(), It.IsAny<string?>()) == launchSucceeds),
-            Mock.Of<IGroupSyncService>(),
-            new LauncherOptions("g1"));
-        viewModel.LoadAsync().GetAwaiter().GetResult();
-
-        // Off any real desktop, so running the suite never flashes a window.
-        var positionHelper = new Mock<ITaskbarPositionHelper>();
-        positionHelper
-            .Setup(h => h.ComputePlacement(It.IsAny<Size>(), It.IsAny<PopupPositionPreference>()))
-            .Returns(new PopupPlacement(-32000, -32000));
-
-        var window = new PopupWindow(
-            viewModel,
-            positionHelper.Object,
-            new AppSettings { EnableAnimations = enableAnimations });
-
-        // ShowActivated=false: see PopupWindowSizingTests for why an activated popup takes the
-        // test host down during teardown.
-        window.ShowActivated = false;
-        window.Show();
-        return window;
-    }
-
-    private static T OnStaThread<T>(Func<T> body)
-    {
-        T result = default!;
-        Exception? failure = null;
-
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                result = body();
-            }
-            catch (Exception ex)
-            {
-                failure = ex;
-            }
-        });
-
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-
-        if (failure is not null)
-        {
-            throw new InvalidOperationException("STA test body failed.", failure);
-        }
-
-        return result;
-    }
+    private static PopupWindow CreatePopup(bool enableAnimations, bool launchSucceeds = false) =>
+        TestPopup.Show(enableAnimations: enableAnimations, launchSucceeds: launchSucceeds).Window;
 }

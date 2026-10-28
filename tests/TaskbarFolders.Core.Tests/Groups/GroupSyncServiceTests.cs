@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Linq;
+﻿using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
@@ -11,6 +9,7 @@ using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Core.Tests.Groups;
@@ -67,18 +66,7 @@ public sealed class GroupSyncServiceTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private static BitmapSource StubIcon()
-    {
-        var visual = new System.Windows.Media.DrawingVisual();
-        using (var ctx = visual.RenderOpen())
-        {
-            ctx.DrawRectangle(System.Windows.Media.Brushes.Magenta, null, new System.Windows.Rect(0, 0, 32, 32));
-        }
-        var bmp = new RenderTargetBitmap(32, 32, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
-        bmp.Render(visual);
-        bmp.Freeze();
-        return bmp;
-    }
+    private static System.Windows.Media.Imaging.BitmapSource StubIcon() => TestImages.Solid(System.Windows.Media.Colors.Magenta);
 
     private GroupSyncService CreateSut() => new(
         _paths,

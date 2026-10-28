@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -13,25 +12,14 @@ using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
+using TaskbarFolders.TestSupport;
 using Xunit;
 
 namespace TaskbarFolders.Launcher.Tests.ViewModels;
 
 public class PopupViewModelTests
 {
-    private static BitmapSource StubIcon()
-    {
-        // RenderTargetBitmap is freezable and can be created on a non-UI thread for tests.
-        var bmp = new RenderTargetBitmap(32, 32, 96, 96, PixelFormats.Pbgra32);
-        var visual = new DrawingVisual();
-        using (var ctx = visual.RenderOpen())
-        {
-            ctx.DrawRectangle(Brushes.Red, null, new Rect(0, 0, 32, 32));
-        }
-        bmp.Render(visual);
-        bmp.Freeze();
-        return bmp;
-    }
+    private static System.Windows.Media.Imaging.BitmapSource StubIcon() => TestImages.Solid(System.Windows.Media.Colors.Red);
 
     private static (PopupViewModel sut,
                     Mock<IGroupConfigStore> store,
