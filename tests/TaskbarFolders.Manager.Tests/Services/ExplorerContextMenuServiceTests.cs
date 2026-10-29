@@ -21,6 +21,9 @@ public sealed class ExplorerContextMenuServiceTests
 {
     private const string Launcher = @"C:\Apps\TaskbarFolders\Launcher\TaskbarFolders.Launcher.exe";
 
+    // The Manager's own exe carries manager.ico; the submenu shows that, not the launcher's icon.
+    private const string ManagerExe = @"C:\Apps\TaskbarFolders\Manager\TaskbarFolders.Manager.exe";
+
     private sealed class RecordingRegistry : IRegistryWriter
     {
         public List<string> Deleted { get; } = [];
@@ -70,7 +73,7 @@ public sealed class ExplorerContextMenuServiceTests
     }
 
     private ExplorerContextMenuService CreateSut() =>
-        new(_registry, _groups.Object, _settings.Object, _launcher.Object);
+        new(_registry, _groups.Object, _settings.Object, _launcher.Object, iconSource: ManagerExe);
 
     private static List<GroupConfig> Groups(params (string Id, string Name)[] groups) =>
         groups.Select(g => new GroupConfig { Id = g.Id, GroupName = g.Name }).ToList();
@@ -85,7 +88,7 @@ public sealed class ExplorerContextMenuServiceTests
             var root = $@"Software\Classes\{fileClass}\shell\TaskbarFolders.Groups";
             _registry.Values[(root, "MUIVerb")].Should().Be("Taskbar Groups");
             _registry.Values[(root, "SubCommands")].Should().BeEmpty("an empty SubCommands makes the verb a cascading menu");
-            _registry.Values[(root, "Icon")].Should().Be(Launcher + ",0");
+            _registry.Values[(root, "Icon")].Should().Be(ManagerExe + ",0", "the Manager's exe carries manager.ico");
 
             _registry.Values[($@"{root}\shell\01-a1", "MUIVerb")].Should().Be("browsers");
             _registry.Values[($@"{root}\shell\02-c1", "MUIVerb")].Should().Be("Dev && Test", "a lone & would turn into an accelerator");

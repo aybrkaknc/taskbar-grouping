@@ -39,17 +39,21 @@ public sealed class ExplorerContextMenuService : IDisposable
     private readonly IAppSettingsStore _settings;
     private readonly ILauncherPathResolver _launcher;
     private readonly ILogger<ExplorerContextMenuService>? _logger;
+    private readonly string _iconSource;
 
     // One refresh at a time, reading and writing together: see RefreshAsync.
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
     /// <summary>Initializes a new instance.</summary>
+    // iconSource: the executable whose icon the submenu shows. It defaults to the running Manager,
+    // which carries manager.ico and, unlike that file, is part of every installed copy.
     public ExplorerContextMenuService(
         IRegistryWriter registry,
         IGroupConfigStore groups,
         IAppSettingsStore settings,
         ILauncherPathResolver launcher,
-        ILogger<ExplorerContextMenuService>? logger = null)
+        ILogger<ExplorerContextMenuService>? logger = null,
+        string? iconSource = null)
     {
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(groups);
@@ -61,6 +65,7 @@ public sealed class ExplorerContextMenuService : IDisposable
         _settings = settings;
         _launcher = launcher;
         _logger = logger;
+        _iconSource = iconSource ?? Environment.ProcessPath ?? string.Empty;
     }
 
     /// <inheritdoc/>
@@ -130,7 +135,7 @@ public sealed class ExplorerContextMenuService : IDisposable
             var root = MenuKey(fileClass);
             _registry.SetString(root, "MUIVerb", MenuCaption);
             _registry.SetString(root, "SubCommands", string.Empty);
-            _registry.SetString(root, "Icon", $"{launcherPath},0");
+            _registry.SetString(root, "Icon", $"{(_iconSource.Length > 0 ? _iconSource : launcherPath)},0");
 
             for (var i = 0; i < ordered.Count; i++)
             {
