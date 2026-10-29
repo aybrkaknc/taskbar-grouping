@@ -227,14 +227,53 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Off while the group is on the taskbar: pinning a pinned app again made
+                             Windows redraw its tile blank. A disabled button shows no tooltip
+                             unless ShowOnDisabled is set, so the reason stays reachable. -->
                         <Button Style="{StaticResource AccentButton}"
                                 AutomationProperties.Name="Pin to taskbar"
                                 Padding="14,6"
                                 Command="{Binding PinToTaskbarCommand}"
-                                ToolTip="Windows asks you to allow it. If your Windows does not allow apps to pin themselves, the shortcut folder opens instead: right-click the .lnk there and choose Pin to taskbar.">
+                                ToolTipService.ShowOnDisabled="True">
+                            <Button.ToolTip>
+                                <TextBlock>
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Windows asks you to allow it. If your Windows does not allow apps to pin themselves, the shortcut folder opens instead: right-click the .lnk there and choose Pin to taskbar." />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                    <Setter Property="Text" Value="Already on the taskbar. To pin it again, right-click the tile and choose Unpin from taskbar first." />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Button.ToolTip>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE718;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center" />
-                                <TextBlock Text="Pin to taskbar" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="&#xE718;" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                    <Setter Property="Text" Value="&#xE73E;" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Margin="8,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="Pin to taskbar" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsPinned}" Value="True">
+                                                    <Setter Property="Text" Value="Pinned" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </StackPanel>
                         </Button>
                         <Button x:Name="MoreButton"

@@ -14,6 +14,10 @@ public interface IPinnedTileRemover
     /// <returns>How many tiles were removed, and the paths of those the shell refused.</returns>
     PinnedTileRemoval Unpin(string groupId);
 
+    /// <summary>Whether a taskbar tile carrying the AUMID of <paramref name="groupId"/> exists. Reads only; never throws.</summary>
+    /// <param name="groupId">Group identifier.</param>
+    bool IsPinned(string groupId);
+
     /// <summary>
     /// Lists the pinned tiles of groups that no longer exist: a group AUMID with no
     /// <c>groups/&lt;id&gt;.json</c>. Reads only; never throws.

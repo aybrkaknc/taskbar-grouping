@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Deleting a group unpins its taskbar tile.** The tile used to stay behind and open an empty "No apps to launch" popup. The confirmation now says the tile goes too; afterwards the Manager asks whether to restart Explorer so the taskbar redraws, and says so if Windows refuses to unpin the tile. Tiles left by groups deleted with earlier versions are listed once, the first time a group is deleted. Unpinning now also falls back to the shell's menu item when the verb is refused by name, which the uninstaller benefits from too.
+- **A pinned group cannot be pinned again.** While a group is on the taskbar, *Pin to taskbar* reads *Pinned* and is turned off; its tooltip says how to pin it again. Pinning an already pinned group made Windows redraw its tile with a blank icon. The button turns back on when the Manager is switched to after the tile was unpinned by hand.
 - **Explorer's "Taskbar Groups" menu is rewritten one change at a time.** Deleting or creating a group could start two rewrites at once; one then failed with a "registry key does not exist" warning in the Manager's log, and the menu could be left listing the groups as they were a moment before.
 
 ## [0.5.0] - 2026-10-28

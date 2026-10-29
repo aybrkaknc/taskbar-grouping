@@ -104,6 +104,18 @@ public sealed class PinnedTileRemoverTests : IDisposable
     }
 
     [Fact]
+    public void IsPinned_SaysWhetherTheGroupHasATileOnTheTaskbar()
+    {
+        Pin("Work.lnk", GroupAumid.For("a"));
+        Pin("Chrome.lnk", "Chrome");
+        var sut = CreateSut();
+
+        sut.IsPinned("a").Should().BeTrue();
+        sut.IsPinned("b").Should().BeFalse("a foreign pin is not a group's tile");
+        _unpinner.Verify(u => u.TryUnpin(It.IsAny<string>()), Times.Never, "asking is not unpinning");
+    }
+
+    [Fact]
     public void FindOrphans_ListsGroupTilesWhoseGroupIsGone()
     {
         Group("a");

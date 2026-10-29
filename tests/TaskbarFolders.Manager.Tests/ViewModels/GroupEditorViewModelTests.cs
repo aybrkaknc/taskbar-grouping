@@ -8,6 +8,7 @@ using FluentAssertions;
 using Moq;
 using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
+using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Manager.ViewModels;
 using TaskbarFolders.Shared.Configuration;
@@ -39,7 +40,9 @@ public class GroupEditorViewModelTests
                     Mock<IGroupSyncService> syncService,
                     Mock<IAppDataPathProvider> paths,
                     Mock<IUserConfirmation> userConfirmation,
-                    Mock<IPinToTaskbarService> pinService) CreateSutWithCollaborators(Mock<ICustomGroupIconStore>? customIcons = null)
+                    Mock<IPinToTaskbarService> pinService) CreateSutWithCollaborators(
+        Mock<ICustomGroupIconStore>? customIcons = null,
+        Mock<IPinnedTileRemover>? pins = null)
     {
         var extractor = new Mock<IIconExtractor>();
         extractor.Setup(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>())).Returns(StubIcon());
@@ -72,8 +75,58 @@ public class GroupEditorViewModelTests
             paths.Object,
             userConfirmation.Object,
             pinService.Object,
-            (customIcons ?? new Mock<ICustomGroupIconStore>()).Object);
+            (customIcons ?? new Mock<ICustomGroupIconStore>()).Object,
+            (pins ?? new Mock<IPinnedTileRemover>()).Object);
         return (sut, extractor, composer, cache, store, syncService, paths, userConfirmation, pinService);
+    }
+
+    [Fact]
+    public void Bind_ToAPinnedGroup_ShowsItPinned_AndTurnsThePinButtonOff()
+    {
+        // Pinning a pinned group again made Windows redraw its tile with a blank icon.
+        var pins = new Mock<IPinnedTileRemover>();
+        pins.Setup(p => p.IsPinned("g")).Returns(true);
+        var (sut, _, _, _, _, _, _, _, _) = CreateSutWithCollaborators(pins: pins);
+
+        sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g" }));
+
+        sut.IsPinned.Should().BeTrue();
+        sut.PinToTaskbarCommand.CanExecute(null).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Bind_ToAnUnpinnedGroup_LeavesThePinButtonOn()
+    {
+        var (sut, _, _, _, _, _, _, _, _) = CreateSutWithCollaborators();
+
+        sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g" }));
+
+        sut.IsPinned.Should().BeFalse();
+        sut.PinToTaskbarCommand.CanExecute(null).Should().BeTrue();
+    }
+
+    [Fact]
+    public void RefreshPinState_TurnsThePinButtonBackOn_AfterTheTileWasRemovedByHand()
+    {
+        var pins = new Mock<IPinnedTileRemover>();
+        pins.SetupSequence(p => p.IsPinned("g")).Returns(true).Returns(false);
+        var (sut, _, _, _, _, _, _, _, _) = CreateSutWithCollaborators(pins: pins);
+        sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g" }));
+
+        sut.RefreshPinState();
+
+        sut.IsPinned.Should().BeFalse();
+        sut.PinToTaskbarCommand.CanExecute(null).Should().BeTrue();
+    }
+
+    [Fact]
+    public void PinButton_IsOff_WithNoGroupSelected()
+    {
+        var (sut, _, _, _, _, _, _, _, _) = CreateSutWithCollaborators();
+
+        sut.Bind(null);
+
+        sut.PinToTaskbarCommand.CanExecute(null).Should().BeFalse();
     }
 
     [Fact]
@@ -536,7 +589,9 @@ public class GroupEditorViewModelTests
 
         try
         {
-            var (sut, _, _, _, _, syncService, paths, userConfirmation, pinService) = CreateSutWithCollaborators();
+            var pins = new Mock<IPinnedTileRemover>();
+            pins.SetupSequence(p => p.IsPinned("g")).Returns(false).Returns(true);
+            var (sut, _, _, _, _, syncService, paths, userConfirmation, pinService) = CreateSutWithCollaborators(pins: pins);
             paths.Setup(p => p.GetGroupShortcutFile("g")).Returns(shortcutPath);
             paths.Setup(p => p.ShortcutsDirectory).Returns(shortcutsDir);
             syncService
@@ -554,6 +609,8 @@ public class GroupEditorViewModelTests
             syncService.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Once);
             pinService.Verify(p => p.PinAsync("g", It.IsAny<CancellationToken>()), Times.Once);
             userConfirmation.Verify(u => u.Notify("Pinned", It.IsAny<string>()), Times.Once);
+            sut.IsPinned.Should().BeTrue("the tile just landed");
+            sut.PinToTaskbarCommand.CanExecute(null).Should().BeFalse("a second press made Windows blank the tile's icon");
         }
         finally
         {

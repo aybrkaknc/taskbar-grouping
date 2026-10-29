@@ -53,6 +53,10 @@ public sealed class PinnedTileRemover : IPinnedTileRemover
     }
 
     /// <inheritdoc/>
+    public bool IsPinned(string groupId) =>
+        GroupTiles().Any(t => string.Equals(t.GroupId, groupId, StringComparison.OrdinalIgnoreCase));
+
+    /// <inheritdoc/>
     public IReadOnlyList<string> FindOrphans()
     {
         // Known ids come from the file names, as in the Start menu anchor sweep: a group whose

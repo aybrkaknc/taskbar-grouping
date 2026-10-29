@@ -227,6 +227,7 @@ The read counterpart to `IShortcutGenerator`. Returns `null` â€” never throws â€
 
 ```csharp
 PinnedTileRemoval Unpin(string groupId);
+bool IsPinned(string groupId);
 IReadOnlyList<string> FindOrphans();
 
 public sealed record PinnedTileRemoval(int Removed, IReadOnlyList<string> Left) { bool Found { get; } }

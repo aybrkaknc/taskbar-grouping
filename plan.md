@@ -66,12 +66,21 @@ decided with the user one at a time.
   focus to the list (`GroupList.Focus()`); Enter does not. Proposed: Enter commits and then moves
   focus to the list, as Escape already does, so the box visibly lets go. Decisions pending: see the
   question list in the chat on 2026-10-29.
-- [ ] **The Pin to taskbar button does not pin on this machine.** Seen in the smoke test. The
-  Manager runs `Launcher.exe --pin-mode` and gets exit code 2 because
-  `TaskbarManager.IsPinningAllowed=false`, then opens the Explorer fallback
-  (`GroupEditorViewModel`, "Pin unsupported on this Windows build/SKU"). The user pins by hand
-  instead. Needs `IsPinningAllowed` investigated on this SKU/policy, and a clear message in the
-  button, not only a fallback. Tie to the existing `IsPinningAllowed` issue (not yet opened).
+- [ ] **The Pin to taskbar button does not pin on this machine.** Seen in the smoke test: exit
+  code 2, `TaskbarManager.IsPinningAllowed=false`, Explorer fallback. **Cause found 2026-10-29:**
+  Windows notifications were off (`HKCU\…\PushNotifications\ToastEnabled = 0`); Windows shows the
+  pin request as a notification, and Microsoft's "Pin your app to the taskbar" lists notifications
+  among the conditions for `IsPinningAllowed`. With them on, the button pinned the group (exit 0,
+  verified by AUMID). No group policy, and this build needs no Limited Access Feature token.
+  Decided with the user: be ready for every case without ever pinning silently.
+  - [x] **A pinned group can be pinned again, blanking its tile's icon.** Pressing the button on a
+    pinned group made Windows redraw the tile blank (fixed by an Explorer restart). Now the button
+    reads *Pinned* and is off while a tile with the group's AUMID exists
+    (`IPinnedTileRemover.IsPinned`), re-checked on selection, after a pin and on window activation.
+  - [ ] **Explain why pinning is unavailable and offer what works** — notifications off → offer
+    `ms-settings:notifications` or the manual way; LAF token required (older Windows 11) or group
+    policy → say so, manual way; unknown → manual way; the manual way opens the shortcut folder with
+    the shortcut selected. Plan agreed; not started.
 - [x] **Explorer menu warning recurs on group creation/deletion** — the same race as above, fixed
   with it.
 - [ ] **Deleting a group logs a warning when `icons\custom\` does not exist.** Seen on

@@ -141,6 +141,8 @@ Eine Gruppe muss mindestens ein Programm enthalten. Eine leere Gruppe erzeugt we
 
 Klicken Sie auf **Pin to taskbar**. Windows zeigt daraufhin eine eigene Rückfrage, ob das Anheften erlaubt ist. Bestätigen Sie sie, erscheint die Kachel.
 
+Solange die Gruppe in der Taskleiste liegt, heißt der Knopf **Pinned** und ist ausgeschaltet — eine angeheftete Gruppe lässt sich nicht ein zweites Mal anheften. Lösen Sie die Kachel selbst, ist der Knopf wieder aktiv, sobald Sie zum Manager zurückwechseln.
+
 Diese Rückfrage kommt von Windows und lässt sich weder überspringen noch automatisieren. Wenn Sie sie abbrechen, wird nichts angeheftet.
 
 Anschließend prüft der Manager nach, ob tatsächlich eine Kachel entstanden ist, statt sich auf die Rückmeldung von Windows zu verlassen. Sollte der Pin gemeldet werden, ohne dass etwas erscheint, erhalten Sie die Meldung **Pin not confirmed** und der Verknüpfungsordner öffnet sich zum Anheften von Hand. Ihnen wird also nie „angeheftet" gemeldet, wenn nichts angeheftet wurde.

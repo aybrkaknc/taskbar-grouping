@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
+using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
@@ -51,6 +52,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     private readonly IUserConfirmation _userConfirmation;
     private readonly IPinToTaskbarService _pinService;
     private readonly ICustomGroupIconStore _customIcons;
+    private readonly IPinnedTileRemover _pins;
     private readonly ILogger<GroupEditorViewModel>? _logger;
 
     private GroupListItemViewModel? _boundItem;
@@ -71,6 +73,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         IUserConfirmation userConfirmation,
         IPinToTaskbarService pinService,
         ICustomGroupIconStore customIcons,
+        IPinnedTileRemover pins,
         ILogger<GroupEditorViewModel>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(extractor);
@@ -82,6 +85,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         ArgumentNullException.ThrowIfNull(userConfirmation);
         ArgumentNullException.ThrowIfNull(pinService);
         ArgumentNullException.ThrowIfNull(customIcons);
+        ArgumentNullException.ThrowIfNull(pins);
 
         _extractor = extractor;
         _composer = composer;
@@ -92,8 +96,29 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         _userConfirmation = userConfirmation;
         _pinService = pinService;
         _customIcons = customIcons;
+        _pins = pins;
         _logger = logger;
     }
+
+    /// <summary>
+    /// Whether the bound group already has a tile on the taskbar. While it has, Pin to taskbar
+    /// is off: asking Windows to pin a pinned app again redrew the tile with a blank icon.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PinToTaskbarCommand))]
+    private bool _isPinned;
+
+    /// <summary>
+    /// Re-reads whether the bound group is on the taskbar — the user may have pinned or unpinned
+    /// it by hand while the Manager was in the background.
+    /// </summary>
+    public void RefreshPinState()
+    {
+        IsPinned = _boundItem is not null && _pins.IsPinned(_boundItem.Id);
+        PinToTaskbarCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanPinToTaskbar() => _boundItem is not null && !IsPinned;
 
     /// <summary>
     /// Raised after the editor has synced a group, which may have given it a new icon file.
@@ -164,6 +189,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
 
         BoundItem = item;
         HasCustomIcon = item is not null && _customIcons.Exists(item.Config.Id);
+        RefreshPinState();
         if (item is null)
         {
             CompositeIconPreview = null;
@@ -465,7 +491,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         GroupSynced?.Invoke(this, item);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanPinToTaskbar))]
     private async Task PinToTaskbarAsync()
     {
         if (_boundItem is null)
@@ -483,6 +509,9 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
 
         var result = await _pinService.PinAsync(_boundItem.Id).ConfigureAwait(true);
         _logger?.LogInformation("PinToTaskbar for {GroupId} returned {Result}.", _boundItem.Id, result);
+
+        // Whatever Windows answered, the pinned folder says what is on the taskbar now.
+        RefreshPinState();
 
         switch (result)
         {

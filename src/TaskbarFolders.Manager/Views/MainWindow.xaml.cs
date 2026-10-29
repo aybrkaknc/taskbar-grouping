@@ -46,6 +46,9 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel vm)
         {
             await vm.RefreshFromStoreAsync().ConfigureAwait(true);
+
+            // A tile pinned or unpinned by hand meanwhile turns Pin to taskbar on or off.
+            vm.Editor.RefreshPinState();
         }
     }
 
