@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -48,6 +49,7 @@ public sealed partial class PopupWindow : Window, IDisposable
     private readonly AppSettings _settings;
     private readonly bool _useSystemBackdrop;
     private OutsideClickWatcher? _outsideClicks;
+    private TileReorderDrag? _reorder;
 
     // True while a dialog owned by the popup (the add-apps picker) is open. Clicks in it land
     // outside the popup and it takes the focus, so every dismissal trigger has to stand down.
@@ -87,6 +89,9 @@ public sealed partial class PopupWindow : Window, IDisposable
         _viewModel = viewModel;
         _positionHelper = positionHelper;
         _settings = settings;
+
+        // In edit mode a tile can be dragged to another place in the grid.
+        _reorder = new TileReorderDrag(TileList, TileScroller, viewModel, settings.EnableAnimations);
         DataContext = viewModel;
 
         // A system backdrop is composed by DWM behind the window, and DWM never paints one
@@ -245,7 +250,13 @@ public sealed partial class PopupWindow : Window, IDisposable
         {
             e.Handled = true;
 
-            // Escape backs out one level: out of edit mode first, then out of the popup.
+            // Escape backs out one level: out of a drag first (the tiles go back), then out of
+            // edit mode, then out of the popup.
+            if (_reorder?.Cancel() == true)
+            {
+                return;
+            }
+
             if (_viewModel.IsEditing)
             {
                 _viewModel.IsEditing = false;
@@ -403,6 +414,12 @@ public sealed partial class PopupWindow : Window, IDisposable
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(PopupViewModel.IsEditing))
+        {
+            ShowHeaderButtons(!_viewModel.IsEditing);
+            return;
+        }
+
         if (e.PropertyName is not (nameof(PopupViewModel.LastError) or nameof(PopupViewModel.IsUnavailable)))
         {
             return;
@@ -410,6 +427,87 @@ public sealed partial class PopupWindow : Window, IDisposable
 
         // Resize only — do not re-run the open animation after the window is already shown.
         ApplySizeAndPlacement();
+    }
+
+    /// <summary>
+    /// In edit mode only the pencil stays in the header: add, pin and close fade and slide out,
+    /// and come back when editing ends — at once when animations are off. They are hidden, not
+    /// collapsed, so the pencil keeps its place; hidden also takes them out of the tab order and
+    /// of UI Automation.
+    /// </summary>
+    private void ShowHeaderButtons(bool show)
+    {
+        SlidePencil(toTheEnd: !show);
+
+        foreach (var button in new UIElement[] { AddAppsButton, PinButton, CloseButton })
+        {
+            button.IsHitTestVisible = show;
+            var slide = button.RenderTransform as TranslateTransform ?? new TranslateTransform();
+            button.RenderTransform = slide;
+
+            if (!_settings.EnableAnimations)
+            {
+                button.BeginAnimation(OpacityProperty, null);
+                slide.BeginAnimation(TranslateTransform.XProperty, null);
+                button.Opacity = 1;
+                slide.X = 0;
+                button.Visibility = show ? Visibility.Visible : Visibility.Hidden;
+                continue;
+            }
+
+            if (show)
+            {
+                button.Visibility = Visibility.Visible;
+            }
+
+            var duration = TimeSpan.FromMilliseconds(160);
+            var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+            var fade = new DoubleAnimation(show ? 1 : 0, duration) { EasingFunction = ease };
+            if (!show)
+            {
+                // Only if editing is still on when the fade ends; a quick second click on the
+                // pencil has already started bringing it back.
+                fade.Completed += (_, _) =>
+                {
+                    if (_viewModel.IsEditing)
+                    {
+                        button.Visibility = Visibility.Hidden;
+                    }
+                };
+            }
+
+            button.BeginAnimation(OpacityProperty, fade);
+            slide.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(show ? 0 : 10, duration) { EasingFunction = ease });
+        }
+    }
+
+    /// <summary>
+    /// Moves the pencil to the header's right end, where the close button was, while the others
+    /// are hidden, and back to its own place afterwards. The hidden buttons keep their layout
+    /// slots, so the distance is read from the slots, not from where anything is drawn.
+    /// </summary>
+    private void SlidePencil(bool toTheEnd)
+    {
+        var offset = 0.0;
+        if (toTheEnd)
+        {
+            var close = LayoutInformation.GetLayoutSlot(CloseButton);
+            var pencil = LayoutInformation.GetLayoutSlot(EditButton);
+            offset = (close.Right - CloseButton.Margin.Right) - (pencil.Right - EditButton.Margin.Right);
+        }
+
+        var slide = EditButton.RenderTransform as TranslateTransform ?? new TranslateTransform();
+        EditButton.RenderTransform = slide;
+        if (!_settings.EnableAnimations)
+        {
+            slide.BeginAnimation(TranslateTransform.XProperty, null);
+            slide.X = offset;
+            return;
+        }
+
+        slide.BeginAnimation(
+            TranslateTransform.XProperty,
+            new DoubleAnimation(offset, TimeSpan.FromMilliseconds(220)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
     }
 
     /// <summary>
@@ -602,7 +700,9 @@ public sealed partial class PopupWindow : Window, IDisposable
     // row was cut off, label first, until the popup was reopened.
     private void OnAppsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (!IsLoaded || _closeAnimating)
+        // A tile moved by a drag changes no size; re-placing the window on every step of a drag
+        // would only cost time.
+        if (!IsLoaded || _closeAnimating || e.Action == NotifyCollectionChangedAction.Move)
         {
             return;
         }
@@ -683,5 +783,7 @@ public sealed partial class PopupWindow : Window, IDisposable
     {
         _outsideClicks?.Dispose();
         _outsideClicks = null;
+        _reorder?.Dispose();
+        _reorder = null;
     }
 }

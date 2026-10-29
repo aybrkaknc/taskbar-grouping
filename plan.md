@@ -459,9 +459,13 @@ root is a `Grid` inside a `UniformGrid` of `EffectiveColumns`; `RemoveBadge` is 
    `_config.Apps` and saves; re-syncs only when the first four — `CompositeIconGenerator.MaxTiles`
    — changed; a tile dropped where it started writes nothing) and `CancelReorder` (restores);
    leaving edit mode mid-drag cancels. `PersistAsync(sync)` gained the switch. 11 tests.
-2. **The drag.** Pointer capture on a tile, a threshold before it starts, never from the remove badge,
-   a pure `TileGridHit` (pointer → cell index from the grid's size, columns and count) for the target,
-   the dragged tile drawn above the rest. Only while `IsEditing`.
+2. [x] **The drag.** `TileReorderDrag` (pointer capture on a tile, a threshold before it starts, never
+   from the remove badge, only while `IsEditing`) with the pure `TileGridHit` (pointer → cell, edge
+   scrolling); the dragged tile is drawn above the rest, 8 % larger; the others slide to their new
+   cells and the dropped tile lands in its own (FLIP: from where each was drawn to its new slot).
+   **Added with the user while trying it:** in edit mode the header's add, pin and close buttons fade
+   out and the pencil slides to the header's right end; both back when editing ends. All of it
+   without animation when *Enable animations* is off. Tested by hand by the user.
 3. **The wiggle.** A small rotation animation on every tile while `IsEditing`, alternating direction,
    off when animations are off.
 4. **Docs and polish** — both guides, CHANGELOG, architecture, this file.
