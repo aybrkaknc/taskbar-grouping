@@ -640,6 +640,151 @@ public class PopupViewModelTests
         sut.IsUnavailable.Should().BeFalse();
     }
 
+    // --- Reordering in edit mode (C4) ----------------------------------------------
+
+    private static GroupConfig SixApps() => new()
+    {
+        Id = "g",
+        GroupName = "g",
+        Apps =
+        {
+            new AppEntry { Name = "a", Path = "a.exe" },
+            new AppEntry { Name = "b", Path = "b.exe" },
+            new AppEntry { Name = "c", Path = "c.exe" },
+            new AppEntry { Name = "d", Path = "d.exe" },
+            new AppEntry { Name = "e", Path = "e.exe" },
+            new AppEntry { Name = "f", Path = "f.exe" },
+        },
+    };
+
+    private static async Task<(PopupViewModel Sut, GroupConfig Config, Mock<IGroupConfigStore> Store, Mock<IGroupSyncService> Sync)> EditingSixApps()
+    {
+        var config = SixApps();
+        var sync = new Mock<IGroupSyncService>();
+        var (sut, store, _, _, _) = CreateSut("g", config, sync);
+        await sut.LoadAsync();
+        sut.ToggleEditCommand.Execute(null);
+        return (sut, config, store, sync);
+    }
+
+    [Fact]
+    public async Task BeginReorder_IsRefused_OutsideEditMode()
+    {
+        var (sut, _, _, _, _) = CreateSut("g", SixApps());
+        await sut.LoadAsync();
+
+        sut.BeginReorder().Should().BeFalse("tiles are dragged only while the group is being edited");
+        sut.IsReordering.Should().BeFalse();
+        sut.MoveApp(0, 3);
+        sut.Apps.Select(a => a.Name).Should().Equal("a", "b", "c", "d", "e", "f");
+    }
+
+    [Fact]
+    public async Task MoveApp_MovesTheTile_ButSavesNothingUntilTheDropIsCommitted()
+    {
+        var (sut, config, store, _) = await EditingSixApps();
+
+        sut.BeginReorder().Should().BeTrue();
+        sut.MoveApp(0, 2);
+
+        sut.IsReordering.Should().BeTrue();
+        sut.Apps.Select(a => a.Name).Should().Equal("b", "c", "a", "d", "e", "f");
+        config.Apps.Select(a => a.Name).Should().Equal(["a", "b", "c", "d", "e", "f"], "the stored order changes only on the drop");
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(-1, 2)]
+    [InlineData(0, 6)]
+    [InlineData(6, 0)]
+    [InlineData(3, 3)]
+    public async Task MoveApp_IgnoresAnIndexOutsideTheGrid_OrAMoveToItself(int from, int to)
+    {
+        var (sut, _, _, _) = await EditingSixApps();
+        sut.BeginReorder();
+
+        sut.MoveApp(from, to);
+
+        sut.Apps.Select(a => a.Name).Should().Equal("a", "b", "c", "d", "e", "f");
+    }
+
+    [Fact]
+    public async Task CommitReorder_SavesTheNewOrder_AndResyncs_WhenTheGroupIconChanges()
+    {
+        var (sut, config, store, sync) = await EditingSixApps();
+        sut.BeginReorder();
+        sut.MoveApp(5, 0);
+
+        await sut.CommitReorderAsync();
+
+        config.Apps.Select(a => a.Name).Should().Equal("f", "a", "b", "c", "d", "e");
+        store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        sync.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once,
+            "the group icon is built from the first four apps, and they changed");
+        sut.IsReordering.Should().BeFalse();
+        sut.IsEditing.Should().BeTrue("the user may want to move another tile");
+    }
+
+    [Fact]
+    public async Task CommitReorder_SavesWithoutResyncing_WhenOnlyAppsAfterTheFourthMoved()
+    {
+        var (sut, config, store, sync) = await EditingSixApps();
+        sut.BeginReorder();
+        sut.MoveApp(5, 4);
+
+        await sut.CommitReorderAsync();
+
+        config.Apps.Select(a => a.Name).Should().Equal("a", "b", "c", "d", "f", "e");
+        store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        sync.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never,
+            "the first four are the same, so the icon and shortcuts are too");
+    }
+
+    [Fact]
+    public async Task CommitReorder_WritesNothing_WhenTheTileEndsWhereItStarted()
+    {
+        var (sut, _, store, sync) = await EditingSixApps();
+        sut.BeginReorder();
+        sut.MoveApp(1, 4);
+        sut.MoveApp(4, 1);
+
+        await sut.CommitReorderAsync();
+
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+        sync.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+        sut.IsReordering.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task CancelReorder_PutsEveryTileBack_AndSavesNothing()
+    {
+        var (sut, config, store, _) = await EditingSixApps();
+        sut.BeginReorder();
+        sut.MoveApp(0, 5);
+        sut.MoveApp(2, 0);
+
+        sut.CancelReorder();
+
+        sut.Apps.Select(a => a.Name).Should().Equal("a", "b", "c", "d", "e", "f");
+        config.Apps.Select(a => a.Name).Should().Equal("a", "b", "c", "d", "e", "f");
+        sut.IsReordering.Should().BeFalse();
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LeavingEditMode_InTheMiddleOfAReorder_CancelsIt()
+    {
+        var (sut, _, store, _) = await EditingSixApps();
+        sut.BeginReorder();
+        sut.MoveApp(0, 3);
+
+        sut.IsEditing = false;
+
+        sut.IsReordering.Should().BeFalse();
+        sut.Apps.Select(a => a.Name).Should().Equal("a", "b", "c", "d", "e", "f");
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task RemoveAppCommand_LeavesEditMode_WhenTheLastAppGoes()
     {

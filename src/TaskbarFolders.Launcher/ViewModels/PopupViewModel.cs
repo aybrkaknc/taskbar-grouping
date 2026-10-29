@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -81,10 +82,21 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     private bool _canEditGroup;
 
     /// <summary>
-    /// Edit mode: each tile shows a remove badge, and a tile click no longer launches the app.
+    /// Edit mode: each tile shows a remove badge, can be dragged to another place, and a tile
+    /// click no longer launches the app.
     /// </summary>
     [ObservableProperty]
     private bool _isEditing;
+
+    /// <summary>
+    /// A tile is being dragged: <see cref="Apps"/> follows the pointer through
+    /// <see cref="MoveApp"/>, and nothing is stored until <see cref="CommitReorderAsync"/>.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isReordering;
+
+    // The order when the drag began, to compare against on the drop and to restore on a cancel.
+    private List<PopupAppViewModel>? _orderBeforeReorder;
 
     /// <summary>
     /// Pinned open: clicks elsewhere, losing the focus and launching an app no longer close the
@@ -328,10 +340,102 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Starts dragging a tile. Refused outside edit mode, for a group that could not be read, and
+    /// while another drag is still open.
+    /// </summary>
+    /// <returns>Whether a drag may go ahead.</returns>
+    public bool BeginReorder()
+    {
+        if (!IsEditing || _config is null || IsReordering)
+        {
+            return false;
+        }
+
+        _orderBeforeReorder = [.. Apps];
+        IsReordering = true;
+        return true;
+    }
+
+    /// <summary>
+    /// Moves a tile to another place while it is dragged; the others shift to make room. Ignored
+    /// outside a drag, for an index outside the grid and for a move onto itself.
+    /// </summary>
+    /// <param name="from">Index of the tile now.</param>
+    /// <param name="to">Index it moves to.</param>
+    public void MoveApp(int from, int to)
+    {
+        if (!IsReordering || from == to || from < 0 || to < 0 || from >= Apps.Count || to >= Apps.Count)
+        {
+            return;
+        }
+
+        Apps.Move(from, to);
+    }
+
+    /// <summary>
+    /// Ends a drag by keeping the new order: the group is saved, and re-synced only when one of
+    /// the first <see cref="CompositeIconGenerator.MaxTiles"/> apps, which make up the group's icon,
+    /// changed place. A tile dropped where it started writes nothing.
+    /// </summary>
+    public async Task CommitReorderAsync()
+    {
+        var before = _orderBeforeReorder;
+        EndReorder();
+        if (before is null || _config is null || before.SequenceEqual(Apps))
+        {
+            return;
+        }
+
+        var iconChanged = !before.Take(CompositeIconGenerator.MaxTiles).SequenceEqual(Apps.Take(CompositeIconGenerator.MaxTiles));
+        _config.Apps.Clear();
+        _config.Apps.AddRange(Apps.Select(a => a.Entry));
+
+        _logger?.LogInformation("Reordered group {GroupId} in the popup; icon changed: {IconChanged}.", _options.GroupId, iconChanged);
+        await PersistAsync(sync: iconChanged).ConfigureAwait(true);
+    }
+
+    /// <summary>Ends a drag by putting every tile back where it was; nothing is saved.</summary>
+    public void CancelReorder()
+    {
+        var before = _orderBeforeReorder;
+        EndReorder();
+        if (before is null)
+        {
+            return;
+        }
+
+        for (var i = 0; i < before.Count; i++)
+        {
+            var now = Apps.IndexOf(before[i]);
+            if (now >= 0 && now != i)
+            {
+                Apps.Move(now, i);
+            }
+        }
+    }
+
+    private void EndReorder()
+    {
+        _orderBeforeReorder = null;
+        IsReordering = false;
+    }
+
+    // A drag cannot outlive edit mode: leaving it (the pencil, Escape, removing the last app)
+    // puts the tiles back.
+    partial void OnIsEditingChanged(bool value)
+    {
+        if (!value && IsReordering)
+        {
+            CancelReorder();
+        }
+    }
+
+    /// <summary>
     /// Saves the edited group and regenerates its icon and shortcuts. A failure is shown in the
     /// error strip rather than thrown: the popup is a short-lived window with nobody to catch it.
     /// </summary>
-    private async Task PersistAsync()
+    /// <param name="sync">Whether the group's icon and shortcuts have to be regenerated too.</param>
+    private async Task PersistAsync(bool sync = true)
     {
         if (_config is null)
         {
@@ -341,7 +445,10 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         try
         {
             await _store.SaveAsync(_config).ConfigureAwait(true);
-            await _syncService.SyncAsync(_config).ConfigureAwait(true);
+            if (sync)
+            {
+                await _syncService.SyncAsync(_config).ConfigureAwait(true);
+            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or COMException)
         {

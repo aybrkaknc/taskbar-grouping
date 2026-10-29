@@ -444,14 +444,21 @@ The Manager's app list is not touched; the specification that stood here for it 
 (`_store.SaveAsync` + `_syncService.SyncAsync`); `LaunchApp` returns at once while `IsEditing`; the tile
 root is a `Grid` inside a `UniformGrid` of `EffectiveColumns`; `RemoveBadge` is its own overlay button.
 
-**Decisions pending with the user** — see the chat of 2026-10-30; recorded here once they are answered:
-how the dragged tile behaves (follows the pointer, others shift live), the wiggle (stops when
-*Enable animations* is off), what a cancelled drag does, edge scrolling in a scrolled group.
+**Decided with the user on 2026-10-30:**
+- The dragged tile follows the pointer and the other tiles shift out of its way as it moves, as on
+  a phone; no insertion line.
+- The wiggle follows the existing *Settings → Enable animations* switch: off there, the tiles stay
+  still (the remove badges and the pencil's highlight still show edit mode). No new setting.
+- **Esc** during a drag, or dropping the tile outside the grid, puts every tile back.
+- In a group tall enough to scroll, the grid scrolls by itself while the tile is held near its top
+  or bottom edge.
 
 **Steps** (each its own commit, tested by hand in between):
-1. **Order in the view model.** `PopupViewModel.MoveApp(from, to)` moves the tile in `Apps`;
-   committing writes the final order back to `_config.Apps` and saves, syncing only when the first
-   four (`CompositeIconGenerator.MaxTiles`) changed; a cancel restores the order. Pure and tested.
+1. [x] **Order in the view model.** `PopupViewModel.BeginReorder` (refused outside edit mode),
+   `MoveApp(from, to)` (moves the tile in `Apps` only), `CommitReorderAsync` (writes the order to
+   `_config.Apps` and saves; re-syncs only when the first four — `CompositeIconGenerator.MaxTiles`
+   — changed; a tile dropped where it started writes nothing) and `CancelReorder` (restores);
+   leaving edit mode mid-drag cancels. `PersistAsync(sync)` gained the switch. 11 tests.
 2. **The drag.** Pointer capture on a tile, a threshold before it starts, never from the remove badge,
    a pure `TileGridHit` (pointer → cell index from the grid's size, columns and count) for the target,
    the dragged tile drawn above the rest. Only while `IsEditing`.
