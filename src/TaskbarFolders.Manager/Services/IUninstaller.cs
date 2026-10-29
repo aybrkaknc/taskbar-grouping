@@ -5,7 +5,7 @@ namespace TaskbarFolders.Manager.Services;
 
 /// <summary>
 /// Removes every trace TaskbarFolders leaves outside its program folder. The one procedure
-/// behind the installer's uninstaller, the portable <c>Uninstall.cmd</c> and Settings.
+/// behind the installer's uninstaller and Settings.
 /// </summary>
 public interface IUninstaller
 {

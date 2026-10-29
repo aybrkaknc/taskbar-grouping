@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Security;
@@ -17,9 +18,9 @@ namespace TaskbarFolders.Manager.Services;
 /// Order matters. Other processes end first so nothing re-creates what is being removed and
 /// no file is locked; tiles are unpinned while their shortcuts still resolve; the user's data
 /// goes last, because every log line written after it would bring the logs folder back. What
-/// this process still writes after that — its last log lines — is removed by the caller's
-/// backstop once the process has exited (the installer's <c>[UninstallDelete]</c>,
-/// <c>Uninstall.cmd</c>).
+/// this process still writes after that — its last log lines — is removed once the process has
+/// exited, by the installer's <c>[UninstallDelete]</c> or, for a portable copy, by the helper
+/// script started at the end (<see cref="CompatibilityRecordSweep"/>).
 /// </remarks>
 public sealed class Uninstaller : IUninstaller
 {
@@ -47,6 +48,7 @@ public sealed class Uninstaller : IUninstaller
     private readonly IGroupSyncService _sync;
     private readonly IRegistryWriter _registry;
     private readonly IAppDataPathProvider _paths;
+    private readonly IProcessRunner _processes;
     private readonly InstallLocation _install;
     private readonly ILogger<Uninstaller>? _logger;
 
@@ -62,6 +64,7 @@ public sealed class Uninstaller : IUninstaller
         IGroupSyncService sync,
         IRegistryWriter registry,
         IAppDataPathProvider paths,
+        IProcessRunner processes,
         InstallLocation install,
         ILogger<Uninstaller>? logger = null)
     {
@@ -75,6 +78,7 @@ public sealed class Uninstaller : IUninstaller
         ArgumentNullException.ThrowIfNull(sync);
         ArgumentNullException.ThrowIfNull(registry);
         ArgumentNullException.ThrowIfNull(paths);
+        ArgumentNullException.ThrowIfNull(processes);
         ArgumentNullException.ThrowIfNull(install);
 
         _instances = instances;
@@ -87,6 +91,7 @@ public sealed class Uninstaller : IUninstaller
         _sync = sync;
         _registry = registry;
         _paths = paths;
+        _processes = processes;
         _install = install;
         _logger = logger;
     }
@@ -149,6 +154,7 @@ public sealed class Uninstaller : IUninstaller
         }
 
         ok &= Try("Windows' records of the program", RemoveWindowsRecords);
+        StartSweepAfterExit();
         _logger?.LogInformation("Uninstall: deleting the user data in {Path}; complete so far={Complete}.", _paths.AppDataRoot, ok);
 
         // No logging from here on: a log line would re-create the folder being deleted.
@@ -188,6 +194,52 @@ public sealed class Uninstaller : IUninstaller
         }
 
         return left;
+    }
+
+    /// <summary>
+    /// Windows records this process and the installer's uninstaller as they exit, after the
+    /// cleanup above. A detached <c>cmd</c> waits for both and deletes those records. An
+    /// installed copy has an <c>unins000.exe</c> to wait for and its files are Inno's to delete;
+    /// a portable copy has nobody else, so the same script also deletes its folders. A
+    /// development build gets nothing. A failure is logged and does not make the uninstall
+    /// incomplete: nothing the user could act on is left, only registry values they never see.
+    /// </summary>
+    private void StartSweepAfterExit()
+    {
+        try
+        {
+            string content;
+            if (_install.FindUninstaller() is not null)
+            {
+                content = CompatibilityRecordSweep.BuildScript(_install.Root);
+            }
+            else if (_install.IsPortable)
+            {
+                content = CompatibilityRecordSweep.BuildPortableScript(_install.Root, _paths.AppDataRoot);
+            }
+            else
+            {
+                return;
+            }
+
+            var script = Path.Combine(Path.GetTempPath(), "TaskbarFolders-sweep-" + Guid.NewGuid().ToString("N") + ".cmd");
+            File.WriteAllText(script, content);
+            var started = _processes.TryStart(new ProcessStartInfo("cmd.exe", $"/c \"\"{script}\"\"")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetTempPath(),
+            });
+            if (!started)
+            {
+                _logger?.LogWarning("Uninstall: the helper that removes Windows' exit records could not be started.");
+                File.Delete(script);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            _logger?.LogWarning(ex, "Uninstall: the helper that removes Windows' exit records could not be set up.");
+        }
     }
 
     private void RemoveWindowsRecords()

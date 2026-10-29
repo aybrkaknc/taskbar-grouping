@@ -204,15 +204,15 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Starts the uninstaller that came with this copy — the installer's, or the portable
-    /// <c>Uninstall.cmd</c>. It asks for confirmation itself; the Manager then has to exit so
-    /// that its own files can be deleted.
+    /// Starts the uninstaller of this copy — the installer's, or for a portable copy the Manager
+    /// itself with <c>--uninstall</c>. It asks for confirmation itself; this Manager then has to
+    /// exit so that its own files can be deleted.
     /// </summary>
     [RelayCommand]
     private void Uninstall()
     {
         var uninstaller = _install.FindUninstaller();
-        if (uninstaller is null)
+        if (uninstaller is null && !_install.IsPortable)
         {
             _confirmation.Notify(
                 "Uninstall",
@@ -221,9 +221,10 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
             return;
         }
 
-        var psi = uninstaller.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase)
-            ? new ProcessStartInfo("cmd.exe", $"/c \"\"{uninstaller}\"\"") { UseShellExecute = false, CreateNoWindow = true }
-            : new ProcessStartInfo(uninstaller) { UseShellExecute = true };
+        var psi = uninstaller is not null
+            ? new ProcessStartInfo(uninstaller) { UseShellExecute = true }
+            : new ProcessStartInfo(_install.PortableManagerPath, UninstallArguments.Uninstall) { UseShellExecute = false };
+        uninstaller ??= _install.PortableManagerPath;
 
         if (!_processes.TryStart(psi))
         {

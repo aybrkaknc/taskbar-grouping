@@ -137,7 +137,7 @@ Everything is under `%APPDATA%\TaskbarFolders\`:
 
 Each group's popup layout — columns (1–6), icon size, and whether names are shown — is set on the Manager's *Appearance* tab.
 
-Uninstalling — through *Installed apps*, the portable `Uninstall.cmd`, or *Settings → Uninstall TaskbarFolders…* — deletes this folder too, along with the group tiles, the Explorer menu entry, the Start menu entries and the autostart entry. Back up `groups\` first if you want to keep your groups.
+Uninstalling — through *Installed apps* or *Settings → Uninstall TaskbarFolders…* — deletes this folder too, along with the group tiles, the Explorer menu entry, the Start menu entries and the autostart entry. Back up `groups\` first if you want to keep your groups.
 
 ## Troubleshooting
 

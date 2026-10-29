@@ -83,6 +83,15 @@ decided with the user one at a time.
     hand; key required / policy → say so, manual way; unknown → generic message, manual way. Explorer
     opens with the shortcut selected through `IProcessRunner`. Only the notifications case can be
     tried on this machine; key and policy are unit-tested only.
+- [ ] **Pin to taskbar is refused right after a group is created, then allowed seconds later.**
+  Seen on 2026-10-29 with the locally built per-user setup, notifications **on**
+  (`ToastEnabled=1`): the first press, 2 s after the group's shortcut was written, got
+  `TaskbarManager.IsPinningAllowed=false` (exit 2, blocker *Unknown*, the manual way offered); the
+  second press 23 s later was allowed and Windows showed its request. Cause not proven; the
+  working guess is that the shell has not yet taken up the new Start menu shortcut/AUMID.
+  Proposed: `TaskbarPinRunner` re-asks `IsPinningAllowed` a few times (about 1 s apart) before it
+  gives up — never around Windows' consent. Decision pending: retry now, or measure first
+  (create a group and press at once, on the installed copy).
 - [ ] **A popup sizing test failed once and passed on rerun.**
   `PopupWindowSizingTests.AddingATileToTheSameRow_ShowsItsLabelInsideTheWindow` failed in one full
   run on 2026-10-29 with no Launcher change, then passed three times alone and in a full rerun.
@@ -106,6 +115,55 @@ decided with the user one at a time.
   decide the fix with the user. The two values are still in the registry; deleting them was not
   approved. No group tile was pinned during this test, so the uninstaller's unpin was not
   exercised either.
+  - **Read-only measurement (2026-10-29):** the values are `SACP` records of the Program
+    Compatibility Assistant (60 bytes for installed paths, 108 for build/publish paths). The Store
+    also holds records for short-lived `bin\Debug|Release` Launchers, `publish\` exes and the
+    downloaded `TaskbarFolders-Setup.exe`, but none for the long-running development Manager. So
+    Windows seems to record short-lived processes **as they exit**: `--uninstall` and `unins000.exe`
+    are short-lived, and their records land after the cleanup. A process cannot delete its own exit
+    record. Still a hypothesis: the moment of writing has not been timed.
+  - **Decided with the user (2026-10-29):** a detached helper that waits for both processes to exit,
+    then deletes the values; `cmd` + `reg delete` (not PowerShell, which trips antivirus more);
+    exact value names (`<root>\Manager\TaskbarFolders.Manager.exe`,
+    `<root>\Launcher\TaskbarFolders.Launcher.exe`, `<root>\unins000.exe`) in all six
+    `WindowsRecordKeys` keys; a ~2 minute timeout and silent failure; the portable package gets the
+    same deletion in `installer\Uninstall.cmd`, which already runs after the Manager exits.
+    Order: tests (see them fail), ADR-008 amendment, CLAUDE.md paragraph, architecture,
+    troubleshooting, CHANGELOG, this file. Verify with a locally built installer (Inno Setup 6 is
+    installed here), a watcher script that timestamps when the values appear, and a real
+    install/uninstall with the user. The two leftover values are not deleted without approval.
+  - **Measured in a real install/uninstall (2026-10-29), locally built setup:** the cleanup removed
+    every record; `unins000.exe` exited at 08:43:41.1, Windows wrote its Store value at 44.6
+    (3.4 s later), and the helper deleted it at 45.5. The Launcher's value was rewritten 2–3 s after
+    each exit; the `--uninstall` Manager wrote none this time. Afterwards nothing of that copy was
+    left: folders, `%TEMP%\.net`, Start menu, menu keys, Run value, *Installed apps* entry, the
+    pinned tile, the helper script itself. Hypothesis confirmed. A single pass 3 s after the exit
+    beat the record by under a second, so, as decided with the user, the sweep now runs twice —
+    3 s and 5 s after the exit (the user found 5 and 20 s too long for the portable script's open
+    window). The second real run, per-user install, confirmed it: `unins000.exe` exited at
+    08:52:47.8, Windows wrote its record at 50.8 (3.0 s) and the helper deleted it at 53.96; the
+    two older values from the first per-user install went with it.
+  - **The first setup run was started as administrator** on purpose, so Inno ran in administrative
+    install mode and installed to `C:\Program Files\TaskbarFolders` despite
+    `PrivilegesRequired=lowest`; the uninstall was still complete. Not a defect, but ADR-008 assumes
+    a per-user install.
+  - **The portable run found two defects (2026-10-29), both fixed here:** MuiCache keeps a path
+    with `.FriendlyAppName` / `.ApplicationCompany` appended and the sweep deleted only the bare
+    path; and `Uninstall.cmd`'s `reg delete` lines ran before Windows had written the record, while
+    holding a console open. Decided with the user: **`Uninstall.cmd` is removed** (option A). A
+    portable copy uninstalls through *Settings → Uninstall TaskbarFolders…* (the Manager with
+    `--uninstall`), and the same helper that sweeps an installed copy also deletes the `Manager` and
+    `Launcher` folders, the unpacked `%TEMP%\.net` runtime, the data folder and — non-recursively —
+    the extracted folder. A portable copy is told apart by `InstallLocation.IsPortable` (both
+    folders with their exes, no `unins000.exe`); a development build gets no helper. Tests:
+    `CompatibilityRecordSweepTests`, `InstallLocationTests`, `UninstallerTests`,
+    `SettingsViewModelTests`; 286 / 258 / 213 green, format clean.
+  - **Registry cleanup done with the user's approval:** the four `portable-test` MuiCache values from
+    this and the previous session, by exact name; nothing else was touched. A broken `$names` array
+    in my first attempt deleted nothing.
+  - **Still to verify:** the new portable path in a real run (Settings → Uninstall in a copy
+    extracted from the rebuilt `publish\`), then the installed path once more with the final code.
+    The commit waits for that.
 
 ## How an item is worked
 

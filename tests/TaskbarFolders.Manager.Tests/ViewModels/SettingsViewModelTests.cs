@@ -62,12 +62,10 @@ public class SettingsViewModelTests
         return root;
     }
 
-    [Theory]
-    [InlineData(InstallLocation.InstallerUninstallerName, false)]
-    [InlineData(InstallLocation.PortableUninstallerName, true)]
-    public void Uninstall_StartsTheUninstallerOfThisCopy_AndClosesTheManager(string uninstaller, bool viaCmd)
+    [Fact]
+    public void Uninstall_StartsTheInstallersUninstaller_AndClosesTheManager()
     {
-        var root = NewInstallRoot(uninstaller);
+        var root = NewInstallRoot(InstallLocation.InstallerUninstallerName);
         try
         {
             var sut = CreateUninstallSut(root, out var processes, out _);
@@ -76,11 +74,36 @@ public class SettingsViewModelTests
 
             sut.UninstallCommand.Execute(null);
 
-            var expected = Path.Combine(root, uninstaller);
-            processes.Verify(p => p.TryStart(It.Is<ProcessStartInfo>(psi => viaCmd
-                ? psi.FileName == "cmd.exe" && psi.Arguments.Contains(expected, StringComparison.Ordinal)
-                : psi.FileName == expected)), Times.Once);
+            var expected = Path.Combine(root, InstallLocation.InstallerUninstallerName);
+            processes.Verify(p => p.TryStart(It.Is<ProcessStartInfo>(psi => psi.FileName == expected)), Times.Once);
             closing.Should().BeTrue("the Manager's own files cannot be deleted while it runs");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Uninstall_RunsTheManagerWithTheUninstallSwitch_ForAPortableCopy()
+    {
+        var root = NewInstallRoot(withFile: null);
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "Manager"));
+            Directory.CreateDirectory(Path.Combine(root, "Launcher"));
+            File.WriteAllText(Path.Combine(root, "Manager", "TaskbarFolders.Manager.exe"), "");
+            File.WriteAllText(Path.Combine(root, "Launcher", "TaskbarFolders.Launcher.exe"), "");
+            var sut = CreateUninstallSut(root, out var processes, out _);
+            var closing = false;
+            sut.UninstallStarted += (_, _) => closing = true;
+
+            sut.UninstallCommand.Execute(null);
+
+            var manager = Path.Combine(root, "Manager", "TaskbarFolders.Manager.exe");
+            processes.Verify(p => p.TryStart(It.Is<ProcessStartInfo>(psi =>
+                psi.FileName == manager && psi.Arguments == UninstallArguments.Uninstall)), Times.Once);
+            closing.Should().BeTrue("the running Manager is one of the files to delete");
         }
         finally
         {

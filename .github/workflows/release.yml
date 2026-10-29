@@ -38,10 +38,9 @@ jobs:
         run: dotnet publish src/TaskbarFolders.Launcher/TaskbarFolders.Launcher.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output ./publish/Launcher
 
       - name: Create portable ZIP
-        # Uninstall.cmd sits next to the Manager and Launcher folders; the installer does not
-        # ship it (Inno Setup's uninstaller removes the same registry entries).
+        # The ZIP holds the Manager and Launcher folders only; a portable copy uninstalls through
+        # the Manager itself (Settings, or Manager.exe --uninstall).
         run: |
-          Copy-Item installer/Uninstall.cmd ./publish/Uninstall.cmd
           Compress-Archive -Path ./publish/* -DestinationPath ./TaskbarFolders-portable.zip
 
       - name: Build Inno Setup installer

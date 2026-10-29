@@ -131,7 +131,7 @@ On an affected build, avoid clicking Save unless you intend to set every value i
 Current, deliberate or not-yet-implemented — not bugs to report:
 
 - **The "Taskbar Groups" menu is classic-menu only on Windows 11** (*Show more options*). The Manager rewrites it whenever a group is created, renamed or deleted; only a group file edited by hand while the Manager is closed shows its old name there until the Manager next starts.
-- **A portable folder deleted by hand leaves its tiles, menu entry and data behind** — only `Uninstall.cmd` or *Settings → Uninstall TaskbarFolders…* clean up. To do it afterwards, extract the portable ZIP again and run its `Uninstall.cmd`.
+- **A portable folder deleted by hand leaves its tiles, menu entry and data behind** — only *Settings → Uninstall TaskbarFolders…* cleans up. To do it afterwards, extract the portable ZIP again, start its Manager and use that.
 - **On Windows 11 22H2+ the glass panel does not fade when the popup closes.** DWM draws it and does not animate this window's hide, so only the icons fade.
 - **The blurred popup background needs Windows 11 22H2 or later.** Older versions get a plain translucent panel. With Windows' *Transparency effects* turned off, the background is a solid colour instead of glass.
 - **No reordering** of apps from the interface.
@@ -155,7 +155,9 @@ Releases up to 0.4.x installed into Program Files for every user; setup is now p
 
 ## Something was left after uninstalling
 
-The uninstaller reports anything it could not remove. Usually a file was in use: restart Windows, then extract the portable ZIP and run its `Uninstall.cmd`, which removes what is left. A group tile it could not unpin is removed by right-clicking it and choosing *Unpin from taskbar*. `Uninstall.cmd` deletes nothing unless the Manager reports that the uninstall ran: if you cancel, or the Manager stops unexpectedly, every file stays.
+The uninstaller reports anything it could not remove. Usually a file was in use: restart Windows, then extract the portable ZIP, start its Manager and use *Settings → Uninstall TaskbarFolders…*, which removes what is left. A group tile it could not unpin is removed by right-clicking it and choosing *Unpin from taskbar*. A portable copy's folders are deleted only after the uninstall ran: if you cancel, or the Manager stops unexpectedly, every file stays.
+
+Two values under `HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store` (the Manager's and `unins000.exe`'s path) can outlive an uninstall: Windows writes them when those processes exit, and a short helper deletes them 3 and again 5 seconds later. If the uninstall was stopped early, or the helper could not start (the Manager's log says so), they stay; they are harmless and can be deleted by hand in the registry editor.
 
 ## "Taskbar Groups" is missing from the right-click menu
 

@@ -299,7 +299,7 @@ Keeps Explorer's *Taskbar Groups* menu in step with the groups and the `AppSetti
 
 [`UninstallArguments`](../src/TaskbarFolders.Manager/Services/UninstallArguments.cs) is the command line around it: `TaskbarFolders.Manager.exe --uninstall [--no-confirm]` runs it with no main window (`App`), asking first unless `--no-confirm`, and reporting always without it, only problems with it. Exit codes `ExitComplete` 0, `ExitIncomplete` 1, `ExitCancelled` 2.
 
-[`InstallLocation`](../src/TaskbarFolders.Manager/Services/InstallLocation.cs)`(string Root)` is the folder holding `Manager` and `Launcher` (`OfRunningManager()`); `FindUninstaller()` returns `unins000.exe` or `Uninstall.cmd` in it, or `null` for a development build. `SettingsViewModel.UninstallCommand` starts it through `IProcessRunner.TryStart` and raises `UninstallStarted`, on which `App` exits.
+[`InstallLocation`](../src/TaskbarFolders.Manager/Services/InstallLocation.cs)`(string Root)` is the folder holding `Manager` and `Launcher` (`OfRunningManager()`); `FindUninstaller()` returns `unins000.exe` in it, or `null`; `IsPortable` is true for the extracted ZIP (both folders with their exes, no `unins000.exe`), and `PortableManagerPath` is the Manager in it. `SettingsViewModel.UninstallCommand` starts the installer's uninstaller, or for a portable copy the Manager with `--uninstall`, through `IProcessRunner.TryStart` and raises `UninstallStarted`, on which `App` exits.
 
 [`IInstanceCloser`](../src/TaskbarFolders.Manager/Services/IInstanceCloser.cs) — `int CloseOthers()` ends every Manager but this process and every Launcher in the current session, returning how many would not end. Default `ProcessInstanceCloser`.
 

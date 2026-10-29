@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -34,7 +35,9 @@ public sealed class UninstallerTests : IDisposable
     private readonly Mock<IGroupConfigStore> _groups = new();
     private readonly Mock<IGroupSyncService> _sync = new();
     private readonly Mock<IAppDataPathProvider> _paths = new();
+    private readonly Mock<IProcessRunner> _processes = new();
     private readonly List<string> _deletedValues = [];
+    private readonly List<ProcessStartInfo> _started = [];
 
     private string AppData => Path.Combine(_temp, "AppData");
 
@@ -63,6 +66,17 @@ public sealed class UninstallerTests : IDisposable
         _registry.Setup(r => r.GetValueNames(It.IsAny<string>())).Returns([]);
         _registry.Setup(r => r.DeleteValue(It.IsAny<string>(), It.IsAny<string>()))
                  .Callback<string, string>((_, name) => _deletedValues.Add(name));
+        _processes.Setup(p => p.TryStart(It.IsAny<ProcessStartInfo>())).Returns(true)
+                  .Callback<ProcessStartInfo>(psi => _started.Add(psi));
+    }
+
+    /// <summary>A copy of the program that has the installer's uninstaller next to it.</summary>
+    private InstallLocation InstalledCopy()
+    {
+        var root = Path.Combine(_temp, "Installed");
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, InstallLocation.InstallerUninstallerName), "");
+        return new InstallLocation(root);
     }
 
     public void Dispose()
@@ -73,7 +87,7 @@ public sealed class UninstallerTests : IDisposable
         }
     }
 
-    private Uninstaller CreateSut() => new(
+    private Uninstaller CreateSut(InstallLocation? install = null) => new(
         _instances.Object,
         _reader.Object,
         _unpinner.Object,
@@ -84,7 +98,8 @@ public sealed class UninstallerTests : IDisposable
         _sync.Object,
         _registry.Object,
         _paths.Object,
-        new InstallLocation(InstallRoot));
+        _processes.Object,
+        install ?? new InstallLocation(InstallRoot));
 
     private string Pin(string fileName, string? aumid)
     {
@@ -178,6 +193,63 @@ public sealed class UninstallerTests : IDisposable
         await CreateSut().RunAsync();
 
         Directory.Exists(StartMenu).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RunAsync_StartsTheSweepHelper_ForAnInstalledCopy()
+    {
+        var install = InstalledCopy();
+
+        var report = await CreateSut(install).RunAsync();
+
+        report.Complete.Should().BeTrue();
+        var psi = _started.Should().ContainSingle().Subject;
+        psi.FileName.Should().Be("cmd.exe");
+        psi.UseShellExecute.Should().BeFalse();
+        psi.CreateNoWindow.Should().BeTrue();
+        var script = psi.Arguments.Trim('/', 'c', ' ', '"');
+        File.Exists(script).Should().BeTrue("the helper reads it after this process has gone");
+        File.ReadAllText(script).Should().Contain(Path.Combine(install.Root, "unins000.exe"));
+        File.Delete(script);
+    }
+
+    [Fact]
+    public async Task RunAsync_StartsNoHelper_ForADevelopmentBuild()
+    {
+        await CreateSut().RunAsync();
+
+        _started.Should().BeEmpty("a development build has nothing to sweep and no folders of its own to remove");
+    }
+
+    [Fact]
+    public async Task RunAsync_StartsTheHelperThatAlsoRemovesTheFolders_ForAPortableCopy()
+    {
+        var root = Path.Combine(_temp, "Portable");
+        Directory.CreateDirectory(Path.Combine(root, "Manager"));
+        Directory.CreateDirectory(Path.Combine(root, "Launcher"));
+        File.WriteAllText(Path.Combine(root, "Manager", "TaskbarFolders.Manager.exe"), "");
+        File.WriteAllText(Path.Combine(root, "Launcher", "TaskbarFolders.Launcher.exe"), "");
+
+        var report = await CreateSut(new InstallLocation(root)).RunAsync();
+
+        report.Complete.Should().BeTrue();
+        var psi = _started.Should().ContainSingle().Subject;
+        var script = psi.Arguments.Trim('/', 'c', ' ', '"');
+        var text = File.ReadAllText(script);
+        text.Should().Contain($"rd /s /q \"{Path.Combine(root, "Manager")}\"")
+            .And.Contain($"rd /s /q \"{Path.Combine(root, "Launcher")}\"")
+            .And.Contain($"rd /s /q \"{AppData}\"");
+        File.Delete(script);
+    }
+
+    [Fact]
+    public async Task RunAsync_StaysComplete_WhenTheHelperCannotBeStarted()
+    {
+        _processes.Setup(p => p.TryStart(It.IsAny<ProcessStartInfo>())).Returns(false);
+
+        var report = await CreateSut(InstalledCopy()).RunAsync();
+
+        report.Complete.Should().BeTrue("the records are a courtesy; nothing the user can act on is left");
     }
 
     [Theory]

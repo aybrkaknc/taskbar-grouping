@@ -283,6 +283,6 @@ Sichern Sie vorher `%APPDATA%\TaskbarFolders\groups`, wenn Sie Ihre Gruppen für
 
 **Installierte Fassung:** *Einstellungen → Apps → Installierte Apps → TaskbarFolders → Deinstallieren*, oder **Uninstall TaskbarFolders…** ganz unten in den Einstellungen des Managers.
 
-**Portable Fassung:** `Uninstall.cmd` im entpackten Ordner ausführen oder in den Einstellungen **Uninstall TaskbarFolders…** anklicken. Nach Ihrer Bestätigung entfernt es alles oben Genannte, danach die Ordner `Manager` und `Launcher` und sich selbst; der entpackte Ordner verschwindet mit, wenn sonst nichts darin liegt. Wird der Ordner ohne diesen Schritt gelöscht, bleiben Menüeintrag, Kacheln und Daten zurück — dann das ZIP erneut entpacken und dessen `Uninstall.cmd` ausführen.
+**Portable Fassung:** in den Einstellungen **Uninstall TaskbarFolders…** anklicken. Nach Ihrer Bestätigung entfernt es alles oben Genannte; wenige Sekunden nach dem Schließen des Fensters verschwinden die Ordner `Manager` und `Launcher`, und der entpackte Ordner mit, wenn sonst nichts darin liegt. Wird der Ordner ohne diesen Schritt gelöscht, bleiben Menüeintrag, Kacheln und Daten zurück — dann das ZIP erneut entpacken, dessen Manager starten und diese Schaltfläche verwenden.
 
 Lässt sich eine Kachel nicht lösen, meldet das Deinstallationsprogramm das: Rechtsklick darauf und *Von Taskleiste lösen* wählen.

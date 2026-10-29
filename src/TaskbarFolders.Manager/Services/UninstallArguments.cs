@@ -6,7 +6,7 @@ namespace TaskbarFolders.Manager.Services;
 
 /// <summary>
 /// The Manager's uninstall mode: <c>TaskbarFolders.Manager.exe --uninstall [--no-confirm]</c>,
-/// run by the installer's uninstaller and by the portable <c>Uninstall.cmd</c>.
+/// run by the installer's uninstaller and, for a portable copy, by Settings.
 /// </summary>
 public static class UninstallArguments
 {
@@ -25,7 +25,7 @@ public static class UninstallArguments
     /// <summary>Exit code: something was left behind; the log and the message say what.</summary>
     public const int ExitIncomplete = 1;
 
-    /// <summary>Exit code: the user said no. <c>Uninstall.cmd</c> then deletes nothing.</summary>
+    /// <summary>Exit code: the user said no. Nothing has been touched, and no helper was started.</summary>
     public const int ExitCancelled = 2;
 
     /// <summary>Whether <paramref name="args"/> ask for uninstall mode.</summary>

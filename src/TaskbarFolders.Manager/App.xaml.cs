@@ -59,7 +59,7 @@ public partial class App : Application
 
         await _host.StartAsync().ConfigureAwait(true);
 
-        // Uninstall mode, run by the installer's uninstaller and by Uninstall.cmd: no main
+        // Uninstall mode, run by the installer's uninstaller and by Settings in a portable copy: no main
         // window, and nothing that would write the integration back (no heal-up, no menu refresh).
         if (UninstallArguments.IsUninstall(e.Args))
         {

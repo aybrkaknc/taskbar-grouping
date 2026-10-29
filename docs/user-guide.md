@@ -207,6 +207,6 @@ Back up `%APPDATA%\TaskbarFolders\groups` first if you want to keep your groups 
 
 **Installer:** *Settings → Apps → Installed apps → TaskbarFolders → Uninstall*, or **Uninstall TaskbarFolders…** at the bottom of the Manager's Settings.
 
-**Portable:** run `Uninstall.cmd` in the extracted folder, or click **Uninstall TaskbarFolders…** in Settings. After you confirm, it removes everything listed above and then the `Manager` and `Launcher` folders and itself; the extracted folder goes too if nothing else is in it. Deleting the folder without this leaves the menu entry, the tiles and your data behind — if that already happened, extract the ZIP again and run its `Uninstall.cmd`.
+**Portable:** click **Uninstall TaskbarFolders…** in Settings. After you confirm, it removes everything listed above, and a few seconds after the window closes the `Manager` and `Launcher` folders disappear; the extracted folder goes too if nothing else is in it. Deleting the folder without this leaves the menu entry, the tiles and your data behind — if that already happened, extract the ZIP again, start its Manager and use that button.
 
 If a tile cannot be unpinned, the uninstaller says so: right-click it and choose *Unpin from taskbar*.
