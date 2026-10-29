@@ -97,7 +97,10 @@ decided with the user one at a time.
 - [ ] **A popup sizing test failed once and passed on rerun.**
   `PopupWindowSizingTests.AddingATileToTheSameRow_ShowsItsLabelInsideTheWindow` failed in one full
   run on 2026-10-29 with no Launcher change, then passed three times alone and in a full rerun.
-  Watch for it; if it fails again, find what the layout pass races with.
+  Watch for it; if it fails again, find what the layout pass races with. Checked 2026-10-29: six
+  more runs of the Launcher suite on this machine were all green. The CI workflow has no run for
+  any commit pushed since 2026-09-05, so there is no CI result to read; the first push will show
+  whether it recurs on the 1024×768 runner.
 - [x] **Explorer menu warning recurs on group creation/deletion** — the same race as above, fixed
   with it.
 - [x] **Deleting a group logs a warning when `icons\custom\` does not exist.** Fixed on `develop`
