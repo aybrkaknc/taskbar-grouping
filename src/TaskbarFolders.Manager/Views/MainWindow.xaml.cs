@@ -118,7 +118,10 @@ public partial class MainWindow : Window
         switch (e.Key)
         {
             case Key.Enter:
+                // Saved on Enter; the focus then leaves the box, so its focus border goes and the
+                // user can see the name was accepted (as Escape does).
                 vm.CommitRenameCommand.Execute(null);
+                GroupList.Focus();
                 e.Handled = true;
                 break;
             case Key.Escape:

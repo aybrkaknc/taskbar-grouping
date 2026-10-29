@@ -53,12 +53,12 @@ decided with the user one at a time.
   classic menu does not use `Icon` on a cascading verb, or the embedded icon is not the app's own.
   Proposed: check both here, then point the icon at the app's own `.ico` (a stable file, not the
   versioned group icons, per ADR-006 and ADR-007).
-- [ ] **Pressing Enter after typing a new group's name does not save it.** Seen in the smoke test.
-  `+ New group` creates "New group" and selects the name for typing
-  (`MainWindowViewModel.BeginRename`, `RenameRequested`); the rename is committed on focus loss
-  only (`RenameGroupAsync`, `CanRenameGroup`), so Enter should commit it too. Proposed: bind Enter
-  in the header name box and in the new-group rename to the rename command; test that Enter
-  renames and that an empty or unchanged name is ignored.
+- [ ] **After Enter the new name is saved, but nothing says so.** Seen in the smoke test. The
+  name changes in the sidebar, but the header box keeps its focus border and the user cannot tell
+  it was saved. Enter runs `CommitRenameCommand` (`MainWindow.xaml.cs:111-123`), and Escape moves
+  focus to the list (`GroupList.Focus()`); Enter does not. Proposed: Enter commits and then moves
+  focus to the list, as Escape already does, so the box visibly lets go. Decisions pending: see the
+  question list in the chat on 2026-10-29.
 - [ ] **The Pin to taskbar button does not pin on this machine.** Seen in the smoke test. The
   Manager runs `Launcher.exe --pin-mode` and gets exit code 2 because
   `TaskbarManager.IsPinningAllowed=false`, then opens the Explorer fallback
@@ -67,6 +67,11 @@ decided with the user one at a time.
   button, not only a fallback. Tie to the existing `IsPinningAllowed` issue (not yet opened).
 - [x] **Explorer menu warning recurs on group creation/deletion** — the same race as above, fixed
   with it.
+- [ ] **Deleting a group logs a warning when `icons\custom\` does not exist.** Seen on
+  2026-10-29 with fresh data after the uninstall: `CustomGroupIconStore.Delete`
+  (`CustomGroupIconStore.cs:155`) calls `File.Delete` on `icons\custom\<id>.png`; a missing file is
+  fine, but a missing folder throws `DirectoryNotFoundException`, logged as a warning with no
+  counterpart in the UI. Nothing is wrong on disk. Fix: treat a missing folder like a missing file.
 - [ ] **Uninstalling leaves two Compatibility Assistant values behind.** Found in the uninstall
   test on 2026-10-29: everything else was gone (program folder, *Installed apps* entry, Run
   value, both menu keys, `%APPDATA%\TaskbarFolders`, Start menu folder, `%TEMP%\.net`), but
