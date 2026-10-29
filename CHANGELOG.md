@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-29
+
 ### Fixed
 
+- **Explorer's "Taskbar Groups" menu shows the app's icon.** It showed a generic program icon, because the launcher it pointed at had none of its own. The menu now takes the Manager's icon, and the launcher carries the same one. The menu picks it up the next time the Manager starts.
+- **Pressing `Enter` in the group name box shows that the name was saved.** The box kept its focus border, so nothing showed the change had been accepted; `Enter` now moves the focus to the group list after saving, as `Esc` already did.
 - **Deleting a group no longer logs a warning when no group icon was ever chosen.** The folder for chosen icons does not exist until one is picked, and removing the icon of a group that has none was logged as "Could not delete the custom icon". Nothing was wrong on disk; the line only made the log look like something had failed.
 - **Deleting a group unpins its taskbar tile.** The tile used to stay behind and open an empty "No apps to launch" popup. The confirmation now says the tile goes too; afterwards the Manager asks whether to restart Explorer so the taskbar redraws, and says so if Windows refuses to unpin the tile. Tiles left by groups deleted with earlier versions are listed once, the first time a group is deleted. Unpinning now also falls back to the shell's menu item when the verb is refused by name, which the uninstaller benefits from too.
 - **When Windows will not take a pin request, the Manager says why and offers what works.** The most common cause is turned-off notifications: Windows asks for approval through a notification and shows none while they are off. The Manager now offers to open the notification settings, or to pin by hand. A Windows 11 build that still requires a Limited Access Feature key and a policy that turns pinning off get their own messages. The shortcut folder now opens with the shortcut selected. The old message blamed the Windows build in every case.
@@ -382,7 +386,8 @@ First functional release. Everything described in the README is implemented and 
 - Full documentation: README, Contributing Guide, Architecture, User Guide, Developer Guide
 - MIT License
 
-[Unreleased]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.4.10...v0.5.0
 [0.4.10]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.4.8...v0.4.9

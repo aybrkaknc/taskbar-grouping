@@ -13,7 +13,7 @@
          anyone remembering; the test projects opt out, where xUnit's public test
          classes would otherwise demand 300+ comments that document nothing. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>0.5.0</Version>
+    <Version>0.5.1</Version>
     <Authors>Gian Luca Schwekendiek</Authors>
     <Product>TaskbarFolders</Product>
     <Copyright>Copyright (c) 2026 Gian Luca Schwekendiek</Copyright>

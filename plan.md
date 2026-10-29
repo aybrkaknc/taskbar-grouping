@@ -8,17 +8,16 @@ finishes it, and a change of order or scope is recorded here when it is agreed, 
 
 ## Where we are
 
-- **`develop`:** v0.5.0 is released — `develop`, `origin/develop` and the `v0.5.0` tag were all
-  at `546df2f` when the release was published, with the setup and portable assets. Fixes from the
-  smoke test land on `develop` after it, one commit each; pushing waits for approval.
-- **`main`:** still at `18c929e`; fast-forwarding it to the release waits for approval.
+- **`develop`:** v0.5.1 prepared — version bumped in the five places, CHANGELOG section dated
+  2026-10-29, collecting the fixes from the v0.5.0 smoke test (below). Pushing `develop`, pushing
+  the `v0.5.1` tag and fast-forwarding `main` each wait for approval; after the tag, the install
+  smoke test of the published assets comes before any announcement.
+- **`main`:** still at `18c929e`; to be fast-forwarded to the v0.5.1 commit once the tag is out.
 - **Branch:** none open locally. `origin/perf/launcher-startup` and the dependabot branch are not
   merged and stay.
-- **In progress:** fixing what the v0.5.0 install smoke test found (below), one finding at a time,
-  each decided with the user first. Still to do, each only on approval: fast-forward `main`, the
-  uninstall test, open the `IsPinningAllowed` issue (issues are off on the fork; turning them on
-  is a repository setting). `assets/screenshots/settings.png` still shows the Save button;
-  retaking it needs 150 % scaling (C6 polish retakes all of them).
+- **Still open:** the `IsPinningAllowed` issue (issues are off on the fork; turning them on is a
+  repository setting, and the user said not now). `assets/screenshots/settings.png` still shows
+  the Save button; retaking it needs 150 % scaling (C6 polish retakes all of them). Then C2.
 
 ## Found in the v0.5.0 smoke test (2026-10-28)
 
@@ -92,15 +91,18 @@ decided with the user one at a time.
   Decided with the user: `TaskbarPinRunner` re-asks `IsPinningAllowed` up to 6 times, 1 s apart
   (`PinPermissionWait`, unit-tested with a fake delay) before it gives up — never around Windows'
   consent. The cost is about 5 s before a machine that really cannot pin gets its explanation. The
-  check used to sit before the 300 ms settle meant for this very race. Not measured: whether 5 s
-  is enough, since the real threshold is unknown; to be tried on the installed copy.
+  check used to sit before the 300 ms settle meant for this very race. Committed in `b76cc41`.
+  Tried on the installed copy (2026-10-29): pinned at the first press, exit 0, verified by AUMID —
+  but the press came 3.5 s after the shortcut was written and `IsPinningAllowed` was true at the
+  first check (0.23 s from start to the next log line), so the retry itself was **not**
+  exercised. Whether it fixes the 2 s case is still unproven.
 - [ ] **A popup sizing test failed once and passed on rerun.**
   `PopupWindowSizingTests.AddingATileToTheSameRow_ShowsItsLabelInsideTheWindow` failed in one full
   run on 2026-10-29 with no Launcher change, then passed three times alone and in a full rerun.
   Watch for it; if it fails again, find what the layout pass races with. Checked 2026-10-29: six
-  more runs of the Launcher suite on this machine were all green. The CI workflow has no run for
-  any commit pushed since 2026-09-05, so there is no CI result to read; the first push will show
-  whether it recurs on the 1024×768 runner.
+  more runs of the Launcher suite on this machine were all green, and CI on `develop` passed for
+  `546df2f`, `21cefb2` and `c64f590`. (An earlier note here said CI had not run since September:
+  wrong — `gh run list --workflow CI` returned stale rows; the runs API shows them.)
 - [x] **Explorer menu warning recurs on group creation/deletion** — the same race as above, fixed
   with it.
 - [x] **Deleting a group logs a warning when `icons\custom\` does not exist.** Fixed on `develop`
