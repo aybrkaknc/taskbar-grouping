@@ -96,6 +96,12 @@ decided with the user one at a time.
   but the press came 3.5 s after the shortcut was written and `IsPinningAllowed` was true at the
   first check (0.23 s from start to the next log line), so the retry itself was **not**
   exercised. Whether it fixes the 2 s case is still unproven.
+  Tried again on the published v0.5.1 setup after a clean install (07:04): the press came 1.9 s
+  after the shortcut was written, `IsPinningAllowed` was true at the first check (0.22 s to the
+  next log line), Windows showed its request, and the user declined it (exit 1, `UserDenied`).
+  The v0.5.0 refusal did **not** recur at 2 s, so the retry still has not run. The same first
+  press on v0.5.0 (07:01, same machine) was refused. Kept open until it shows on its own: look
+  for "after 6 checks" in `launcher-*.log`.
 - [ ] **A popup sizing test failed once and passed on rerun.**
   `PopupWindowSizingTests.AddingATileToTheSameRow_ShowsItsLabelInsideTheWindow` failed in one full
   run on 2026-10-29 with no Launcher change, then passed three times alone and in a full rerun.
