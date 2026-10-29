@@ -93,9 +93,11 @@ The Manager then checks that a tile really appeared rather than taking Windows' 
 
 ### If direct pinning is unavailable
 
-Some Windows editions and managed environments block programmatic pinning, and it needs Windows 10 version 2004 or newer. When it is unavailable, the Manager says so and opens the folder containing the group's shortcut.
+Windows asks for your approval through a notification, so **with notifications turned off it cannot ask, and nothing is pinned**. In that case the Manager says so and offers to open *Settings → System → Notifications*: turn the main switch on and press **Pin to taskbar** again. Choose **No** to pin by hand instead.
 
-From there: right-click the `.lnk` → **Show more options** (Windows 11 22H2 and later) → **Pin to taskbar**.
+Some Windows 11 builds before update KB5074105 only allow an app to ask with a key from Microsoft, some managed PCs turn pinning off by policy, and it needs Windows 10 version 2004 or newer. The Manager names the cause it finds and opens the folder containing the group's shortcut, with the shortcut selected.
+
+From there: right-click the shortcut → **Show more options** (Windows 11 22H2 and later) → **Pin to taskbar**.
 
 You can open that folder yourself at any time with **⋯ → Show shortcut…** next to **Pin to taskbar**.
 

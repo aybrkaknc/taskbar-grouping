@@ -149,9 +149,11 @@ Anschließend prüft der Manager nach, ob tatsächlich eine Kachel entstanden is
 
 ### Wenn der direkte Weg nicht verfügbar ist
 
-Manche Windows-Editionen und viele Firmenrechner verbieten das Anheften durch Programme. In dem Fall sagt der Manager Bescheid und öffnet den Ordner mit der Verknüpfung.
+Windows holt Ihre Zustimmung über eine Benachrichtigung ein. **Sind Benachrichtigungen ausgeschaltet, kann Windows nicht fragen, und es wird nichts angeheftet.** Der Manager sagt das dann und bietet an, *Einstellungen → System → Benachrichtigungen* zu öffnen: Schalten Sie dort den Hauptschalter ein und klicken Sie erneut auf **Pin to taskbar**. Mit **No** heften Sie stattdessen von Hand an.
 
-Dort klicken Sie mit der rechten Maustaste auf die `.lnk`-Datei → **Weitere Optionen anzeigen** (unter Windows 11 22H2 und neuer) → **An Taskleiste anheften**.
+Manche Windows-11-Versionen vor dem Update KB5074105 erlauben die Anfrage nur mit einem Schlüssel von Microsoft, viele Firmenrechner verbieten das Anheften per Richtlinie, und Windows 10 muss mindestens Version 2004 sein. Der Manager nennt die gefundene Ursache und öffnet den Ordner mit der Verknüpfung, die Verknüpfung bereits markiert.
+
+Dort klicken Sie mit der rechten Maustaste auf die markierte Verknüpfung → **Weitere Optionen anzeigen** (unter Windows 11 22H2 und neuer) → **An Taskleiste anheften**.
 
 Diesen Ordner erreichen Sie jederzeit über **⋯ → Show shortcut…** neben **Pin to taskbar**.
 

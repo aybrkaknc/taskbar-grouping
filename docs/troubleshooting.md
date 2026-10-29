@@ -72,9 +72,14 @@ If the popup opens but is invisible, check the *Enable popup animations* setting
 
 ## "Pin to taskbar" reports that pinning is unavailable
 
-Exit code 2. Programmatic pinning needs Windows 10 version 2004 or newer, and some editions and managed environments block it outright. The launcher log says which: `TaskbarManager.IsPinningAllowed=false` means Windows itself refused before any dialog was shown.
+Exit code 2. The launcher log shows `TaskbarManager.IsPinningAllowed=false`: Windows refused before asking you. The Manager then reads why and logs it (`Pin blocker …`), and its message names the cause:
 
-Use the manual path: the Manager opens the shortcut folder for you, or use **⋯ → Show shortcut…**. Right-click the `.lnk` → **Show more options** (Windows 11 22H2 and later) → **Pin to taskbar**.
+- **Notifications are off.** Windows asks for your approval through a notification and shows none while they are off — the most common cause. The Manager offers to open *Settings → System → Notifications*; turn the main switch on and press **Pin to taskbar** again. Choose **No** to pin by hand instead.
+- **A key from Microsoft is required.** Some Windows 11 builds before update KB5074105 (26100.7705 / 26200.7705) let an app ask to be pinned only with a Limited Access Feature key, which this app does not have. Update Windows, or pin by hand.
+- **A policy turns pinning off** (`NoPinningToTaskbar`). Ask your administrator.
+- Programmatic pinning also needs Windows 10 version 2004 or newer.
+
+In every case the Manager never pins on its own around Windows' approval; the manual path always works where pinning is allowed at all: the Manager opens the shortcut folder with the shortcut selected (or use **⋯ → Show shortcut…**). Right-click it → **Show more options** (Windows 11 22H2 and later) → **Pin to taskbar**.
 
 ## Pinning appears to succeed but no tile appears
 

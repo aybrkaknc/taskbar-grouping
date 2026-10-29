@@ -317,6 +317,16 @@ Task<PinResult> PinAsync(string groupId, CancellationToken cancellationToken = d
 
 `NotVerified` means Windows reported a successful pin but no pinned shortcut carrying the group's AppUserModelID was found afterwards — reported separately because claiming success with no tile behind it is indistinguishable from a broken application.
 
+#### [`IPinHelper`](../src/TaskbarFolders.Manager/Services/IPinHelper.cs)
+
+```csharp
+PinBlocker Diagnose();
+void OpenNotificationSettings();
+void RevealInExplorer(string path);
+```
+
+What the Manager does after `Unsupported`. `Diagnose` reads `NoPinningToTaskbar` (HKCU and HKLM policies), the taskbar-pin Limited Access Feature value and `PushNotifications\ToastEnabled`, and returns a [`PinBlocker`](../src/TaskbarFolders.Manager/Services/PinBlocker.cs): `PolicyBlocked`, `TokenRequired`, `NotificationsOff` or `Unknown`, in that order of precedence (`PinBlockerRules.Classify`, pure); it never throws. `OpenNotificationSettings` opens `ms-settings:notifications`; `RevealInExplorer` opens Explorer with the file selected. Default `PinHelper`, through `IProcessRunner`.
+
 #### Supporting services
 
 | Interface | Purpose |
@@ -326,6 +336,7 @@ Task<PinResult> PinAsync(string groupId, CancellationToken cancellationToken = d
 | [`IThemeService`](../src/TaskbarFolders.Manager/Services/IThemeService.cs) | `Preference`, `EffectiveTheme`, `SetPreference()`; subscribes to system theme changes only while the preference is `System` |
 | [`IProcessRunner`](../src/TaskbarFolders.Manager/Services/IProcessRunner.cs) | `RunAndWaitAsync(ProcessStartInfo, TimeSpan, …)` returning the exit code; `TryStart(ProcessStartInfo)` without waiting |
 | [`IUserConfirmation`](../src/TaskbarFolders.Manager/Services/IUserConfirmation.cs) | `Confirm()` and `Notify()`, so view models stay free of `MessageBox` |
+| [`IShellRestarter`](../src/TaskbarFolders.Manager/Services/IShellRestarter.cs) | `RestartAsync()`: ends this session's `explorer.exe` and starts it if Windows does not; only after the user agrees (offered after a deleted group's tile is unpinned) |
 | [`IGroupIconReader`](../src/TaskbarFolders.Manager/Services/IGroupIconReader.cs) | `TryRead(groupId)`: the group's current taskbar icon for the sidebar, decoded from `GroupIconFiles.FindCurrent` at 48 px; `null` before the group has one |
 
 ## TaskbarFolders.Launcher

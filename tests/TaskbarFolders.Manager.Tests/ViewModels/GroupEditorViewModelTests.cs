@@ -42,7 +42,8 @@ public class GroupEditorViewModelTests
                     Mock<IUserConfirmation> userConfirmation,
                     Mock<IPinToTaskbarService> pinService) CreateSutWithCollaborators(
         Mock<ICustomGroupIconStore>? customIcons = null,
-        Mock<IPinnedTileRemover>? pins = null)
+        Mock<IPinnedTileRemover>? pins = null,
+        Mock<IPinHelper>? pinHelper = null)
     {
         var extractor = new Mock<IIconExtractor>();
         extractor.Setup(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>())).Returns(StubIcon());
@@ -76,7 +77,8 @@ public class GroupEditorViewModelTests
             userConfirmation.Object,
             pinService.Object,
             (customIcons ?? new Mock<ICustomGroupIconStore>()).Object,
-            (pins ?? new Mock<IPinnedTileRemover>()).Object);
+            (pins ?? new Mock<IPinnedTileRemover>()).Object,
+            (pinHelper ?? new Mock<IPinHelper>()).Object);
         return (sut, extractor, composer, cache, store, syncService, paths, userConfirmation, pinService);
     }
 
@@ -767,6 +769,80 @@ public class GroupEditorViewModelTests
         }
     }
 
+    // Windows takes a pin request as a notification, and not at all when notifications are off.
+    // The user chooses: open the setting, or pin the shortcut by hand. The app never pins on its
+    // own around Windows' consent.
+    private static async Task<(Mock<IPinHelper> Helper, Mock<IUserConfirmation> Confirm, string Shortcut)> UnsupportedBecause(
+        PinBlocker blocker, bool openSettings = false)
+    {
+        var tempBase = Path.Combine(Path.GetTempPath(), "TaskbarFolders.PinWhy." + Guid.NewGuid().ToString("N"));
+        var shortcutsDir = Path.Combine(tempBase, "shortcuts");
+        var shortcutPath = Path.Combine(shortcutsDir, "g.lnk");
+        Directory.CreateDirectory(shortcutsDir);
+        File.WriteAllBytes(shortcutPath, [0x4C]);
+
+        try
+        {
+            var helper = new Mock<IPinHelper>();
+            helper.Setup(h => h.Diagnose()).Returns(blocker);
+            var (sut, _, _, _, _, _, paths, confirm, pinService) = CreateSutWithCollaborators(pinHelper: helper);
+            confirm.Setup(c => c.Confirm(GroupEditorViewModel.NotificationsOffCaption, It.IsAny<string>())).Returns(openSettings);
+            paths.Setup(p => p.GetGroupShortcutFile("g")).Returns(shortcutPath);
+            paths.Setup(p => p.ShortcutsDirectory).Returns(shortcutsDir);
+            pinService.Setup(p => p.PinAsync("g", It.IsAny<CancellationToken>())).ReturnsAsync(PinResult.Unsupported);
+            sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g" }));
+
+            await sut.PinToTaskbarCommand.ExecuteAsync(null);
+
+            return (helper, confirm, Path.GetFullPath(shortcutPath));
+        }
+        finally
+        {
+            Directory.Delete(tempBase, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task PinToTaskbar_WithNotificationsOff_OffersTheNotificationSettings_AndOpensThemOnYes()
+    {
+        var (helper, confirm, shortcut) = await UnsupportedBecause(PinBlocker.NotificationsOff, openSettings: true);
+
+        confirm.Verify(c => c.Confirm(GroupEditorViewModel.NotificationsOffCaption, It.Is<string>(m => m.Contains("notifications"))), Times.Once);
+        helper.Verify(h => h.OpenNotificationSettings(), Times.Once);
+        helper.Verify(h => h.RevealInExplorer(shortcut), Times.Never, "the user chose the setting, not the manual way");
+        confirm.Verify(c => c.Notify("Pin not available", It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task PinToTaskbar_WithNotificationsOff_ShowsTheShortcut_WhenTheUserSaysNo()
+    {
+        var (helper, confirm, shortcut) = await UnsupportedBecause(PinBlocker.NotificationsOff, openSettings: false);
+
+        helper.Verify(h => h.OpenNotificationSettings(), Times.Never);
+        helper.Verify(h => h.RevealInExplorer(shortcut), Times.Once);
+        confirm.Verify(c => c.Notify("Pin not available", It.Is<string>(m => m.Contains("Pin to taskbar"))), Times.Once);
+    }
+
+    [Fact]
+    public async Task PinToTaskbar_WhenAKeyIsRequired_SaysSo_AndShowsTheShortcut()
+    {
+        var (helper, confirm, shortcut) = await UnsupportedBecause(PinBlocker.TokenRequired);
+
+        confirm.Verify(c => c.Notify("Pin not available", It.Is<string>(m => m.Contains("Microsoft"))), Times.Once);
+        confirm.Verify(c => c.Confirm(GroupEditorViewModel.NotificationsOffCaption, It.IsAny<string>()), Times.Never, "notifications are not the cause");
+        helper.Verify(h => h.RevealInExplorer(shortcut), Times.Once);
+    }
+
+    [Fact]
+    public async Task PinToTaskbar_WhenAPolicyBlocksIt_SaysSo_AndShowsTheShortcut()
+    {
+        var (helper, confirm, shortcut) = await UnsupportedBecause(PinBlocker.PolicyBlocked);
+
+        confirm.Verify(c => c.Notify("Pin not available", It.Is<string>(m => m.Contains("administrator"))), Times.Once);
+        confirm.Verify(c => c.Confirm(GroupEditorViewModel.NotificationsOffCaption, It.IsAny<string>()), Times.Never);
+        helper.Verify(h => h.RevealInExplorer(shortcut), Times.Once);
+    }
+
     [Fact]
     public async Task PinToTaskbar_Unsupported_NotifiesAndDoesNotThrow()
     {
@@ -780,20 +856,19 @@ public class GroupEditorViewModelTests
 
         try
         {
-            var (sut, _, _, _, _, _, paths, userConfirmation, pinService) = CreateSutWithCollaborators();
+            var pinHelper = new Mock<IPinHelper>();
+            var (sut, _, _, _, _, _, paths, userConfirmation, pinService) = CreateSutWithCollaborators(pinHelper: pinHelper);
             paths.Setup(p => p.GetGroupShortcutFile("g")).Returns(shortcutPath);
             paths.Setup(p => p.ShortcutsDirectory).Returns(shortcutsDir);
             pinService.Setup(p => p.PinAsync("g", It.IsAny<CancellationToken>())).ReturnsAsync(PinResult.Unsupported);
 
             sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g" }));
 
-            // The Explorer fallback is best-effort: Process.Start("explorer.exe", ...) is
-            // wrapped in `using var process = Process.Start(...)` which can return null on
-            // failure but never throws. Test only the Notify contract here.
             var act = async () => await sut.PinToTaskbarCommand.ExecuteAsync(null);
             await act.Should().NotThrowAsync();
 
             userConfirmation.Verify(u => u.Notify("Pin not available", It.IsAny<string>()), Times.Once);
+            pinHelper.Verify(h => h.RevealInExplorer(Path.GetFullPath(shortcutPath)), Times.Once, "the manual way is always offered");
         }
         finally
         {

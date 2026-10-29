@@ -77,10 +77,16 @@ decided with the user one at a time.
     pinned group made Windows redraw the tile blank (fixed by an Explorer restart). Now the button
     reads *Pinned* and is off while a tile with the group's AUMID exists
     (`IPinnedTileRemover.IsPinned`), re-checked on selection, after a pin and on window activation.
-  - [ ] **Explain why pinning is unavailable and offer what works** — notifications off → offer
-    `ms-settings:notifications` or the manual way; LAF token required (older Windows 11) or group
-    policy → say so, manual way; unknown → manual way; the manual way opens the shortcut folder with
-    the shortcut selected. Plan agreed; not started.
+  - [x] **Explain why pinning is unavailable and offer what works** — `PinHelper.Diagnose` reads
+    `NoPinningToTaskbar`, the LAF seed and `ToastEnabled` (`PinBlockerRules.Classify`, policy and key
+    before notifications). Notifications off → ask: Yes opens `ms-settings:notifications`, No pins by
+    hand; key required / policy → say so, manual way; unknown → generic message, manual way. Explorer
+    opens with the shortcut selected through `IProcessRunner`. Only the notifications case can be
+    tried on this machine; key and policy are unit-tested only.
+- [ ] **A popup sizing test failed once and passed on rerun.**
+  `PopupWindowSizingTests.AddingATileToTheSameRow_ShowsItsLabelInsideTheWindow` failed in one full
+  run on 2026-10-29 with no Launcher change, then passed three times alone and in a full rerun.
+  Watch for it; if it fails again, find what the layout pass races with.
 - [x] **Explorer menu warning recurs on group creation/deletion** — the same race as above, fixed
   with it.
 - [ ] **Deleting a group logs a warning when `icons\custom\` does not exist.** Seen on

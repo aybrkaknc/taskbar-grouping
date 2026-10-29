@@ -53,6 +53,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     private readonly IPinToTaskbarService _pinService;
     private readonly ICustomGroupIconStore _customIcons;
     private readonly IPinnedTileRemover _pins;
+    private readonly IPinHelper _pinHelper;
     private readonly ILogger<GroupEditorViewModel>? _logger;
 
     private GroupListItemViewModel? _boundItem;
@@ -74,6 +75,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         IPinToTaskbarService pinService,
         ICustomGroupIconStore customIcons,
         IPinnedTileRemover pins,
+        IPinHelper pinHelper,
         ILogger<GroupEditorViewModel>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(extractor);
@@ -86,6 +88,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         ArgumentNullException.ThrowIfNull(pinService);
         ArgumentNullException.ThrowIfNull(customIcons);
         ArgumentNullException.ThrowIfNull(pins);
+        ArgumentNullException.ThrowIfNull(pinHelper);
 
         _extractor = extractor;
         _composer = composer;
@@ -97,8 +100,12 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         _pinService = pinService;
         _customIcons = customIcons;
         _pins = pins;
+        _pinHelper = pinHelper;
         _logger = logger;
     }
+
+    /// <summary>Caption of the question asked when notifications, which Windows pin requests need, are off.</summary>
+    public const string NotificationsOffCaption = "Notifications are off";
 
     /// <summary>
     /// Whether the bound group already has a tile on the taskbar. While it has, Pin to taskbar
@@ -526,13 +533,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
                 break;
 
             case PinResult.Unsupported:
-                _logger?.LogWarning("Pin unsupported on this Windows build/SKU; opening Explorer fallback.");
-                _userConfirmation.Notify(
-                    "Pin not available",
-                    "This Windows build does not allow apps to pin themselves to the taskbar. " +
-                    "Opening the shortcut folder — right-click the .lnk and choose " +
-                    "\"Pin to taskbar\" (or \"Show more options\" → \"Pin to taskbar\" on Win11 22H2+).");
-                OpenShortcutInExplorer(_boundItem.Id);
+                HandleUnsupportedPin(_boundItem.Id);
                 break;
 
             case PinResult.NotVerified:
@@ -556,6 +557,54 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
                 OpenShortcutInExplorer(_boundItem.Id);
                 break;
         }
+    }
+
+    private const string ManualPinSteps =
+        "Opening the shortcut folder — right-click the selected shortcut and choose " +
+        "\"Pin to taskbar\" (on Windows 11: \"Show more options\" → \"Pin to taskbar\").";
+
+    // Windows would not take the request. Say why, as far as the machine shows, and offer what
+    // works. The app never pins around Windows' own consent.
+    private void HandleUnsupportedPin(string groupId)
+    {
+        var blocker = _pinHelper.Diagnose();
+        _logger?.LogWarning("Pin unavailable ({Blocker}); offering the manual way.", blocker);
+
+        string reason;
+        switch (blocker)
+        {
+            case PinBlocker.NotificationsOff:
+                // Windows shows the pin request as a notification, and shows none while they are off.
+                if (_userConfirmation.Confirm(
+                        NotificationsOffCaption,
+                        "Windows asks you to approve pinning through a notification, and notifications " +
+                        "are turned off.\n\nOpen the notification settings now? Turn them on, then press " +
+                        "Pin to taskbar again.\n\nChoose No to pin the shortcut by hand instead."))
+                {
+                    _pinHelper.OpenNotificationSettings();
+                    return;
+                }
+
+                reason = "Notifications are off, so Windows cannot ask you to approve the pin. ";
+                break;
+
+            case PinBlocker.TokenRequired:
+                reason = "This version of Windows only lets an app ask to be pinned with a key from " +
+                         "Microsoft, which this app does not have. ";
+                break;
+
+            case PinBlocker.PolicyBlocked:
+                reason = "A policy on this PC turns off pinning to the taskbar. If the steps below do " +
+                         "not work either, ask your administrator. ";
+                break;
+
+            default:
+                reason = "This Windows build does not allow apps to pin themselves to the taskbar. ";
+                break;
+        }
+
+        _userConfirmation.Notify("Pin not available", reason + ManualPinSteps);
+        OpenShortcutInExplorer(groupId);
     }
 
     [RelayCommand]
@@ -644,12 +693,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
             return;
         }
 
-        using var process = Process.Start(new ProcessStartInfo
-        {
-            FileName = "explorer.exe",
-            Arguments = $"/select,\"{fullShortcutPath}\"",
-            UseShellExecute = true,
-        });
+        _pinHelper.RevealInExplorer(fullShortcutPath);
     }
 
     private void OnAppsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
