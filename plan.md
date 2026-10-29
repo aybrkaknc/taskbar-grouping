@@ -102,6 +102,16 @@ decided with the user one at a time.
   The v0.5.0 refusal did **not** recur at 2 s, so the retry still has not run. The same first
   press on v0.5.0 (07:01, same machine) was refused. Kept open until it shows on its own: look
   for "after 6 checks" in `launcher-*.log`.
+- [ ] **Some apps' icons come out tiny, in the preview, the group icon and the popup.** Seen on
+  2026-10-29 in the development build while trying the C2 preview, and confirmed by the user to look
+  the same in the Apps tab and the popup, so it is not the preview. The group *Test 1*: `AnyDesk.exe`
+  and `LDPlayer 14.lnk` (no icon location) are full size; `UniFi.lnk` (icon location
+  `…\unifi-network.ico`, target `javaw.exe`) and `CardLock.exe - Kısayol.lnk` (target
+  `CardLock.exe`, no icon location) draw as a small glyph in the middle of the tile. Not measured
+  yet: what the extractor returns for them (size of the bitmap, how much of it is drawn), and
+  whether they have only small frames. Suspected: `ShellIconExtractor` takes the big shell image
+  and a source with only small frames comes back as a small icon on a large transparent canvas.
+  Next: extract both at 96 and 256 px in a throwaway test and measure the non-transparent box.
 - [ ] **A popup sizing test failed once and passed on rerun.**
   `PopupWindowSizingTests.AddingATileToTheSameRow_ShowsItsLabelInsideTheWindow` failed in one full
   run on 2026-10-29 with no Launcher change, then passed three times alone and in a full rerun.
