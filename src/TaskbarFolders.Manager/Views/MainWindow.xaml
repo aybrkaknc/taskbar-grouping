@@ -2,12 +2,14 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:TaskbarFolders.Manager.ViewModels"
+        xmlns:views="clr-namespace:TaskbarFolders.Manager.Views"
         xmlns:icons="clr-namespace:TaskbarFolders.Core.Icons;assembly=TaskbarFolders.Core"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="{Binding Title}"
-        Width="980" Height="640"
+        Width="1180" Height="720"
+        MinWidth="900" MinHeight="520"
         WindowStartupLocation="CenterScreen"
         FocusManager.FocusedElement="{Binding ElementName=GroupList}"
         d:DataContext="{d:DesignInstance Type=vm:MainWindowViewModel}"
@@ -459,7 +461,17 @@
                     </TabItem>
 
                     <TabItem Header="Appearance">
-                        <StackPanel Margin="0,16,0,0">
+                        <!-- Two fixed places: the settings on the left (they scroll if the window
+                             is short), the preview of the popup on the right, which stays put
+                             while the settings scroll so a change is always seen as it is made. -->
+                        <Grid Margin="0,16,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" MinWidth="200" />
+                            </Grid.ColumnDefinitions>
+
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="0,0,24,0">
                             <TextBlock Text="Group icon" FontSize="14" FontWeight="SemiBold" />
                             <TextBlock Margin="0,4,0,10" TextWrapping="Wrap" Foreground="{DynamicResource ForegroundSubtle}">
                                 <TextBlock.Style>
@@ -494,6 +506,7 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Text="Max per row" VerticalAlignment="Center" Margin="0,0,16,0" />
@@ -514,12 +527,34 @@
                                          SelectedValue="{Binding IconSize}"
                                          AutomationProperties.Name="Icon size" />
 
-                                <CheckBox Grid.Row="2" Grid.Column="1" Margin="0,14,0,0"
+                                <TextBlock Grid.Row="2" Text="Spacing" VerticalAlignment="Center" Margin="0,10,16,0" />
+                                <ListBox Grid.Row="2" Grid.Column="1" Margin="0,10,0,0"
+                                         Style="{StaticResource SegmentedList}"
+                                         ItemsSource="{x:Static vm:GroupEditorViewModel.TileSpacingOptions}"
+                                         DisplayMemberPath="Label"
+                                         SelectedValuePath="Value"
+                                         SelectedValue="{Binding TileSpacing}"
+                                         AutomationProperties.Name="Spacing"
+                                         ToolTip="The gap between the tiles in the popup." />
+
+                                <CheckBox Grid.Row="3" Grid.Column="1" Margin="0,14,0,0"
                                           Content="Show app names"
                                           IsChecked="{Binding ShowNames}"
                                           ToolTip="Without names the tiles shrink to their icons; pointing at one still shows its name." />
                             </Grid>
                         </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- Its own scroll, shown only when a tall preview does not fit. -->
+                            <ScrollViewer x:Name="PreviewColumn" Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel>
+                                    <TextBlock Text="Preview" FontSize="14" FontWeight="SemiBold" />
+                                    <TextBlock Margin="0,4,0,10" TextWrapping="Wrap" Foreground="{DynamicResource ForegroundSubtle}"
+                                               Text="The popup as it opens from the taskbar." />
+                                    <views:PopupPreview DataContext="{Binding Preview}" HorizontalAlignment="Left" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
                     </TabItem>
                 </TabControl>
             </DockPanel>

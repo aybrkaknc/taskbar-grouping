@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A preview of the popup on *Appearance*.** To the right of the popup settings, the group's first twelve apps are shown as the popup lays them out, with their icons and names, and follow every change at once. It is drawn from the same tile definition as the popup, so the two cannot drift. An empty group shows sample tiles. When the settings make the popup too wide for the space, the window grows to make room, up to the screen's width, and the settings column scrolls if the window is short. The window now opens at 1180 × 720 (smaller where the screen is) and is no narrower than 900 × 520.
+- **Spacing between the popup's tiles.** *Appearance → Popup → Spacing* sets the gap between the tiles to *None* (the default, as before), *Small*, *Medium* or *Large*. The tiles keep their size; the popup grows by the gaps, and its largest width went from 720 to 800 so six of the widest spaced tiles still fit. Groups saved earlier keep the tiles touching.
+
 ## [0.5.1] - 2026-10-29
 
 ### Fixed

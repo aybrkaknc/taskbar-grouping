@@ -442,15 +442,70 @@ public class GroupEditorViewModelTests
     public void Bind_ShowsTheGroupsGridSettings_WithoutSavingThem()
     {
         var (sut, _, _, _, store, _, _, _, _) = CreateSutWithCollaborators();
-        var config = new GroupConfig { Id = "g", GroupName = "g", Columns = 5, IconSize = 64, ShowNames = false };
+        var config = new GroupConfig { Id = "g", GroupName = "g", Columns = 5, IconSize = 64, ShowNames = false, TileSpacing = 8 };
 
         sut.Bind(new GroupListItemViewModel(config));
 
         sut.Columns.Should().Be(5);
         sut.IconSize.Should().Be(64);
         sut.ShowNames.Should().BeFalse();
+        sut.TileSpacing.Should().Be(8);
         store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never,
             "selecting a group is not an edit");
+    }
+
+    [Fact]
+    public void Bind_ShowsThePreviewWithTheGroupsSettingsAndApps()
+    {
+        var (sut, _, _, _, _, _, _, _, _) = CreateSutWithCollaborators();
+        var config = new GroupConfig { Id = "g", GroupName = "g", Columns = 2, IconSize = 64, ShowNames = false, TileSpacing = 4 };
+        config.Apps.Add(new AppEntry { Name = "a", Path = "a.exe" });
+        config.Apps.Add(new AppEntry { Name = "b", Path = "b.exe" });
+        config.Apps.Add(new AppEntry { Name = "c", Path = "c.exe" });
+
+        sut.Bind(new GroupListItemViewModel(config));
+
+        sut.Preview.Tile.Should().Be(TileMetrics.Compute(64, showNames: false, spacing: 4));
+        sut.Preview.ShowNames.Should().BeFalse();
+        sut.Preview.EffectiveColumns.Should().Be(2);
+        sut.Preview.Tiles.Select(t => t.Name).Should().Equal("a", "b", "c");
+    }
+
+    [Fact]
+    public void ThePreview_FollowsEveryGridSetting_AsItChanges()
+    {
+        var (sut, _, _, _, _, _, _, _, _) = CreateSutWithCollaborators();
+        var config = new GroupConfig { Id = "g", GroupName = "g" };
+        for (var i = 0; i < 6; i++)
+        {
+            config.Apps.Add(new AppEntry { Name = $"app{i}", Path = $"app{i}.exe" });
+        }
+
+        sut.Bind(new GroupListItemViewModel(config));
+
+        sut.Columns = 4;
+        sut.IconSize = 80;
+        sut.ShowNames = false;
+        sut.TileSpacing = 12;
+
+        sut.Preview.EffectiveColumns.Should().Be(4);
+        sut.Preview.ShowNames.Should().BeFalse();
+        sut.Preview.Tile.Should().Be(TileMetrics.Compute(80, showNames: false, spacing: 12),
+            "the preview answers at once, without waiting for the save");
+    }
+
+    [Fact]
+    public async Task ThePreview_ShowsAnAppAddedOrRemoved()
+    {
+        var (sut, _, _, _, _, _, _, _, _) = CreateSutWithCollaborators();
+        var config = new GroupConfig { Id = "g", GroupName = "g" };
+        config.Apps.Add(new AppEntry { Name = "a", Path = "a.exe" });
+        sut.Bind(new GroupListItemViewModel(config));
+
+        sut.Apps.Add(new AppEntryViewModel(new AppEntry { Name = "b", Path = "b.exe" }));
+        await Task.Delay(50);
+
+        sut.Preview.Tiles.Select(t => t.Name).Should().Equal("a", "b");
     }
 
     [Fact]
@@ -463,12 +518,14 @@ public class GroupEditorViewModelTests
         sut.Columns = 4;
         sut.IconSize = 80;
         sut.ShowNames = false;
+        sut.TileSpacing = 8;
         await Task.Delay(50);
 
         config.Columns.Should().Be(4);
         config.IconSize.Should().Be(80);
         config.ShowNames.Should().BeFalse();
-        store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Exactly(3));
+        config.TileSpacing.Should().Be(8);
+        store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Exactly(4));
         syncService.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never,
             "the popup reads these when it opens; the taskbar icon does not show them");
     }
@@ -494,6 +551,7 @@ public class GroupEditorViewModelTests
     public void GridOptions_OfferEveryAllowedValue()
     {
         GroupEditorViewModel.IconSizeOptions.Select(o => o.Value).Should().Equal(GroupConfig.IconSizes);
+        GroupEditorViewModel.TileSpacingOptions.Select(o => o.Value).Should().Equal(GroupConfig.TileSpacings);
         GroupEditorViewModel.ColumnOptions.Select(o => o.Value)
             .Should().Equal(Enumerable.Range(GroupConfig.MinColumns, GroupConfig.MaxColumns - GroupConfig.MinColumns + 1));
     }

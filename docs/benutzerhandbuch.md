@@ -221,7 +221,10 @@ Jede Gruppe legt ihr Aufklapp-Fenster selbst fest, im Manager auf der Registerka
 
 - **Max per row** — 1 bis 6, standardmäßig 3: höchstens so viele Programme nebeneinander. Eine Gruppe mit weniger Programmen braucht nur den Platz, den sie braucht; zwei Programme bei *Max per row* 5 ergeben ein Fenster von zwei Kacheln Breite.
 - **Icon size** — *Small*, *Medium* (Standard), *Large* oder *Extra large*. Die Kacheln wachsen mit dem Symbol, damit die Namen weiter hineinpassen.
+- **Spacing** — der Abstand zwischen den Kacheln: *None* (Standard), *Small*, *Medium* oder *Large*. Die Kacheln behalten ihre Größe; das Fenster wird um die Abstände breiter.
 - **Show app names** — standardmäßig an. Ohne Namen schrumpfen die Kacheln auf ihre Symbole, das Fenster wird deutlich kleiner; zeigt man auf ein Symbol, erscheint sein Name trotzdem.
+
+Rechts neben diesen Einstellungen zeigt **Preview** das Aufklapp-Fenster, wie Sie es eingestellt haben, mit den eigenen Programmen und Symbolen der Gruppe (die ersten zwölf; eine Gruppe ohne Programme zeigt Beispielkacheln). Sie folgt jeder Änderung sofort und wird so gezeichnet, wie das Aufklapp-Fenster seine Kacheln zeichnet — was man sieht, öffnet sich auch aus der Taskleiste. Würde das Fenster für den vorhandenen Platz zu breit, vergrößert sich das Manager-Fenster bis zur Breite des Bildschirms; von selbst wird es nie schmaler, und die Einstellungen lassen sich scrollen, wenn das Fenster niedrig ist.
 
 Änderungen werden sofort gespeichert und gelten beim nächsten Öffnen des Fensters. Hat eine Gruppe mehr Zeilen, als ins Fenster passen — bei Standardgröße etwa acht —, lässt sie sich mit dem Mausrad scrollen; ein schmaler Balken rechts zeigt die Position.
 

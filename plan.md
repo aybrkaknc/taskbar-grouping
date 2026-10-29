@@ -230,7 +230,7 @@ below.
 | 1 | **C1 — grid settings, part 1** — *done, merged* | On *Appearance*: columns, icon size, show/hide names, applied to the popup. Columns were JSON-only (upstream #29). |
 | 2 | **C6 — settings and empty state** — *done, merged* | Settings apply as they change (no *Save*); with no groups, a three-step "get started" view. |
 | 3 | **D — release v0.5.0** — *version bumped; gates and pushes pending* | Version bump, installer and portable build, installer smoke test, CHANGELOG section, release notes; open an issue for `IsPinningAllowed = false`; delete merged branches. Puts the work so far in users' hands before the larger items. |
-| 4 | **C2 — grid settings, part 2** | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
+| 4 | **C2 — grid settings, part 2** — *done on `feature/grid-settings-2`, not yet merged* | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
 | 5 | **C4 — reorder apps by dragging** | Drag rows in the app list (drag only; the keyboard shortcut was dropped on 2026-10-29). Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
 | 6 | **C6 — visual polish** | Let the Manager's Mica backdrop show, Fluent icons, spacing; retake screenshots. |
 | 7 | **E — add apps from a list of installed apps (research first)** | Instead of browsing for an `.exe`/`.lnk`, pick from what Windows lists under *Start → All apps*, which also covers Store/packaged apps (Calculator, Settings…) that cannot be added at all today. The research settles the source (the shell's AppsFolder vs. Start menu shortcuts), how a packaged app is stored and launched (`shell:AppsFolder\<AUMID>` rather than a path), and how its icon is read. |
@@ -370,8 +370,12 @@ merged by both apps — no linked file needed. In three steps, each its own comm
   button's content to the shared template. `TileHoverBackground`, `TileFocusBorder` and
   `LabelShadow` were added to both Manager themes (Launcher values). Verified: six offscreen
   renders (two themes × names/no names/spacing) byte-identical before and after.
-- [ ] **Step 3 — Manager.** Spacing control and the live preview on *Appearance*; user guides,
-  CHANGELOG, screenshots.
+- [x] **Step 3 — Manager.** Spacing control and the live preview on *Appearance*; user guides,
+  CHANGELOG. Layout decided with the user while trying it: settings in a left column (scrolls only
+  when needed), the preview in a fixed place on the right; the window opens at 1180 × 720 (min
+  900 × 520) and grows — never shrinks — when the preview column would show it below 0.75 scale
+  (`AppearanceLayout`). Tried by the user in the development build. **Not done:** no screenshot of
+  *Appearance* yet — none existed, the recipe needs 150 % scaling, and C6 polish retakes them all.
 
 The original specification follows.
 

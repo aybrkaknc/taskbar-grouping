@@ -51,7 +51,14 @@ public sealed partial class AppEntryViewModel : ObservableObject
     /// otherwise the program's own. Set by the editor.
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IconMissing))]
     private BitmapSource? _icon;
+
+    /// <summary>
+    /// Whether the app has no icon to show. The popup's shared tile (Core's PopupTile.xaml) draws
+    /// its placeholder on this name, which the preview on Appearance relies on.
+    /// </summary>
+    public bool IconMissing => Icon is null;
 
     /// <summary>The stored copy of an image chosen as this app's icon, or <see langword="null"/>.</summary>
     [ObservableProperty]

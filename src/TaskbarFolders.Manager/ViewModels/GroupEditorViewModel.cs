@@ -170,6 +170,18 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         new(80, "Extra large"),
     ];
 
+    /// <summary>The gaps between popup tiles a group can choose, one per <see cref="GroupConfig.TileSpacings"/>.</summary>
+    public static IReadOnlyList<GridOption> TileSpacingOptions { get; } =
+    [
+        new(0, "None"),
+        new(4, "Small"),
+        new(8, "Medium"),
+        new(12, "Large"),
+    ];
+
+    /// <summary>The popup as the bound group's settings lay it out, shown on Appearance.</summary>
+    public PopupPreviewViewModel Preview { get; } = new();
+
     /// <summary>Columns of the bound group's popup. Saved as it changes.</summary>
     [ObservableProperty]
     private int _columns = 3;
@@ -181,6 +193,10 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     /// <summary>Whether the bound group's popup shows app names. Saved as it changes.</summary>
     [ObservableProperty]
     private bool _showNames = true;
+
+    /// <summary>Gap between the bound group's popup tiles, in DIPs. Saved as it changes.</summary>
+    [ObservableProperty]
+    private int _tileSpacing;
 
     /// <summary>Re-routes the editor to a new group selection.</summary>
     /// <param name="item">The new selection, or <see langword="null"/> to clear.</param>
@@ -210,6 +226,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
             Columns = item.Config.Columns;
             IconSize = item.Config.IconSize;
             ShowNames = item.Config.ShowNames;
+            TileSpacing = item.Config.TileSpacing;
         }
         finally
         {
@@ -231,6 +248,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         finally
         {
             Apps.CollectionChanged += OnAppsCollectionChanged;
+            UpdatePreview();
             SchedulePreviewRefresh();
         }
     }
@@ -443,12 +461,19 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
 
     partial void OnShowNamesChanged(bool value) => SaveGridSetting(c => c.ShowNames = value);
 
+    partial void OnTileSpacingChanged(int value) => SaveGridSetting(c => c.TileSpacing = value);
+
+    // From the editor's own values, not the store, so it answers at once — also while a group is
+    // being bound, when nothing is saved.
+    private void UpdatePreview() => Preview.Update(Apps, Columns, IconSize, ShowNames, TileSpacing);
+
     /// <summary>
     /// Writes a grid setting into the bound group and saves it. The popup reads the settings
     /// each time it opens and the taskbar icon does not show them, so there is nothing to sync.
     /// </summary>
     private void SaveGridSetting(Action<GroupConfig> apply)
     {
+        UpdatePreview();
         var item = _boundItem;
         if (_binding || item is null)
         {
@@ -696,8 +721,11 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         _pinHelper.RevealInExplorer(fullShortcutPath);
     }
 
-    private void OnAppsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+    private void OnAppsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        UpdatePreview();
         SchedulePreviewRefresh();
+    }
 
     private async void SchedulePreviewRefresh()
     {

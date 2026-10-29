@@ -340,6 +340,15 @@ What the Manager does after `Unsupported`. `Diagnose` reads `NoPinningToTaskbar`
 | [`IShellRestarter`](../src/TaskbarFolders.Manager/Services/IShellRestarter.cs) | `RestartAsync()`: ends this session's `explorer.exe` and starts it if Windows does not; only after the user agrees (offered after a deleted group's tile is unpinned) |
 | [`IGroupIconReader`](../src/TaskbarFolders.Manager/Services/IGroupIconReader.cs) | `TryRead(groupId)`: the group's current taskbar icon for the sidebar, decoded from `GroupIconFiles.FindCurrent` at 48 px; `null` before the group has one |
 
+#### The preview on Appearance
+
+| Type | Role |
+|---|---|
+| [`PopupPreviewViewModel`](../src/TaskbarFolders.Manager/ViewModels/PopupPreviewViewModel.cs) | `GroupEditorViewModel.Preview`. `Update(apps, columns, iconSize, showNames, tileSpacing)` lays out the tiles as the popup does: `Tile` (`TileMetrics`), `ShowNames`, `EffectiveColumns`, `Tiles` (at most `MaxTiles` = 12 apps, or three sample tiles when `IsSample`), `MoreCount`, and `NaturalWidth` (the grid plus its 26 DIP frame). Its names are the ones Core's `PopupTile.xaml` binds to |
+| [`AppEntryViewModel.IconMissing`](../src/TaskbarFolders.Manager/ViewModels/AppEntryViewModel.cs) | True while `Icon` is `null`; the shared tile draws its placeholder on it |
+| [`GroupEditorViewModel.TileSpacing`](../src/TaskbarFolders.Manager/ViewModels/GroupEditorViewModel.cs) / `TileSpacingOptions` | The bound group's gap setting and its four choices (None, Small, Medium, Large); saved as it changes, without a sync |
+| [`AppearanceLayout`](../src/TaskbarFolders.Manager/ViewModels/AppearanceLayout.cs) | Pure window arithmetic: `RequiredWindowWidth(currentWidth, previewColumnWidth, previewNaturalWidth)` (the width at which the preview shows at `MinPreviewScale` = 0.75 or more), `Target(...)` (never narrower than now, never wider than the work area) and `Left(...)` (keeps the grown window on screen). `MainWindow` applies it after each change |
+
 ## TaskbarFolders.Launcher
 
 | Type | Purpose |

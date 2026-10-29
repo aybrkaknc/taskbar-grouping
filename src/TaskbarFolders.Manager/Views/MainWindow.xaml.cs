@@ -33,10 +33,49 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         viewModel.RenameRequested += OnRenameRequested;
+
+        // The designed size is for a roomy screen; a smaller one gets the window it can hold.
+        var workArea = SystemParameters.WorkArea;
+        MinWidth = Math.Min(MinWidth, workArea.Width);
+        MinHeight = Math.Min(MinHeight, workArea.Height);
+        Width = Math.Min(Width, workArea.Width);
+        Height = Math.Min(Height, workArea.Height);
+
+        // The preview on Appearance wants room: when its column is too narrow to show it at a
+        // readable size the window grows (never shrinks) to make it, as the settings change.
+        viewModel.Editor.Preview.PropertyChanged += (_, _) => QueueGrowForPreview();
+        EditorTabs.SelectionChanged += (_, _) => QueueGrowForPreview();
         SourceInitialized += OnSourceInitialized;
         Activated += OnActivated;
         PreviewMouseDown += OnPreviewMouseDown;
         Closed += OnClosed;
+    }
+
+    // After layout, because the preview column's width is only known once the new settings have
+    // been laid out. Idempotent: it only ever grows the window, so it cannot loop.
+    private void QueueGrowForPreview() =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, GrowForPreview);
+
+    private void GrowForPreview()
+    {
+        if (WindowState != WindowState.Normal
+            || DataContext is not MainWindowViewModel vm
+            || PreviewColumn.ActualWidth <= 0
+            || !PreviewColumn.IsVisible)
+        {
+            return;
+        }
+
+        var workArea = SystemParameters.WorkArea;
+        var required = AppearanceLayout.RequiredWindowWidth(Width, PreviewColumn.ActualWidth, vm.Editor.Preview.NaturalWidth);
+        var target = AppearanceLayout.Target(Width, required, workArea.Width);
+        if (target <= Width)
+        {
+            return;
+        }
+
+        Width = target;
+        Left = AppearanceLayout.Left(Left, target, workArea.Left, workArea.Width);
     }
 
     // The popup can add or remove a group's apps while the Manager sits in the background;

@@ -169,7 +169,10 @@ Each group sets out its own popup on the **Appearance** tab of the Manager, unde
 
 - **Max per row** — 1 to 6, 3 by default: the most apps side by side. A group with fewer apps uses only the room they need, so two apps under *Max per row* 5 make a popup two tiles wide.
 - **Icon size** — *Small*, *Medium* (the default), *Large* or *Extra large*. The tiles grow with the icon so the names still fit.
+- **Spacing** — the gap between the tiles: *None* (the default), *Small*, *Medium* or *Large*. The tiles keep their size; the popup grows by the gaps.
 - **Show app names** — on by default. Without names the tiles shrink to their icons, so the popup gets much smaller; pointing at an icon still shows its name.
+
+To the right of these settings, **Preview** shows the popup as you set it, with the group's own apps and icons (the first twelve; a group without apps shows sample tiles). It follows every change at once, and it is drawn the way the popup draws its tiles, so what you see is what opens from the taskbar. If the settings make the popup too wide for the space, the window grows to make room, up to the width of your screen; it never shrinks by itself, and the settings scroll if the window is short.
 
 Changes are saved as you make them and show the next time you open the popup. A group with more rows than fit on screen — about eight at the default size — scrolls with the mouse wheel; a thin bar on the right shows where you are.
 

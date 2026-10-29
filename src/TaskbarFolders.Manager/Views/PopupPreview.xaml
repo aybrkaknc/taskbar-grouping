@@ -1,0 +1,85 @@
+<UserControl x:Class="TaskbarFolders.Manager.Views.PopupPreview"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:TaskbarFolders.Manager.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:PopupPreviewViewModel}">
+    <!-- The popup as the group's settings lay it out. The tiles are drawn by Core's
+         PopupTile.xaml, the same definition the popup uses, so what is shown here is what
+         clicking the group shows. DataContext: PopupPreviewViewModel. -->
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/TaskbarFolders.Core;component/Themes/PopupTile.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <StackPanel>
+        <!-- The popup's surface: rounded, with the popup's 12 DIP padding round the grid. Shrinks
+             a grid wider than the tab instead of clipping it. -->
+        <Border Background="{DynamicResource SurfaceMuted}"
+                BorderBrush="{DynamicResource BorderSubtle}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="12"
+                HorizontalAlignment="Left">
+            <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
+                <ItemsControl ItemsSource="{Binding Tiles}" Focusable="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="{Binding EffectiveColumns}" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:AppEntryViewModel}">
+                            <Grid Width="{Binding DataContext.Tile.Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                  Height="{Binding DataContext.Tile.Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                  Margin="{Binding DataContext.Tile.HalfSpacing, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
+                                <!-- A picture of a tile: it hovers like one but does nothing and
+                                     takes no keyboard focus. -->
+                                <Button Style="{StaticResource AppTileButton}"
+                                        Content="{Binding}"
+                                        ContentTemplate="{StaticResource PopupTileContent}"
+                                        AutomationProperties.Name="{Binding Name}"
+                                        ToolTip="{Binding Name}"
+                                        Focusable="False"
+                                        IsTabStop="False"
+                                        Cursor="Arrow" />
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Viewbox>
+        </Border>
+
+        <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource ForegroundSubtle}">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSample}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Setter Property="Text" Value="Sample tiles. Add apps to see your own." />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+        <TextBlock Margin="0,6,0,0"
+                   Foreground="{DynamicResource ForegroundSubtle}"
+                   Text="{Binding MoreCount, StringFormat='and {0} more in the popup'}">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding MoreCount}" Value="0">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+    </StackPanel>
+</UserControl>
