@@ -72,9 +72,25 @@ public sealed class TaskbarPinRunner
             }
 
             var manager = TaskbarManager.GetDefault();
-            if (manager is null || !manager.IsPinningAllowed)
+            if (manager is null)
             {
-                _logger?.LogWarning("TaskbarManager.IsPinningAllowed=false (likely restricted SKU or policy); pin unavailable.");
+                _logger?.LogWarning("TaskbarManager.GetDefault() returned null; pin unavailable.");
+                return 2;
+            }
+
+            // Asked again before giving up: right after a group is created Windows answered
+            // false, and about twenty seconds later true. The wait costs nothing on a machine
+            // that allows pinning, and about five seconds before a machine that does not
+            // (notifications off, policy) gets its explanation.
+            if (!await PinPermissionWait.WaitUntilAllowedAsync(
+                    () => manager.IsPinningAllowed,
+                    PinPermissionWait.DefaultAttempts,
+                    PinPermissionWait.DefaultInterval).ConfigureAwait(true))
+            {
+                _logger?.LogWarning(
+                    "TaskbarManager.IsPinningAllowed=false after {Attempts} checks, {Interval} apart (notifications off, restricted SKU or policy); pin unavailable.",
+                    PinPermissionWait.DefaultAttempts,
+                    PinPermissionWait.DefaultInterval);
                 return 2;
             }
 

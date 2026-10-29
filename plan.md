@@ -89,9 +89,11 @@ decided with the user one at a time.
   `TaskbarManager.IsPinningAllowed=false` (exit 2, blocker *Unknown*, the manual way offered); the
   second press 23 s later was allowed and Windows showed its request. Cause not proven; the
   working guess is that the shell has not yet taken up the new Start menu shortcut/AUMID.
-  Proposed: `TaskbarPinRunner` re-asks `IsPinningAllowed` a few times (about 1 s apart) before it
-  gives up — never around Windows' consent. Decision pending: retry now, or measure first
-  (create a group and press at once, on the installed copy).
+  Decided with the user: `TaskbarPinRunner` re-asks `IsPinningAllowed` up to 6 times, 1 s apart
+  (`PinPermissionWait`, unit-tested with a fake delay) before it gives up — never around Windows'
+  consent. The cost is about 5 s before a machine that really cannot pin gets its explanation. The
+  check used to sit before the 300 ms settle meant for this very race. Not measured: whether 5 s
+  is enough, since the real threshold is unknown; to be tried on the installed copy.
 - [ ] **A popup sizing test failed once and passed on rerun.**
   `PopupWindowSizingTests.AddingATileToTheSameRow_ShowsItsLabelInsideTheWindow` failed in one full
   run on 2026-10-29 with no Launcher change, then passed three times alone and in a full rerun.
@@ -103,7 +105,9 @@ decided with the user one at a time.
   (`CustomGroupIconStore.cs:155`) calls `File.Delete` on `icons\custom\<id>.png`; a missing file is
   fine, but a missing folder throws `DirectoryNotFoundException`, logged as a warning with no
   counterpart in the UI. Nothing is wrong on disk. Fix: treat a missing folder like a missing file.
-- [ ] **Uninstalling leaves two Compatibility Assistant values behind.** Found in the uninstall
+- [x] **Uninstalling leaves two Compatibility Assistant values behind.** Fixed on `develop` in
+  `40531e1` (`fix(manager): remove the records Windows writes as the uninstall exits`); verified in
+  real installed and portable runs (below). Found in the uninstall
   test on 2026-10-29: everything else was gone (program folder, *Installed apps* entry, Run
   value, both menu keys, `%APPDATA%\TaskbarFolders`, Start menu folder, `%TEMP%\.net`), but
   `HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store`

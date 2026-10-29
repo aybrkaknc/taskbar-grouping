@@ -72,7 +72,7 @@ If the popup opens but is invisible, check the *Enable popup animations* setting
 
 ## "Pin to taskbar" reports that pinning is unavailable
 
-Exit code 2. The launcher log shows `TaskbarManager.IsPinningAllowed=false`: Windows refused before asking you. The Manager then reads why and logs it (`Pin blocker …`), and its message names the cause:
+Exit code 2. The launcher log shows `TaskbarManager.IsPinningAllowed=false after 6 checks, 00:00:01 apart`: Windows refused before asking you. (The launcher asks up to six times, a second apart, before it gives up: right after a group was created Windows once refused and about twenty seconds later allowed, with nothing changed. So the message can take about five seconds to appear.) The Manager then reads why and logs it (`Pin blocker …`), and its message names the cause:
 
 - **Notifications are off.** Windows asks for your approval through a notification and shows none while they are off — the most common cause. The Manager offers to open *Settings → System → Notifications*; turn the main switch on and press **Pin to taskbar** again. Choose **No** to pin by hand instead.
 - **A key from Microsoft is required.** Some Windows 11 builds before update KB5074105 (26100.7705 / 26200.7705) let an app ask to be pinned only with a Limited Access Feature key, which this app does not have. Update Windows, or pin by hand.
