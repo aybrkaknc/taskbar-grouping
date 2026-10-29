@@ -365,8 +365,11 @@ merged by both apps — no linked file needed. In three steps, each its own comm
   default and for older files); `TileMetrics` moved to Shared and given `Spacing`, `CellWidth`,
   `CellHeight`, `HalfSpacing`; the popup's tile root takes half a gap of margin and the window is
   sized from `CellWidth`; `MaxWidth` 720 → 800. Settable only in the JSON until step 3.
-- [ ] **Step 2 — shared tile resource.** The tile style and template move to Core; the popup uses
-  them and looks the same; the three Launcher-only brushes get Manager equivalents.
+- [x] **Step 2 — shared tile resource.** `AppTileButton`, `AppTileFocusVisual` and the tile content
+  (`PopupTileContent`) moved to `Core/Themes/PopupTile.xaml`; the popup merges it and binds the
+  button's content to the shared template. `TileHoverBackground`, `TileFocusBorder` and
+  `LabelShadow` were added to both Manager themes (Launcher values). Verified: six offscreen
+  renders (two themes × names/no names/spacing) byte-identical before and after.
 - [ ] **Step 3 — Manager.** Spacing control and the live preview on *Appearance*; user guides,
   CHANGELOG, screenshots.
 

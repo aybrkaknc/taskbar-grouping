@@ -2,7 +2,6 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:TaskbarFolders.Launcher.ViewModels"
-        xmlns:icons="clr-namespace:TaskbarFolders.Core.Icons;assembly=TaskbarFolders.Core"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
@@ -20,6 +19,13 @@
         Deactivated="OnDeactivated"
         d:DataContext="{d:DesignInstance Type=vm:PopupViewModel}">
     <Window.Resources>
+      <ResourceDictionary>
+        <!-- The tile (AppTileButton, AppTileFocusVisual, PopupTileContent) is defined once in
+             Core and shared with the Manager's preview. -->
+        <ResourceDictionary.MergedDictionaries>
+            <ResourceDictionary Source="pack://application:,,,/TaskbarFolders.Core;component/Themes/PopupTile.xaml" />
+        </ResourceDictionary.MergedDictionaries>
+
         <!-- Scale 0.9→1.0 with QuinticEase over 110 ms makes the popup settle up out of the
              clicked tile. The animation starts half-opaque rather than from nothing: the
              popup's first frame arrives several hundred ms after the click, and a fade from
@@ -92,48 +98,6 @@
             </DoubleAnimation>
         </Storyboard>
 
-        <!-- Drawn only when the focus arrived from the keyboard (WPF shows a FocusVisualStyle
-             for keyboard focus, not for a click), so opening the popup with the mouse puts no
-             ring on the first tile even though it holds the focus. -->
-        <Style x:Key="AppTileFocusVisual">
-            <Setter Property="Control.Template">
-                <Setter.Value>
-                    <ControlTemplate>
-                        <Rectangle RadiusX="8" RadiusY="8" StrokeThickness="2" Stroke="{DynamicResource TileFocusBorder}" />
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="AppTileButton" TargetType="Button">
-            <!-- Required, not redundant: WPF's built-in Button theme style sets Foreground to
-                 the system control-text colour (black), and a theme-style setter outranks the
-                 ForegroundDefault inherited from ChromeRoot. Without this the labels were
-                 black in both themes. Pinned by PopupWindowThemeTests. -->
-            <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Padding" Value="8" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="FocusVisualStyle" Value="{StaticResource AppTileFocusVisual}" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Root"
-                                Background="{TemplateBinding Background}"
-                                CornerRadius="8"
-                                Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource TileHoverBackground}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
 
         <!-- Small glyph button for the header (the close X). Sets Foreground itself for the
              same reason AppTileButton does. -->
@@ -230,6 +194,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
+      </ResourceDictionary>
     </Window.Resources>
 
     <!-- Layout Border: keeps Padding + TextElement.Foreground inheritance. It paints nothing on
@@ -385,31 +350,9 @@
                                                 Style="{StaticResource AppTileButton}"
                                                 ToolTip="{Binding Name}"
                                                 Command="{Binding DataContext.LaunchAppCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}">
-                                            <StackPanel>
-                                                <Grid Width="{Binding DataContext.Tile.IconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                      Height="{Binding DataContext.Tile.IconSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
-                                                    <Image Source="{Binding Icon}" Stretch="Uniform" />
-                                                    <Viewbox
-                                                             Visibility="{Binding IconMissing, Converter={x:Static vm:LauncherBoolToVisibilityConverter.Instance}}">
-                                                        <Path Width="{x:Static icons:PlaceholderIcon.DesignSize}"
-                                                              Height="{x:Static icons:PlaceholderIcon.DesignSize}"
-                                                              Data="{x:Static icons:PlaceholderIcon.Shape}"
-                                                              Stroke="{DynamicResource ForegroundSubtle}"
-                                                              StrokeThickness="{x:Static icons:PlaceholderIcon.StrokeThickness}" />
-                                                    </Viewbox>
-                                                </Grid>
-                                                <TextBlock Text="{Binding Name}"
-                                                           HorizontalAlignment="Center"
-                                                           Margin="0,6,0,0"
-                                                           FontSize="11"
-                                                           FontWeight="SemiBold"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           MaxWidth="{Binding DataContext.Tile.LabelMaxWidth, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                           Visibility="{Binding DataContext.ShowNames, RelativeSource={RelativeSource AncestorType=ItemsControl}, Converter={x:Static vm:LauncherBoolToVisibilityConverter.Instance}}"
-                                                           Effect="{DynamicResource LabelShadow}" />
-                                            </StackPanel>
-                                        </Button>
+                                                CommandParameter="{Binding}"
+                                                Content="{Binding}"
+                                                ContentTemplate="{StaticResource PopupTileContent}" />
                                         <Button x:Name="RemoveBadge"
                                                 Style="{StaticResource PopupBadgeButton}"
                                                 HorizontalAlignment="Right"

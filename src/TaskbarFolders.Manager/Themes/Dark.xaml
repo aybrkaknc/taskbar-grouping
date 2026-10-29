@@ -40,4 +40,10 @@
     <SolidColorBrush x:Key="SelectionBackground" Color="#094771" />
     <SolidColorBrush x:Key="SelectionBackgroundInactive" Color="#37373D" />
     <SolidColorBrush x:Key="ItemHoverBackground" Color="#2F2F2F" />
+
+    <!-- The popup's tile, drawn by the preview on Appearance from Core's PopupTile.xaml: the
+         same values as the Launcher's Dark theme, so the preview looks like the popup. -->
+    <SolidColorBrush x:Key="TileHoverBackground" Color="#1F4CC2FF" />
+    <SolidColorBrush x:Key="TileFocusBorder" Color="#4CC2FF" />
+    <DropShadowEffect x:Key="LabelShadow" Color="#000000" BlurRadius="7" ShadowDepth="0" Opacity="1" />
 </ResourceDictionary>
