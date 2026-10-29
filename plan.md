@@ -108,10 +108,12 @@ decided with the user one at a time.
   small icon (48 px, `45 × 48` for `CardLock.exe`, `javaw.exe`) drawn at (0,0); `IconCanvas.TrimToIcon`
   cuts it back to the icon's native size, and the icon cache key got a version (`v2`) so earlier
   entries are not served. Verified on this machine: the two shortcuts now extract at 48 × 48, the
-  two good ones at 256 × 256 as before. **Second finding, open:** `UniFi.lnk`'s own icon location
-  (`unifi-network.ico`, a full 256 px icon) is ignored, because the extractor resolves a shortcut to
-  its target (`javaw.exe`) and shows Java's icon, where Explorer shows UniFi's. Decision pending
-  with the user. Seen on
+  two good ones at 256 × 256 as before. **Second finding, fixed in `fix(core): show a shortcut's own icon`:**
+  `UniFi.lnk`'s own icon location (`unifi-network.ico`, a full 256 px icon) was ignored, because the
+  extractor resolved a shortcut to its target (`javaw.exe`) and showed Java's icon, where Explorer
+  shows UniFi's. Decided with the user: use the shortcut's icon (an `.ico`, or an index into an
+  exe/DLL) and fall back to the target's. Cache key now `v3`. Measured: `UniFi.lnk` extracts at
+  256 × 256 with UniFi's own icon. Seen on
   2026-10-29 in the development build while trying the C2 preview, and confirmed by the user to look
   the same in the Apps tab and the popup, so it is not the preview. The group *Test 1*: `AnyDesk.exe`
   and `LDPlayer 14.lnk` (no icon location) are full size; `UniFi.lnk` (icon location

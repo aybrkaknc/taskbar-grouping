@@ -46,7 +46,14 @@ public sealed class ShellIconExtractor : IIconExtractor
 
         try
         {
-            var resolved = ResolvePath(filePath);
+            var (resolved, ownIcon, ownIndex) = ResolveShortcut(filePath);
+
+            // A shortcut's icon is its own, not its target's: Explorer shows it, so must we.
+            if (ownIcon is not null && TryExtractFromIconLocation(ownIcon, ownIndex, resolved, size) is { } own)
+            {
+                return own;
+            }
+
             var extension = Path.GetExtension(resolved);
 
             if (string.Equals(extension, ".ico", StringComparison.OrdinalIgnoreCase) && File.Exists(resolved))
@@ -67,15 +74,16 @@ public sealed class ShellIconExtractor : IIconExtractor
     }
 
     /// <summary>
-    /// If the supplied path points to a <c>.lnk</c>, walks the shortcut to its
-    /// target executable. If the resolution fails (broken link, missing target),
-    /// returns the original path so the shell falls back to the link's overlay.
+    /// If the supplied path points to a <c>.lnk</c>, walks the shortcut to its target
+    /// executable and reads the icon the shortcut was given, if any. If the resolution fails
+    /// (broken link, missing target), the target is the original path, so the shell falls back
+    /// to the link's overlay.
     /// </summary>
-    private string ResolvePath(string filePath)
+    private (string Target, string? IconPath, int IconIndex) ResolveShortcut(string filePath)
     {
         if (!string.Equals(Path.GetExtension(filePath), ".lnk", StringComparison.OrdinalIgnoreCase))
         {
-            return filePath;
+            return (filePath, null, 0);
         }
 
         // Instantiate outside the try so an unlikely CLSID-not-registered failure cannot
@@ -93,17 +101,70 @@ public sealed class ShellIconExtractor : IIconExtractor
             shellLink.GetPath(buffer, NativeMethods.MAX_PATH, IntPtr.Zero, 0);
             var target = buffer.ToString();
 
-            return string.IsNullOrWhiteSpace(target) ? filePath : target;
+            var iconBuffer = new StringBuilder(NativeMethods.MAX_PATH);
+            shellLink.GetIconLocation(iconBuffer, NativeMethods.MAX_PATH, out var iconIndex);
+            var iconPath = iconBuffer.ToString();
+
+            return (
+                string.IsNullOrWhiteSpace(target) ? filePath : target,
+                string.IsNullOrWhiteSpace(iconPath) ? null : iconPath,
+                iconIndex);
         }
         catch (COMException ex)
         {
             _logger?.LogDebug(ex, "Could not resolve shortcut {FilePath}; falling back to original path", filePath);
-            return filePath;
+            return (filePath, null, 0);
         }
         finally
         {
             Marshal.FinalReleaseComObject(link);
         }
+    }
+
+    /// <summary>
+    /// The icon a shortcut points at, or <see langword="null"/> to fall back to its target's: when
+    /// the location is empty, is the target itself (nothing to add), is missing, or cannot be read.
+    /// </summary>
+    private BitmapSource? TryExtractFromIconLocation(string iconPath, int iconIndex, string target, int size)
+    {
+        // Shortcuts keep paths like %SystemRoot%\system32\imageres.dll unexpanded.
+        var location = Environment.ExpandEnvironmentVariables(iconPath);
+        if (string.Equals(location, target, StringComparison.OrdinalIgnoreCase) || !File.Exists(location))
+        {
+            return null;
+        }
+
+        try
+        {
+            if (string.Equals(Path.GetExtension(location), ".ico", StringComparison.OrdinalIgnoreCase))
+            {
+                return ExtractFromIcoFile(location, size);
+            }
+
+            lock (_shellLock)
+            {
+                return ExtractFromResource(location, iconIndex, size);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or FileFormatException or UnauthorizedAccessException)
+        {
+            _logger?.LogDebug(ex, "Could not read the shortcut's icon {IconPath}; using its target's", location);
+            return null;
+        }
+    }
+
+    // The icon at an index (a negative number is a resource id) of an exe or DLL, at the size
+    // asked for where the file has one and the nearest otherwise.
+    private BitmapSource? ExtractFromResource(string path, int index, int size)
+    {
+        var handles = new IntPtr[1];
+        var count = NativeMethods.PrivateExtractIconsW(path, index, size, size, handles, null, 1, 0);
+        if (count == 0 || count == uint.MaxValue || handles[0] == IntPtr.Zero)
+        {
+            return null;
+        }
+
+        return CreateAndDestroy(handles[0]);
     }
 
     private static BitmapFrame? ExtractFromIcoFile(string path, int size)

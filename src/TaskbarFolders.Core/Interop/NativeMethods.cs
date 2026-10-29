@@ -50,6 +50,23 @@ internal static class NativeMethods
 
     // --- user32 -----------------------------------------------------------
 
+    /// <summary>
+    /// Extracts icons of a chosen size from an executable, DLL or icon file: the one at
+    /// <paramref name="nIconIndex"/> (a negative number is a resource id), at the size asked for
+    /// where the file has it and the nearest otherwise. Returns how many were extracted; every
+    /// handle in <paramref name="phicon"/> must be destroyed with <see cref="DestroyIcon"/>.
+    /// </summary>
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    public static extern uint PrivateExtractIconsW(
+        string szFileName,
+        int nIconIndex,
+        int cxIcon,
+        int cyIcon,
+        IntPtr[] phicon,
+        uint[]? piconid,
+        uint nIcons,
+        uint flags);
+
     /// <summary>Destroys an icon and frees any memory the icon occupied.</summary>
     [DllImport("user32.dll", ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)]

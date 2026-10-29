@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Some apps' icons no longer show as a tiny glyph.** Programs and shortcuts with no large icon of their own (an older program that has only a 48 px icon, a shortcut to one) came back from Windows as a small icon in the corner of a large empty square, and drew as a small mark in the middle of their tile, in the group's icon and in the popup. The icon is now cut back to its own size and scaled like any other. Icons are cached, so the cache was versioned: those apps get the corrected icon the next time they are read, with nothing to delete by hand.
+- **A shortcut shows its own icon.** A `.lnk` was shown with its target's icon, so a shortcut that runs Java but wears the program's own icon (UniFi) came out as Java's. The Manager and the popup now use the icon the shortcut was given, as Explorer does, whether that is an `.ico` file or an icon inside a program or DLL; a shortcut with no icon of its own, or whose icon is missing, still shows its target's.
 
 ## [0.5.1] - 2026-10-29
 

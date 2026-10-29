@@ -148,10 +148,11 @@ public sealed class FileSystemIconCache : IIconCache
 
         // The version changes whenever what is extracted for a path does, so entries written by
         // an older extractor are never found: v2 followed the fix for icons that came back as
-        // a small glyph in the corner of a 256 px canvas.
+        // a small glyph in the corner of a 256 px canvas, v3 the one that makes a shortcut
+        // show its own icon instead of its target's.
         var material = string.Create(
             CultureInfo.InvariantCulture,
-            $"{sourcePath}|{lastWriteTicks}|{size}|v2");
+            $"{sourcePath}|{lastWriteTicks}|{size}|v3");
 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(material));
         return Convert.ToHexString(hash) + ".png";
