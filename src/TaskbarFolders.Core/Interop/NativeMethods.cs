@@ -64,6 +64,14 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool DestroyMenu(IntPtr hMenu);
 
+    /// <summary>Number of items in a menu, or -1 on failure.</summary>
+    [DllImport("user32.dll", ExactSpelling = true)]
+    public static extern int GetMenuItemCount(IntPtr hMenu);
+
+    /// <summary>Command id of the item at <paramref name="nPos"/>; <c>0xFFFFFFFF</c> for a submenu or separator.</summary>
+    [DllImport("user32.dll", ExactSpelling = true)]
+    public static extern uint GetMenuItemID(IntPtr hMenu, int nPos);
+
     // --- Flags & constants ------------------------------------------------
 
     public const uint SHGFI_ICON = 0x100;
@@ -95,6 +103,9 @@ internal static class NativeMethods
 
     // IContextMenu.QueryContextMenu: include verbs normally shown only with Shift.
     public const uint CMF_EXTENDEDVERBS = 0x00000100;
+
+    // IContextMenu.GetCommandString: the item's canonical verb, as UTF-16.
+    public const uint GCS_VERBW = 0x00000004;
     public const int SW_SHOWNORMAL = 1;
 
     /// <summary>IID for IShellItem.</summary>

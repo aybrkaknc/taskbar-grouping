@@ -221,7 +221,18 @@ The read counterpart to `IShortcutGenerator`. Returns `null` — never throws �
 
 #### [`ITaskbarUnpinner`](../src/TaskbarFolders.Core/Shortcuts/ITaskbarUnpinner.cs)
 
-`bool TryUnpin(string pinnedShortcutPath)` invokes the shell's `taskbarunpin` verb — by canonical name, never the localized caption — on a shortcut in the taskbar's pinned-items folder, through `IShellItem` → `IContextMenu`. The shell then removes the tile and the file. Works from a normal user process; there is no public API for this. Default `ShellTaskbarUnpinner`; only the uninstaller calls it.
+`bool TryUnpin(string pinnedShortcutPath)` invokes the shell's `taskbarunpin` verb — by canonical name, never the localized caption — on a shortcut in the taskbar's pinned-items folder, through `IShellItem` → `IContextMenu`. If the menu refuses the verb by name, the item whose canonical verb (`GCS_VERBW`) is `taskbarunpin` is found in the built menu and invoked by its command id. The shell then removes the tile and the file. Works from a normal user process; there is no public API for this. Default `ShellTaskbarUnpinner`; called by the uninstaller and, through `IPinnedTileRemover`, when a group is deleted.
+
+#### [`IPinnedTileRemover`](../src/TaskbarFolders.Core/Shortcuts/IPinnedTileRemover.cs)
+
+```csharp
+PinnedTileRemoval Unpin(string groupId);
+IReadOnlyList<string> FindOrphans();
+
+public sealed record PinnedTileRemoval(int Removed, IReadOnlyList<string> Left) { bool Found { get; } }
+```
+
+Finds a group's tiles by AUMID in the pinned-items folder and unpins each through `ITaskbarUnpinner`; `Left` holds the paths the shell refused. `FindOrphans` lists tiles carrying a group AUMID with no `groups/<id>.json` (known ids from file names, as in the Start menu anchor sweep); it reads only and never throws. Default `PinnedTileRemover`; the Manager calls it when a group is deleted.
 
 #### [`IShellChangeNotifier`](../src/TaskbarFolders.Core/Shortcuts/IShellChangeNotifier.cs)
 

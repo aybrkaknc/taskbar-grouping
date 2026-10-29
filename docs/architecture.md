@@ -97,6 +97,10 @@ Files can also reach a group on the launcher's command line — `--group-id <id>
 
 Explorer's *Taskbar Groups* menu ([ADR-007](adr/007-explorer-menu-registry-verbs.md)) is a set of per-user static verbs under `HKCU\Software\Classes\{exefile,lnkfile}\shell\TaskbarFolders.Groups`, one entry per group, each running the launcher with `--group-id <id> "%1"`. `ExplorerContextMenuService` in the Manager deletes and rewrites the whole submenu on startup, whenever the group list changes (`MainWindowViewModel.GroupListChanged`) and when settings are saved; the *Show "Taskbar Groups"* setting removes it.
 
+### Deleting a group
+
+After the user confirms, `MainWindowViewModel.DeleteGroupAsync` unpins the group's taskbar tiles first (`IPinnedTileRemover`: pinned copies matched by AUMID, unpinned through `ITaskbarUnpinner`, as the uninstaller does), then deletes `groups\<id>.json` and the group's artifacts (`IGroupSyncService.RemoveArtifacts`). Unpinning first means a failure halfway leaves the pin of a group that still exists rather than an orphan. A tile the shell refuses is reported to the user, who unpins it by hand; after a successful unpin the user is asked whether to restart Explorer (`IShellRestarter`), never restarted unasked. Once — tracked by `orphanedTilesNoticeShown` in `settings.json` — the Manager then lists tiles left by groups deleted before this behaviour existed.
+
 ### Uninstalling
 
 Every trace outside the program folder is removed in one place, `Uninstaller` in the Manager, run as `TaskbarFolders.Manager.exe --uninstall` ([ADR-008](adr/008-per-user-install-and-complete-uninstall.md)). Order matters:

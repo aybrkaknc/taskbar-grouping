@@ -130,12 +130,19 @@ Current, deliberate or not-yet-implemented — not bugs to report:
 - **On Windows 11 22H2+ the glass panel does not fade when the popup closes.** DWM draws it and does not animate this window's hide, so only the icons fade.
 - **The blurred popup background needs Windows 11 22H2 or later.** Older versions get a plain translucent panel. With Windows' *Transparency effects* turned off, the background is a solid colour instead of glass.
 - **No reordering** of apps from the interface.
-- **Deleting a group does not unpin its tile.** Unpin it yourself.
 - **Renaming a group that currently has no apps keeps its old Start menu entry** until an app is added. An empty group writes no shortcuts at all, so there is nothing yet to replace the old entry with.
 - **Renaming a group's JSON file changes its identity**, orphaning its icon, shortcut and any existing pin. Rename from the Manager instead; that changes only the display name.
 - **x64 only.** There is no ARM64 build.
 - **No single-instance guard.** Nothing stops two Managers running at once; the second may overwrite the first's changes.
 - **Uninstalling deletes your groups.** It removes `%APPDATA%\TaskbarFolders` with everything else; back up `groups\` first to keep them.
+
+## A deleted group's tile is still on the taskbar
+
+Deleting a group unpins its tile. When the shell refuses, the Manager says so after the delete ("Taskbar tile not removed"): right-click the tile and choose *Unpin from taskbar*. Clicking such a tile opens an empty popup ("No apps to launch"), and the launcher logs `Launcher started for unknown group`.
+
+If the tile was removed but still shows, Explorer has not redrawn the taskbar yet. The Manager offers to restart Explorer after each unpin; otherwise restart it yourself, or sign out and back in.
+
+Groups deleted with v0.5.0 or earlier left their tiles behind. The first time you delete a group, the Manager lists any such tiles once ("Old taskbar tiles"); unpin them by hand.
 
 ## Setup says an earlier version is installed for all users
 

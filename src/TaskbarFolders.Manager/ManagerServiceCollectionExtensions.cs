@@ -46,6 +46,8 @@ public static class ManagerServiceCollectionExtensions
         services.AddSingleton(InstallLocation.OfRunningManager());
         services.AddSingleton<IInstanceCloser, ProcessInstanceCloser>();
         services.AddSingleton<ITaskbarUnpinner, ShellTaskbarUnpinner>();
+        services.AddSingleton<IPinnedTileRemover, PinnedTileRemover>();
+        services.AddSingleton<IShellRestarter, ExplorerRestarter>();
         services.AddSingleton<IUninstaller, Uninstaller>();
         services.AddSingleton<ISystemThemeProbe, RegistrySystemThemeProbe>();
         services.AddSingleton<IThemeService, ThemeService>();

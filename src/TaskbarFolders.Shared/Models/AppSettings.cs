@@ -40,4 +40,11 @@ public sealed class AppSettings
     /// </summary>
     [JsonPropertyName("showInExplorerMenu")]
     public bool ShowInExplorerMenu { get; set; } = true;
+
+    /// <summary>
+    /// Whether the user has been told about taskbar tiles left behind by groups that no longer
+    /// exist. Shown once, after a group is deleted; not part of the settings dialog.
+    /// </summary>
+    [JsonPropertyName("orphanedTilesNoticeShown")]
+    public bool OrphanedTilesNoticeShown { get; set; }
 }

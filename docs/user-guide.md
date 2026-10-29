@@ -131,7 +131,9 @@ Right-clicking a group in the sidebar offers **Rename** and **Delete group** for
 
 To delete: right-click the group → **Delete group** (or select it and press `Del`, or use **⋯ → Delete group…** in the header) → confirm. This removes the configuration, the generated icon, the shortcut and the group's Start menu entry.
 
-**Deleting a group does not remove its taskbar tile.** Right-click the tile and choose *Unpin from taskbar* yourself; the confirmation dialog reminds you.
+If the group is pinned, **its taskbar tile is unpinned too**; the confirmation says so. Afterwards the Manager asks whether to restart Explorer now so the taskbar shows the change — open File Explorer windows close when it does. Answer **No** and restart it yourself if the tile still shows (or sign out and back in). If Windows refuses to unpin the tile, the Manager tells you: right-click the tile and choose *Unpin from taskbar*.
+
+Tiles of groups deleted with v0.5.0 or earlier are still pinned and open an empty popup. The first time you delete a group, the Manager lists such tiles once; unpin them by hand.
 
 There is currently no way to reorder apps from the interface.
 

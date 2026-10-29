@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using TaskbarFolders.Core.Groups;
+using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
@@ -24,6 +25,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly IGroupSyncService _syncService;
     private readonly IUserConfirmation _confirmation;
     private readonly IGroupIconReader _iconReader;
+    private readonly IPinnedTileRemover _pins;
+    private readonly IShellRestarter _shell;
+    private readonly IAppSettingsStore _settings;
     private readonly ILogger<MainWindowViewModel>? _logger;
 
     // Until the store has answered, an empty list means "not read yet", not "no groups".
@@ -36,6 +40,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IGroupSyncService syncService,
         IUserConfirmation confirmation,
         IGroupIconReader iconReader,
+        IPinnedTileRemover pins,
+        IShellRestarter shell,
+        IAppSettingsStore settings,
         ILogger<MainWindowViewModel>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(store);
@@ -43,12 +50,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ArgumentNullException.ThrowIfNull(syncService);
         ArgumentNullException.ThrowIfNull(confirmation);
         ArgumentNullException.ThrowIfNull(iconReader);
+        ArgumentNullException.ThrowIfNull(pins);
+        ArgumentNullException.ThrowIfNull(shell);
+        ArgumentNullException.ThrowIfNull(settings);
 
         _store = store;
         Editor = editor;
         _syncService = syncService;
         _confirmation = confirmation;
         _iconReader = iconReader;
+        _pins = pins;
+        _shell = shell;
+        _settings = settings;
         _logger = logger;
 
         Editor.GroupSynced += (_, item) => item.Icon = _iconReader.TryRead(item.Id);
@@ -57,6 +70,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     /// <summary>Name given to a group created by <see cref="NewGroupCommand"/>, before the user renames it.</summary>
     public const string NewGroupBaseName = "New group";
+
+    /// <summary>Caption of the delete confirmation.</summary>
+    public const string DeleteCaption = "Delete group?";
+
+    /// <summary>Caption of the question asked after a deleted group's tile was unpinned.</summary>
+    public const string RestartExplorerCaption = "Restart Explorer?";
+
+    /// <summary>Caption of the message shown when the shell would not unpin a deleted group's tile.</summary>
+    public const string TileLeftCaption = "Taskbar tile not removed";
+
+    /// <summary>Caption of the one-time notice about tiles left by groups deleted earlier.</summary>
+    public const string OrphanedTilesCaption = "Old taskbar tiles";
 
     /// <summary>
     /// Asks the view to put the caret in the group name box with the name selected — after a
@@ -266,14 +291,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
 
         var confirmed = _confirmation.Confirm(
-            caption: "Delete group?",
-            message: $"Delete \"{group.Name}\" and its shortcut?\n\n"
-                   + "If you pinned this group to the taskbar, remove the pin manually "
-                   + "by right-clicking it and choosing \"Unpin from taskbar\".");
+            caption: DeleteCaption,
+            message: $"Are you sure you want to delete \"{group.Name}\"?\n\n"
+                   + "If it is pinned, its taskbar tile will be removed too.");
         if (!confirmed)
         {
             return;
         }
+
+        // The tile is found by the group's AUMID, which needs nothing on disk; unpinning first
+        // means a failure halfway leaves the pin of a group that still exists, not an orphan.
+        var tiles = _pins.Unpin(group.Id);
 
         await _store.DeleteAsync(group.Id).ConfigureAwait(true);
         _syncService.RemoveArtifacts(group.Id, group.Name);
@@ -291,6 +319,79 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _logger?.LogInformation("Deleted group {Id}.", group.Id);
         GroupListChanged?.Invoke(this, EventArgs.Empty);
+
+        await ReportTilesAsync(group, tiles).ConfigureAwait(true);
+        await NoticeOrphanedTilesOnceAsync(tiles.Left).ConfigureAwait(true);
+    }
+
+    private async Task ReportTilesAsync(GroupListItemViewModel group, PinnedTileRemoval tiles)
+    {
+        if (tiles.Left.Count > 0)
+        {
+            _logger?.LogWarning("The shell would not unpin {Count} tile(s) of deleted group {Id}.", tiles.Left.Count, group.Id);
+            _confirmation.Notify(
+                TileLeftCaption,
+                $"\"{group.Name}\" was deleted, but its taskbar tile could not be removed.\n\n"
+                + "Remove it by hand: right-click the tile on the taskbar and choose \"Unpin from taskbar\".");
+            return;
+        }
+
+        if (tiles.Removed == 0)
+        {
+            return;
+        }
+
+        _logger?.LogInformation("Unpinned {Count} tile(s) of deleted group {Id}.", tiles.Removed, group.Id);
+        var restart = _confirmation.Confirm(
+            RestartExplorerCaption,
+            $"The taskbar tile of \"{group.Name}\" was removed.\n\n"
+            + "Restart Explorer now to refresh the taskbar? Open File Explorer windows will close.");
+        if (restart)
+        {
+            await _shell.RestartAsync().ConfigureAwait(true);
+        }
+        else
+        {
+            _confirmation.Notify(
+                RestartExplorerCaption,
+                "If the tile still shows on the taskbar, restart Explorer by hand (or sign out and back in).");
+        }
+    }
+
+    // Tiles a group deleted before this version left behind open an empty popup; the user is
+    // told once, then never again.
+    private async Task NoticeOrphanedTilesOnceAsync(IReadOnlyList<string> justReported)
+    {
+        try
+        {
+            var settings = await _settings.LoadAsync().ConfigureAwait(true);
+            if (settings.OrphanedTilesNoticeShown)
+            {
+                return;
+            }
+
+            var orphans = _pins.FindOrphans()
+                .Except(justReported, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (orphans.Count == 0)
+            {
+                return;
+            }
+
+            _confirmation.Notify(
+                OrphanedTilesCaption,
+                "These taskbar tiles belong to groups that no longer exist and open an empty popup:\n\n"
+                + string.Join("\n", orphans.Select(System.IO.Path.GetFileName))
+                + "\n\nRemove them by hand: right-click each tile and choose \"Unpin from taskbar\". "
+                + "This notice is not shown again.");
+
+            settings.OrphanedTilesNoticeShown = true;
+            await _settings.SaveAsync(settings).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            _logger?.LogWarning(ex, "Could not check for taskbar tiles of deleted groups.");
+        }
     }
 
     private bool CanRenameGroup()

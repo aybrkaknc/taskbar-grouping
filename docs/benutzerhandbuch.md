@@ -187,7 +187,9 @@ Ein Rechtsklick auf eine Gruppe in der Liste links bietet **Rename** und **Delet
 
 **Löschen:** Rechtsklick auf die Gruppe → **Delete group** (oder auswählen und `Entf` drücken, oder **⋯ → Delete group…** oben rechts) → bestätigen. Damit verschwinden Konfiguration, Symbol, Verknüpfung und der Startmenü-Eintrag der Gruppe.
 
-> **Die Kachel in der Taskleiste bleibt dabei bestehen.** Klicken Sie sie mit der rechten Maustaste an und wählen Sie **Von Taskleiste lösen**. Die Sicherheitsabfrage weist Sie darauf hin.
+Ist die Gruppe angeheftet, **löst der Manager auch ihre Kachel von der Taskleiste**; die Sicherheitsabfrage sagt das vorher. Danach fragt er, ob der Explorer jetzt neu gestartet werden soll, damit die Taskleiste die Änderung zeigt — dabei schließen sich offene Explorer-Fenster. Mit **No** starten Sie ihn bei Bedarf selbst neu (oder melden sich ab und wieder an). Verweigert Windows das Lösen, meldet der Manager das: Klicken Sie die Kachel dann mit der rechten Maustaste an und wählen Sie **Von Taskleiste lösen**.
+
+Kacheln von Gruppen, die mit v0.5.0 oder früher gelöscht wurden, sind noch angeheftet und öffnen ein leeres Fenster. Beim ersten Löschen einer Gruppe listet der Manager solche Kacheln einmalig auf; lösen Sie sie von Hand.
 
 ## Einstellungen
 
@@ -260,7 +262,6 @@ Keine Fehler, sondern bewusste oder noch offene Grenzen:
 - Der verschwommene Glas-Hintergrund des Aufklapp-Fensters braucht Windows 11 22H2 oder neuer. Sind in Windows die *Transparenzeffekte* ausgeschaltet, ist er eine einfarbige Fläche.
 - Es gibt **keine ARM64-Fassung**.
 - Nichts hindert daran, den Manager **zweimal gleichzeitig** zu starten. Die zweite Instanz kann Änderungen der ersten überschreiben.
-- Das **Löschen einer Gruppe entfernt ihre Kachel nicht**.
 - Das **Deinstallieren löscht auch Ihre Gruppen und Einstellungen**. Sichern Sie `%APPDATA%\TaskbarFolders\groups` vorher, wenn Sie sie behalten möchten.
 
 ## Deinstallieren

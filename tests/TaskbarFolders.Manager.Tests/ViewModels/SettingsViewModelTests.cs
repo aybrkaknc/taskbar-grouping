@@ -164,6 +164,20 @@ public class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task AChange_KeepsWhatTheDialogDoesNotShow()
+    {
+        // The Manager stores more in settings.json than this dialog edits; a change made here
+        // must not reset the notice about old taskbar tiles to unseen.
+        var sut = CreateSut(new AppSettings { OrphanedTilesNoticeShown = true }, autoStartEnabled: false, out var store, out _, out _);
+        await sut.LoadAsync();
+
+        sut.Theme = ThemePreference.Light;
+        await sut.WhenIdleAsync();
+
+        store.Verify(s => s.SaveAsync(It.Is<AppSettings>(x => x.Theme == ThemePreference.Light && x.OrphanedTilesNoticeShown), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task TurningAutoStartOnAndOff_TouchesTheRegistryEachTime()
     {
         var sut = CreateSut(new AppSettings(), autoStartEnabled: false, out var store, out var autoStart, out _);

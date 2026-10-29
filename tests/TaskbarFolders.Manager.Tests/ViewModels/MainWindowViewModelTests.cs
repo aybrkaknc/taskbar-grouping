@@ -6,6 +6,7 @@ using FluentAssertions;
 using Moq;
 using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
+using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Manager.ViewModels;
 using TaskbarFolders.Shared.Configuration;
@@ -50,16 +51,68 @@ public class MainWindowViewModelTests
         Mock<IGroupConfigStore> store,
         bool alwaysConfirm,
         IGroupSyncService? syncService = null,
-        IGroupIconReader? iconReader = null)
+        IGroupIconReader? iconReader = null,
+        Mock<IPinnedTileRemover>? pins = null,
+        Mock<IUserConfirmation>? confirmation = null,
+        IShellRestarter? restarter = null,
+        Mock<IAppSettingsStore>? settings = null)
     {
-        var confirmation = new Mock<IUserConfirmation>();
-        confirmation.Setup(c => c.Confirm(It.IsAny<string>(), It.IsAny<string>())).Returns(alwaysConfirm);
+        if (confirmation is null)
+        {
+            confirmation = new Mock<IUserConfirmation>();
+            confirmation.Setup(c => c.Confirm(It.IsAny<string>(), It.IsAny<string>())).Returns(alwaysConfirm);
+        }
         return new MainWindowViewModel(
             store.Object,
             CreateEditor(store.Object),
             syncService ?? Mock.Of<IGroupSyncService>(),
             confirmation.Object,
-            iconReader ?? Mock.Of<IGroupIconReader>());
+            iconReader ?? Mock.Of<IGroupIconReader>(),
+            (pins ?? CreatePins()).Object,
+            restarter ?? Mock.Of<IShellRestarter>(),
+            (settings ?? CreateSettings()).Object);
+    }
+
+    private static Mock<IPinnedTileRemover> CreatePins(int removed = 0, params string[] left)
+    {
+        var pins = new Mock<IPinnedTileRemover>();
+        pins.Setup(p => p.Unpin(It.IsAny<string>())).Returns(new PinnedTileRemoval(removed, left));
+        pins.Setup(p => p.FindOrphans()).Returns([]);
+        return pins;
+    }
+
+    private static Mock<IAppSettingsStore> CreateSettings(AppSettings? current = null)
+    {
+        var settings = new Mock<IAppSettingsStore>();
+        settings.Setup(s => s.LoadAsync(It.IsAny<CancellationToken>())).ReturnsAsync(current ?? new AppSettings());
+        return settings;
+    }
+
+    // The delete confirmation is answered yes; the Explorer question as given.
+    private static Mock<IUserConfirmation> ConfirmDelete(bool restartExplorer = false)
+    {
+        var confirmation = new Mock<IUserConfirmation>();
+        confirmation.Setup(c => c.Confirm(MainWindowViewModel.DeleteCaption, It.IsAny<string>())).Returns(true);
+        confirmation.Setup(c => c.Confirm(MainWindowViewModel.RestartExplorerCaption, It.IsAny<string>())).Returns(restartExplorer);
+        return confirmation;
+    }
+
+    private static async Task<MainWindowViewModel> LoadedWithOneGroup(
+        Mock<IPinnedTileRemover> pins,
+        Mock<IUserConfirmation> confirmation,
+        IShellRestarter? restarter = null,
+        Mock<IAppSettingsStore>? settings = null,
+        Mock<IGroupConfigStore>? store = null)
+    {
+        var sut = CreateSut(
+            store ?? CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" }),
+            alwaysConfirm: true,
+            pins: pins,
+            confirmation: confirmation,
+            restarter: restarter,
+            settings: settings);
+        await sut.LoadGroupsAsync();
+        return sut;
     }
 
     private static System.Windows.Media.Imaging.BitmapSource StubIcon() => TestImages.Solid(System.Windows.Media.Colors.Gray, 1, 1);
@@ -337,6 +390,141 @@ public class MainWindowViewModelTests
 
         sut.Groups.Should().HaveCount(1, "user declined the confirmation prompt");
         store.Verify(s => s.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteGroupAsync_SaysTheTaskbarTileGoesToo_AndUnpinsNothingWhenDeclined()
+    {
+        var pins = CreatePins();
+        var confirmation = new Mock<IUserConfirmation>();
+        var sut = await LoadedWithOneGroup(pins, confirmation);
+
+        await sut.DeleteGroupCommand.ExecuteAsync(sut.Groups[0]);
+
+        confirmation.Verify(c => c.Confirm(
+            MainWindowViewModel.DeleteCaption,
+            It.Is<string>(m => m.Contains("\"Apps\"") && m.Contains("taskbar tile will be removed too"))), Times.Once);
+        pins.Verify(p => p.Unpin(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteGroupAsync_UnpinsTheTile_BeforeTheGroupIsDeleted()
+    {
+        // The tile is found by the group's AUMID, which needs nothing on disk; unpinning first
+        // means a crash halfway leaves the pin of a group that still exists, not an orphan.
+        var order = new List<string>();
+        var pins = CreatePins(removed: 1);
+        pins.Setup(p => p.Unpin("a")).Returns(new PinnedTileRemoval(1, [])).Callback(() => order.Add("unpin"));
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });
+        store.Setup(s => s.DeleteAsync("a", It.IsAny<CancellationToken>()))
+             .Returns(Task.CompletedTask).Callback(() => order.Add("delete"));
+        var sut = await LoadedWithOneGroup(pins, ConfirmDelete(), store: store);
+
+        await sut.DeleteGroupCommand.ExecuteAsync(sut.Groups[0]);
+
+        order.Should().Equal("unpin", "delete");
+    }
+
+    [Fact]
+    public async Task DeleteGroupAsync_RestartsExplorer_WhenTheUserSaysYes()
+    {
+        var restarter = new Mock<IShellRestarter>();
+        var sut = await LoadedWithOneGroup(CreatePins(removed: 1), ConfirmDelete(restartExplorer: true), restarter.Object);
+
+        await sut.DeleteGroupCommand.ExecuteAsync(sut.Groups[0]);
+
+        restarter.Verify(r => r.RestartAsync(), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteGroupAsync_SaysToRestartExplorerByHand_WhenTheUserSaysNo()
+    {
+        var restarter = new Mock<IShellRestarter>();
+        var confirmation = ConfirmDelete(restartExplorer: false);
+        var sut = await LoadedWithOneGroup(CreatePins(removed: 1), confirmation, restarter.Object);
+
+        await sut.DeleteGroupCommand.ExecuteAsync(sut.Groups[0]);
+
+        confirmation.Verify(c => c.Confirm(MainWindowViewModel.RestartExplorerCaption, It.IsAny<string>()), Times.Once);
+        confirmation.Verify(c => c.Notify(It.IsAny<string>(), It.Is<string>(m => m.Contains("restart Explorer"))), Times.Once);
+        restarter.Verify(r => r.RestartAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteGroupAsync_SaysToUnpinByHand_WhenTheShellRefused()
+    {
+        var restarter = new Mock<IShellRestarter>();
+        var confirmation = ConfirmDelete(restartExplorer: true);
+        var store = CreateStoreWith(new GroupConfig { Id = "a", GroupName = "Apps" });
+        var sut = await LoadedWithOneGroup(CreatePins(removed: 0, @"C:\pins\Apps.lnk"), confirmation, restarter.Object, store: store);
+
+        await sut.DeleteGroupCommand.ExecuteAsync(sut.Groups[0]);
+
+        store.Verify(s => s.DeleteAsync("a", It.IsAny<CancellationToken>()), Times.Once, "the group goes whether or not the tile does");
+        confirmation.Verify(c => c.Notify(
+            MainWindowViewModel.TileLeftCaption,
+            It.Is<string>(m => m.Contains("Unpin from taskbar"))), Times.Once);
+        confirmation.Verify(c => c.Confirm(MainWindowViewModel.RestartExplorerCaption, It.IsAny<string>()), Times.Never);
+        restarter.Verify(r => r.RestartAsync(), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteGroupAsync_AsksNothingMore_WhenTheGroupWasNotPinned()
+    {
+        var confirmation = ConfirmDelete();
+        var sut = await LoadedWithOneGroup(CreatePins(removed: 0), confirmation);
+
+        await sut.DeleteGroupCommand.ExecuteAsync(sut.Groups[0]);
+
+        confirmation.Verify(c => c.Confirm(It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        confirmation.Verify(c => c.Notify(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteGroupAsync_WarnsOnceAboutTilesLeftByEarlierGroups_AndRemembersIt()
+    {
+        var pins = CreatePins();
+        pins.Setup(p => p.FindOrphans()).Returns([@"C:\pins\Old.lnk"]);
+        var settings = CreateSettings(new AppSettings { Theme = ThemePreference.Dark });
+        var confirmation = ConfirmDelete();
+        var sut = await LoadedWithOneGroup(pins, confirmation, settings: settings);
+
+        await sut.DeleteGroupCommand.ExecuteAsync(sut.Groups[0]);
+
+        confirmation.Verify(c => c.Notify(MainWindowViewModel.OrphanedTilesCaption, It.Is<string>(m => m.Contains("Old.lnk"))), Times.Once);
+        settings.Verify(s => s.SaveAsync(
+            It.Is<AppSettings>(a => a.OrphanedTilesNoticeShown && a.Theme == ThemePreference.Dark),
+            It.IsAny<CancellationToken>()), Times.Once, "the notice is shown once, and the other settings are kept");
+    }
+
+    [Fact]
+    public async Task DeleteGroupAsync_DoesNotWarnAgain_OnceTheNoticeWasShown()
+    {
+        var pins = CreatePins();
+        pins.Setup(p => p.FindOrphans()).Returns([@"C:\pins\Old.lnk"]);
+        var settings = CreateSettings(new AppSettings { OrphanedTilesNoticeShown = true });
+        var confirmation = ConfirmDelete();
+        var sut = await LoadedWithOneGroup(pins, confirmation, settings: settings);
+
+        await sut.DeleteGroupCommand.ExecuteAsync(sut.Groups[0]);
+
+        confirmation.Verify(c => c.Notify(MainWindowViewModel.OrphanedTilesCaption, It.IsAny<string>()), Times.Never);
+        settings.Verify(s => s.SaveAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteGroupAsync_DoesNotCountTheJustRefusedTile_AsLeftByAnEarlierGroup()
+    {
+        // The refused tile already has its own message; repeating it as an old one is noise.
+        const string refused = @"C:\pins\Apps.lnk";
+        var pins = CreatePins(removed: 0, refused);
+        pins.Setup(p => p.FindOrphans()).Returns([refused]);
+        var confirmation = ConfirmDelete();
+        var sut = await LoadedWithOneGroup(pins, confirmation);
+
+        await sut.DeleteGroupCommand.ExecuteAsync(sut.Groups[0]);
+
+        confirmation.Verify(c => c.Notify(MainWindowViewModel.OrphanedTilesCaption, It.IsAny<string>()), Times.Never);
     }
 
     [Fact]

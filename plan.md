@@ -4,25 +4,66 @@ The agreed roadmap for this fork: what is done, what is in progress, and the ord
 comes next. This file is kept current — an item is marked done in the same commit that
 finishes it, and a change of order or scope is recorded here when it is agreed, not later.
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-10-29*
 
 ## Where we are
 
-- **`develop`:** everything up to and including C1 and C6 (settings and empty state), merged
-  locally and **not pushed**. `origin/develop` is at `5a81f60`, the last pushed state (up to the
-  app list step). Pushing waits until the end, as agreed.
-- **Branch:** none open. Every feature branch is merged; deleting them is part of D.
-- **In progress:** D — release v0.5.0. The version is bumped to 0.5.0 and `[Unreleased]` is the
-  `[0.5.0]` section (the bump commit). Manual check so far: Settings (Close only) and the
-  *Appearance* tab seen in the published build, both logs clean since the exit-code-4 fix. It
-  found eight buttons without an accessible name, fixed with a test before tagging. Pin mode
-  ran: the WinRT call works (no exit code 3), but this machine reports
-  `TaskbarManager.IsPinningAllowed=false` and exits 2, so the pin dialog and the anchor
-  diagnostic could not be reached here — the reason for the `IsPinningAllowed` issue below.
-  Still to do — each only on approval: push `develop`, push
-  the `v0.5.0` tag, fast-forward `main`, delete merged branches, open the `IsPinningAllowed`
-  issue, and the install smoke test. `assets/screenshots/settings.png` still shows the Save
-  button; retaking it needs 150 % scaling (C6 polish retakes all of them).
+- **`develop`:** v0.5.0 is released — `develop`, `origin/develop` and the `v0.5.0` tag were all
+  at `546df2f` when the release was published, with the setup and portable assets. Fixes from the
+  smoke test land on `develop` after it, one commit each; pushing waits for approval.
+- **`main`:** still at `18c929e`; fast-forwarding it to the release waits for approval.
+- **Branch:** none open locally. `origin/perf/launcher-startup` and the dependabot branch are not
+  merged and stay.
+- **In progress:** fixing what the v0.5.0 install smoke test found (below), one finding at a time,
+  each decided with the user first. Still to do, each only on approval: fast-forward `main`, the
+  uninstall test, open the `IsPinningAllowed` issue (issues are off on the fork; turning them on
+  is a repository setting). `assets/screenshots/settings.png` still shows the Save button;
+  retaking it needs 150 % scaling (C6 polish retakes all of them).
+
+## Found in the v0.5.0 smoke test (2026-10-28)
+
+Noted during the installed-build smoke test. Each becomes its own commit, with a test first,
+decided with the user one at a time.
+
+- [x] **Deleting a group leaves its pinned tile on the taskbar.** Fixed on `develop` in
+  `fix(manager): unpin a deleted group's taskbar tile`. Confirmed in the smoke test (group
+  `190bb1b3…` deleted, its pinned copy left, the tile opening "(Unknown…) / No apps to launch").
+  As decided with the user on 2026-10-29: one confirmation that says the tile goes too; unpin
+  (by AUMID, through `IPinnedTileRemover` → `ITaskbarUnpinner`) before the files are removed; the
+  delete does not depend on the unpin; two language-neutral methods — the `taskbarunpin` verb by
+  name, then the menu item whose canonical verb it is (`GCS_VERBW`), never the caption, never
+  deleting the file; after a successful unpin, ask every time whether to restart Explorer (No →
+  "restart it by hand"); a refused tile → "unpin by hand"; tiles left by earlier deletions listed
+  once, remembered in `settings.json` (`orphanedTilesNoticeShown`). All text in English, as the
+  app. Measured first on this machine: the verb removed the test tile's pinned file without an
+  Explorer restart. Not changed: the popup of a missing group still titles itself "(Unknown…)".
+- [ ] **Two Explorer menu refreshes race and log a warning.** Closing the delete confirmation
+  re-activates the Manager, whose reload raises `GroupListChanged`, and `DeleteGroupAsync` raises
+  it again; the `async void` handlers in `App.xaml.cs` run two `RefreshAsync` calls at once, and
+  the second `DeleteSubKeyTree` finds the key already gone (`ExplorerContextMenuService.cs`
+  line 101, `IOException`). Proposed: serialise `RefreshAsync` behind a `SemaphoreSlim`; test
+  with two concurrent calls on the recording fake registry.
+- [ ] **The Explorer menu's "Taskbar Groups" entry shows a generic icon, not ours.** Seen in the
+  v0.5.0 smoke test (screenshot). `ExplorerContextMenuService.Write` sets `Icon` to
+  `<launcher>.exe,0` on each submenu root (line 118). The launcher exe does have an embedded icon
+  (`ExtractAssociatedIcon` returns one), so the cause is not known yet: either the Windows 11
+  classic menu does not use `Icon` on a cascading verb, or the embedded icon is not the app's own.
+  Proposed: check both here, then point the icon at the app's own `.ico` (a stable file, not the
+  versioned group icons, per ADR-006 and ADR-007).
+- [ ] **Pressing Enter after typing a new group's name does not save it.** Seen in the smoke test.
+  `+ New group` creates "New group" and selects the name for typing
+  (`MainWindowViewModel.BeginRename`, `RenameRequested`); the rename is committed on focus loss
+  only (`RenameGroupAsync`, `CanRenameGroup`), so Enter should commit it too. Proposed: bind Enter
+  in the header name box and in the new-group rename to the rename command; test that Enter
+  renames and that an empty or unchanged name is ignored.
+- [ ] **The Pin to taskbar button does not pin on this machine.** Seen in the smoke test. The
+  Manager runs `Launcher.exe --pin-mode` and gets exit code 2 because
+  `TaskbarManager.IsPinningAllowed=false`, then opens the Explorer fallback
+  (`GroupEditorViewModel`, "Pin unsupported on this Windows build/SKU"). The user pins by hand
+  instead. Needs `IsPinningAllowed` investigated on this SKU/policy, and a clear message in the
+  button, not only a fallback. Tie to the existing `IsPinningAllowed` issue (not yet opened).
+- [ ] **Explorer menu warning recurs on group creation/deletion** (the race of bullet 2) —
+  seen again in the new-group flow (`ExplorerContextMenuService.cs:101`).
 
 ## How an item is worked
 

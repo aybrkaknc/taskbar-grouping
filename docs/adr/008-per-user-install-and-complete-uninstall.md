@@ -35,3 +35,7 @@ Windows has no API for an app to unpin itself. The pinned shortcut's own context
 - Each user who wants TaskbarFolders installs it for themselves.
 - Anything new the app writes outside its program folder has to be removed in `Uninstaller` in the same change, with a test.
 - The file logger drops lines whose folder no longer exists instead of re-creating it.
+
+## Amendment (2026-10-29): deleting a group unpins its tile
+
+The same verb also runs when a single group is deleted in the Manager, through `IPinnedTileRemover`: a deleted group's tile otherwise stayed on the taskbar and opened an empty popup. The confirmation says the tile goes too; the tile is unpinned before the group's files are removed; a tile the shell refuses is reported to the user, who unpins it by hand. `ShellTaskbarUnpinner` now tries the verb by name and then the menu item whose canonical verb it is — both language-neutral. After an unpin the Manager offers to restart Explorer, never restarting it unasked. Deleting the pinned file is still not an option, for the reason above. The uninstaller and group deletion remain the only places that remove files from the pinned-items folder, and only through the verb.

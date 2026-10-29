@@ -136,6 +136,8 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
                 return;
             }
 
+            // The store takes the whole document, and it holds more than this dialog edits.
+            var stored = await _store.LoadAsync().ConfigureAwait(true);
             await _store.SaveAsync(new AppSettings
             {
                 Theme = Theme,
@@ -143,6 +145,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
                 EnableAnimations = EnableAnimations,
                 ShowInExplorerMenu = ShowInExplorerMenu,
                 PopupPosition = PopupPosition,
+                OrphanedTilesNoticeShown = stored.OrphanedTilesNoticeShown,
             }).ConfigureAwait(true);
 
             if (setting == nameof(Theme))

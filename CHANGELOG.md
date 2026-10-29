@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Deleting a group unpins its taskbar tile.** The tile used to stay behind and open an empty "No apps to launch" popup. The confirmation now says the tile goes too; afterwards the Manager asks whether to restart Explorer so the taskbar redraws, and says so if Windows refuses to unpin the tile. Tiles left by groups deleted with earlier versions are listed once, the first time a group is deleted. Unpinning now also falls back to the shell's menu item when the verb is refused by name, which the uninstaller benefits from too.
+
 ## [0.5.0] - 2026-10-28
 
 ### Added
