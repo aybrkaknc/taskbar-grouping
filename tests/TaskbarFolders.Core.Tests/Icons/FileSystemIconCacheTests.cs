@@ -104,6 +104,20 @@ public sealed class FileSystemIconCacheTests : IDisposable
     }
 
     [Fact]
+    public void TheKey_IsNotTheOneEarlierVersionsWrote_SoTheirTinyIconsAreNotServed()
+    {
+        // Before the canvas fix the cache stored the shell's 256 px canvas with a small icon in
+        // its corner; an entry written then has this key and must never be found again.
+        var sut = new FileSystemIconCache(_paths);
+        var oldMaterial = string.Create(
+            System.Globalization.CultureInfo.InvariantCulture,
+            $"{_sourceFile}|{File.GetLastWriteTimeUtc(_sourceFile).Ticks}|256");
+        var oldKey = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(oldMaterial))) + ".png";
+
+        Path.GetFileName(sut.GetCachePath(_sourceFile, 256)).Should().NotBe(oldKey);
+    }
+
+    [Fact]
     public void Set_OverwritesExistingEntry_ForSameKey()
     {
         var sut = new FileSystemIconCache(_paths);

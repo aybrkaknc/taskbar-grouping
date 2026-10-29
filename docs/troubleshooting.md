@@ -123,6 +123,7 @@ On an affected build, avoid clicking Save unless you intend to set every value i
 ## The group icon looks wrong or out of date
 
 - Only the **first four** apps contribute to the composite icon. Reorder is not available in the UI, so change which apps are in the group, or edit the order in the group's JSON with the Manager closed.
+- An app whose icon shows as a tiny mark in its tile has no large icon of its own. It is now shown at its real size and enlarged like the others, so a program that has only a 48 px icon looks soft when large. Before, Windows handed such icons back in the corner of an empty square.
 - Extracted source icons are cached under `icons\cache\`. Deleting that folder is safe — icons are re-extracted on the next change.
 - Windows caches taskbar icons independently. If the file changed but the tile did not, unpin and re-pin.
 

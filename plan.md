@@ -102,7 +102,16 @@ decided with the user one at a time.
   The v0.5.0 refusal did **not** recur at 2 s, so the retry still has not run. The same first
   press on v0.5.0 (07:01, same machine) was refused. Kept open until it shows on its own: look
   for "after 6 checks" in `launcher-*.log`.
-- [ ] **Some apps' icons come out tiny, in the preview, the group icon and the popup.** Seen on
+- [x] **Some apps' icons come out tiny, in the preview, the group icon and the popup.** Fixed on
+  `develop` in `fix(core): cut a small icon out of the shell's large canvas`. **Measured cause:** for a
+  program with no large icon, the shell's 256 px image list returns a 256 × 256 canvas with the
+  small icon (48 px, `45 × 48` for `CardLock.exe`, `javaw.exe`) drawn at (0,0); `IconCanvas.TrimToIcon`
+  cuts it back to the icon's native size, and the icon cache key got a version (`v2`) so earlier
+  entries are not served. Verified on this machine: the two shortcuts now extract at 48 × 48, the
+  two good ones at 256 × 256 as before. **Second finding, open:** `UniFi.lnk`'s own icon location
+  (`unifi-network.ico`, a full 256 px icon) is ignored, because the extractor resolves a shortcut to
+  its target (`javaw.exe`) and shows Java's icon, where Explorer shows UniFi's. Decision pending
+  with the user. Seen on
   2026-10-29 in the development build while trying the C2 preview, and confirmed by the user to look
   the same in the Apps tab and the popup, so it is not the preview. The group *Test 1*: `AnyDesk.exe`
   and `LDPlayer 14.lnk` (no icon location) are full size; `UniFi.lnk` (icon location

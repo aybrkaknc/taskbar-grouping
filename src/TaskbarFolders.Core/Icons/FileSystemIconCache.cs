@@ -146,9 +146,12 @@ public sealed class FileSystemIconCache : IIconCache
             ? File.GetLastWriteTimeUtc(sourcePath).Ticks
             : 0L;
 
+        // The version changes whenever what is extracted for a path does, so entries written by
+        // an older extractor are never found: v2 followed the fix for icons that came back as
+        // a small glyph in the corner of a 256 px canvas.
         var material = string.Create(
             CultureInfo.InvariantCulture,
-            $"{sourcePath}|{lastWriteTicks}|{size}");
+            $"{sourcePath}|{lastWriteTicks}|{size}|v2");
 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(material));
         return Convert.ToHexString(hash) + ".png";

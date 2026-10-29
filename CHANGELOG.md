@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A preview of the popup on *Appearance*.** To the right of the popup settings, the group's first twelve apps are shown as the popup lays them out, with their icons and names, and follow every change at once. It is drawn from the same tile definition as the popup, so the two cannot drift. An empty group shows sample tiles. When the settings make the popup too wide for the space, the window grows to make room, up to the screen's width, and the settings column scrolls if the window is short. The window now opens at 1180 × 720 (smaller where the screen is) and is no narrower than 900 × 520.
 - **Spacing between the popup's tiles.** *Appearance → Popup → Spacing* sets the gap between the tiles to *None* (the default, as before), *Small*, *Medium* or *Large*. The tiles keep their size; the popup grows by the gaps, and its largest width went from 720 to 800 so six of the widest spaced tiles still fit. Groups saved earlier keep the tiles touching.
 
+### Fixed
+
+- **Some apps' icons no longer show as a tiny glyph.** Programs and shortcuts with no large icon of their own (an older program that has only a 48 px icon, a shortcut to one) came back from Windows as a small icon in the corner of a large empty square, and drew as a small mark in the middle of their tile, in the group's icon and in the popup. The icon is now cut back to its own size and scaled like any other. Icons are cached, so the cache was versioned: those apps get the corrected icon the next time they are read, with nothing to delete by hand.
+
 ## [0.5.1] - 2026-10-29
 
 ### Fixed

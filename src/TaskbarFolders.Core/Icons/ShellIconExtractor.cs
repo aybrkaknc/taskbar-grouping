@@ -210,7 +210,10 @@ public sealed class ShellIconExtractor : IIconExtractor
                     return null;
                 }
 
-                return CreateAndDestroy(hIcon);
+                // A program with no large icon comes back as a small one in the corner of the
+                // big canvas; cut it back to the icon, or it shows as a tiny glyph in its tile.
+                var extracted = CreateAndDestroy(hIcon);
+                return extracted is null ? null : IconCanvas.TrimToIcon(extracted);
             }
             finally
             {
