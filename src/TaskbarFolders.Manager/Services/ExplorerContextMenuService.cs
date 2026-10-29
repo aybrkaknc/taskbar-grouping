@@ -23,7 +23,7 @@ namespace TaskbarFolders.Manager.Services;
 /// only takes packaged <c>IExplorerCommand</c> handlers (ADR-007). The whole submenu is deleted
 /// and rewritten on every refresh, so renamed and deleted groups never linger.
 /// </remarks>
-public sealed class ExplorerContextMenuService
+public sealed class ExplorerContextMenuService : IDisposable
 {
     /// <summary>File classes that get the submenu.</summary>
     public static readonly IReadOnlyList<string> FileClasses = ["exefile", "lnkfile"];
@@ -39,6 +39,9 @@ public sealed class ExplorerContextMenuService
     private readonly IAppSettingsStore _settings;
     private readonly ILauncherPathResolver _launcher;
     private readonly ILogger<ExplorerContextMenuService>? _logger;
+
+    // One refresh at a time, reading and writing together: see RefreshAsync.
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
     /// <summary>Initializes a new instance.</summary>
     public ExplorerContextMenuService(
@@ -60,6 +63,9 @@ public sealed class ExplorerContextMenuService
         _logger = logger;
     }
 
+    /// <inheritdoc/>
+    public void Dispose() => _refreshGate.Dispose();
+
     /// <summary>Path of the submenu key for one file class, under <c>HKEY_CURRENT_USER</c>.</summary>
     /// <param name="fileClass">e.g. <c>lnkfile</c>.</param>
     public static string MenuKey(string fileClass) => $@"Software\Classes\{fileClass}\shell\{VerbKeyName}";
@@ -72,6 +78,11 @@ public sealed class ExplorerContextMenuService
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
+        // Callers do not wait for each other: deleting a group raises the change twice, and each
+        // handler starts a refresh. Two at once deleted the same registry tree from both sides,
+        // and the one that wrote last won even if it had read the older list. The read and the
+        // write are therefore one step, so a later refresh always reads after an earlier wrote.
+        await _refreshGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(false);
@@ -85,6 +96,10 @@ public sealed class ExplorerContextMenuService
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
         {
             _logger?.LogWarning(ex, "Could not update Explorer's Taskbar Groups menu.");
+        }
+        finally
+        {
+            _refreshGate.Release();
         }
     }
 

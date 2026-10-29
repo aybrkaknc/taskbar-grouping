@@ -163,4 +163,62 @@ public sealed class ExplorerContextMenuServiceTests
 
         await act.Should().NotThrowAsync("the menu is a convenience and must not break the Manager");
     }
+
+    // A refresh reads the groups and then rewrites the whole submenu. Two at once — a group
+    // deleted raises the change twice, and each handler starts one — deleted the same registry
+    // tree from both sides (the "key does not exist" warning), and whichever wrote last won,
+    // even when it had read the older list.
+    [Fact]
+    public async Task RefreshAsync_DoesNotStartASecondRefresh_UntilTheFirstIsDone()
+    {
+        var firstRead = new TaskCompletionSource<IReadOnlyList<GroupConfig>>();
+        _groups.SetupSequence(g => g.LoadAllAsync(It.IsAny<CancellationToken>()))
+               .Returns(firstRead.Task)
+               .ReturnsAsync(Groups(("b", "Second")));
+        using var sut = CreateSut();
+
+        var first = sut.RefreshAsync();
+        var second = sut.RefreshAsync();
+
+        _groups.Verify(g => g.LoadAllAsync(It.IsAny<CancellationToken>()), Times.Once, "the second refresh waits for the first");
+
+        firstRead.SetResult(Groups(("a", "First")));
+        await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(5));
+
+        _groups.Verify(g => g.LoadAllAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task RefreshAsync_LeavesTheNewestList_WhenAnOlderReadFinishesLast()
+    {
+        var slowRead = new TaskCompletionSource<IReadOnlyList<GroupConfig>>();
+        _groups.SetupSequence(g => g.LoadAllAsync(It.IsAny<CancellationToken>()))
+               .Returns(slowRead.Task)
+               .ReturnsAsync(Groups(("new", "Newer")));
+        using var sut = CreateSut();
+
+        var older = sut.RefreshAsync();
+        var newer = sut.RefreshAsync();
+        slowRead.SetResult(Groups(("old", "Older")));
+        await Task.WhenAll(older, newer).WaitAsync(TimeSpan.FromSeconds(5));
+
+        _registry.Values.Keys.Should().Contain(k => k.Key.EndsWith("01-new", StringComparison.Ordinal));
+        _registry.Values.Keys.Should().NotContain(k => k.Key.Contains("-old", StringComparison.Ordinal),
+            "the later refresh read the later list, and nothing may write over it");
+    }
+
+    [Fact]
+    public async Task RefreshAsync_KeepsWorking_AfterARefreshFailed()
+    {
+        _groups.SetupSequence(g => g.LoadAllAsync(It.IsAny<CancellationToken>()))
+               .ThrowsAsync(new InvalidOperationException("store broke"))
+               .ReturnsAsync(Groups(("a", "Apps")));
+        using var sut = CreateSut();
+
+        var failing = () => sut.RefreshAsync();
+        await failing.Should().ThrowAsync<InvalidOperationException>();
+        await sut.RefreshAsync().WaitAsync(TimeSpan.FromSeconds(5));
+
+        _registry.Values[(@"Software\Classes\lnkfile\shell\TaskbarFolders.Groups\shell\01-a", "MUIVerb")].Should().Be("Apps");
+    }
 }

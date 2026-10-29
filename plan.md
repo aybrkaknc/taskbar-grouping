@@ -37,12 +37,15 @@ decided with the user one at a time.
   once, remembered in `settings.json` (`orphanedTilesNoticeShown`). All text in English, as the
   app. Measured first on this machine: the verb removed the test tile's pinned file without an
   Explorer restart. Not changed: the popup of a missing group still titles itself "(Unknown…)".
-- [ ] **Two Explorer menu refreshes race and log a warning.** Closing the delete confirmation
-  re-activates the Manager, whose reload raises `GroupListChanged`, and `DeleteGroupAsync` raises
-  it again; the `async void` handlers in `App.xaml.cs` run two `RefreshAsync` calls at once, and
-  the second `DeleteSubKeyTree` finds the key already gone (`ExplorerContextMenuService.cs`
-  line 101, `IOException`). Proposed: serialise `RefreshAsync` behind a `SemaphoreSlim`; test
-  with two concurrent calls on the recording fake registry.
+- [x] **Two Explorer menu refreshes race and log a warning.** Fixed on `develop` in
+  `fix(manager): serialise Explorer menu refreshes`. Closing the delete confirmation re-activates
+  the Manager, whose reload raises `GroupListChanged`, and `DeleteGroupAsync` raises it again; the
+  handlers in `App.xaml.cs` ran two `RefreshAsync` calls at once, the second `DeleteSubKeyTree`
+  found the tree half gone (`IOException`), and an older read could write last. As decided with
+  the user on 2026-10-29: serialise the whole refresh — read and write — behind a `SemaphoreSlim`
+  (the service is now `IDisposable`); the event is still raised twice, which is harmless once the
+  refreshes queue. Tests: a second refresh waits for the first, the newest list wins, a failed
+  refresh releases the gate.
 - [ ] **The Explorer menu's "Taskbar Groups" entry shows a generic icon, not ours.** Seen in the
   v0.5.0 smoke test (screenshot). `ExplorerContextMenuService.Write` sets `Icon` to
   `<launcher>.exe,0` on each submenu root (line 118). The launcher exe does have an embedded icon
@@ -62,8 +65,20 @@ decided with the user one at a time.
   (`GroupEditorViewModel`, "Pin unsupported on this Windows build/SKU"). The user pins by hand
   instead. Needs `IsPinningAllowed` investigated on this SKU/policy, and a clear message in the
   button, not only a fallback. Tie to the existing `IsPinningAllowed` issue (not yet opened).
-- [ ] **Explorer menu warning recurs on group creation/deletion** (the race of bullet 2) —
-  seen again in the new-group flow (`ExplorerContextMenuService.cs:101`).
+- [x] **Explorer menu warning recurs on group creation/deletion** — the same race as above, fixed
+  with it.
+- [ ] **Uninstalling leaves two Compatibility Assistant values behind.** Found in the uninstall
+  test on 2026-10-29: everything else was gone (program folder, *Installed apps* entry, Run
+  value, both menu keys, `%APPDATA%\TaskbarFolders`, Start menu folder, `%TEMP%\.net`), but
+  `HKCU\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Compatibility Assistant\Store`
+  still held `…\Programs\TaskbarFolders\Manager\TaskbarFolders.Manager.exe` and
+  `…\Programs\TaskbarFolders\unins000.exe`. `Uninstaller.RemoveWindowsRecords` covers that key,
+  so the likely cause — not yet verified — is that Windows writes these values when the
+  processes exit, after the cleanup ran. The user's goal: **an uninstall leaves nothing at all.**
+  First measure when the values appear (log the key right before and after the cleanup), then
+  decide the fix with the user. The two values are still in the registry; deleting them was not
+  approved. No group tile was pinned during this test, so the uninstaller's unpin was not
+  exercised either.
 
 ## How an item is worked
 
