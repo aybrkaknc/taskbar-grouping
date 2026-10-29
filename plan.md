@@ -100,7 +100,9 @@ decided with the user one at a time.
   Watch for it; if it fails again, find what the layout pass races with.
 - [x] **Explorer menu warning recurs on group creation/deletion** — the same race as above, fixed
   with it.
-- [ ] **Deleting a group logs a warning when `icons\custom\` does not exist.** Seen on
+- [x] **Deleting a group logs a warning when `icons\custom\` does not exist.** Fixed on `develop`
+  (`CustomGroupIconStore.Delete` now treats a missing folder like a missing file; tests: no warning
+  logged, an existing image is still removed). Seen on
   2026-10-29 with fresh data after the uninstall: `CustomGroupIconStore.Delete`
   (`CustomGroupIconStore.cs:155`) calls `File.Delete` on `icons\custom\<id>.png`; a missing file is
   fine, but a missing folder throws `DirectoryNotFoundException`, logged as a warning with no

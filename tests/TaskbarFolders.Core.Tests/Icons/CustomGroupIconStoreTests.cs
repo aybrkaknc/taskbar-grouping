@@ -3,6 +3,8 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Moq;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.TestSupport;
@@ -174,6 +176,34 @@ public sealed class CustomGroupIconStoreTests : IDisposable
         var act = () => _sut.PruneAppIcons("g", []);
 
         act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void Delete_TreatsAMissingFolderLikeAMissingFile_WithoutAWarning()
+    {
+        var logger = new Mock<ILogger<CustomGroupIconStore>>();
+        var sut = new CustomGroupIconStore(_paths, logger.Object);
+        Directory.Exists(Path.GetDirectoryName(_paths.GetGroupCustomIconFile("g"))!).Should().BeFalse("the case under test");
+
+        var act = () => sut.Delete("g");
+
+        act.Should().NotThrow();
+        logger.Verify(
+            l => l.Log(LogLevel.Warning, It.IsAny<EventId>(), It.IsAny<It.IsAnyType>(), It.IsAny<Exception?>(), It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Never,
+            "nothing is wrong on disk: there was nothing to delete");
+    }
+
+    [Fact]
+    public void Delete_RemovesTheChosenImage()
+    {
+        var path = _paths.GetGroupCustomIconFile("g");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllBytes(path, [1]);
+
+        _sut.Delete("g");
+
+        File.Exists(path).Should().BeFalse();
     }
 
     private string WriteImage(string name, BitmapEncoder encoder, BitmapSource image)

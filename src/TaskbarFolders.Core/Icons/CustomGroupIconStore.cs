@@ -154,6 +154,11 @@ public sealed class CustomGroupIconStore : ICustomGroupIconStore
         {
             File.Delete(path);
         }
+        catch (DirectoryNotFoundException)
+        {
+            // File.Delete is silent about a missing file but throws for a missing folder, and
+            // the folder does not exist until an image has been chosen. Nothing to delete.
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger?.LogWarning(ex, "Could not delete the custom icon {Path}.", path);
