@@ -231,7 +231,7 @@ below.
 | 2 | **C6 — settings and empty state** — *done, merged* | Settings apply as they change (no *Save*); with no groups, a three-step "get started" view. |
 | 3 | **D — release v0.5.0** — *version bumped; gates and pushes pending* | Version bump, installer and portable build, installer smoke test, CHANGELOG section, release notes; open an issue for `IsPinningAllowed = false`; delete merged branches. Puts the work so far in users' hands before the larger items. |
 | 4 | **C2 — grid settings, part 2** | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
-| 5 | **C4 — reorder apps by dragging** | Drag rows in the app list, and `Alt+↑` / `Alt+↓` from the keyboard. Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
+| 5 | **C4 — reorder apps by dragging** | Drag rows in the app list (drag only; the keyboard shortcut was dropped on 2026-10-29). Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
 | 6 | **C6 — visual polish** | Let the Manager's Mica backdrop show, Fluent icons, spacing; retake screenshots. |
 | 7 | **E — add apps from a list of installed apps (research first)** | Instead of browsing for an `.exe`/`.lnk`, pick from what Windows lists under *Start → All apps*, which also covers Store/packaged apps (Calculator, Settings…) that cannot be added at all today. The research settles the source (the shell's AppsFolder vs. Start menu shortcuts), how a packaged app is stored and launched (`shell:AppsFolder\<AUMID>` rather than a path), and how its icon is read. |
 
@@ -356,6 +356,22 @@ user. No announcement before it passes.
 
 ### 4. C2 — grid settings, part 2 (`feature/grid-settings-2`)
 
+**Decided with the user on 2026-10-29** (after the spike): one shared tile resource, spacing steps
+0 / 4 / 8 / 12, and a preview of the group's real apps. The spike found that Core already uses WPF
+(`UseWPF`, the icon composer), so the shared tile style can live in Core as a resource dictionary
+merged by both apps — no linked file needed. In three steps, each its own commit and manual test:
+
+- [x] **Step 1 — spacing in the popup.** `GroupConfig.TileSpacing` (snapped to `TileSpacings`, 0 by
+  default and for older files); `TileMetrics` moved to Shared and given `Spacing`, `CellWidth`,
+  `CellHeight`, `HalfSpacing`; the popup's tile root takes half a gap of margin and the window is
+  sized from `CellWidth`; `MaxWidth` 720 → 800. Settable only in the JSON until step 3.
+- [ ] **Step 2 — shared tile resource.** The tile style and template move to Core; the popup uses
+  them and looks the same; the three Launcher-only brushes get Manager equivalents.
+- [ ] **Step 3 — Manager.** Spacing control and the live preview on *Appearance*; user guides,
+  CHANGELOG, screenshots.
+
+The original specification follows.
+
 **Goal:** a live preview of the popup beside the grid controls, and tile spacing.
 
 **Decided:** the preview uses the popup's own tile style, not a copy.
@@ -385,10 +401,14 @@ two.
 
 ### 5. C4 — reorder apps by dragging (`feature/reorder-apps`)
 
-**Goal:** change the app order by dragging rows, and with `Alt+↑` / `Alt+↓`. The order matters,
-because the group icon uses the first four apps.
+**Goal:** change the app order by dragging rows. The order matters, because the group icon uses
+the first four apps.
 
-**Decided:** both drag and keyboard.
+**Decided:** drag only. On 2026-10-29 the user cut the `Alt+↑` / `Alt+↓` keyboard way that was
+agreed on 2026-10-28; everything below that mentions it is struck from the scope (the
+`AppList_KeyDown` change, the STA key test, the key wording in the guides). The wording was "only
+reorder the icons by dragging" — taken to mean the app rows, which carry the icons; to be confirmed
+when C4 starts.
 
 **Changes**
 - `GroupEditorViewModel.MoveAppAsync(int from, int to)`, with a `[RelayCommand]` wrapper. Take
@@ -408,18 +428,15 @@ because the group icon uses the first four apps.
   - `Editor_PreviewDragOver` returns `Move` for the row format and `Copy` for `FileDrop`.
   - `AppsTab_DragEnter` does not show "Drop to add" for row drags.
   - The insert position is a thin `AccentBrush` line between rows.
-- `AppList_KeyDown`: `Alt+Up` and `Alt+Down` move the selected row. Keys from a `TextBox` are
-  ignored, as the existing rule says.
 
 **Tests first**
 - `GroupEditorViewModelTests`: both collections end in the same order; the move saves; sync runs
   only when the first four change; an out-of-range move is a no-op; a rebind during the move keeps
   `_boundItem`.
 - `ReorderMathTests`.
-- A small STA test that `Alt+Down` moves a row.
 - The drag gesture itself is checked by hand.
 
-**Docs:** both user guides (drag, `Alt+↑` / `Alt+↓`), CHANGELOG, this file.
+**Docs:** both user guides (drag), CHANGELOG, this file.
 
 **Risks:** click versus drag; dropping onto an expanded row (the rule is the upper or lower half
 of the row).

@@ -56,4 +56,41 @@ public class TileMetricsTests
     {
         TileMetrics.Compute(icon, showNames: true).ExtractPx.Should().Be(px);
     }
+
+    [Fact]
+    public void WithoutSpacing_EachCellIsJustTheTile()
+    {
+        var tile = TileMetrics.Default;
+
+        tile.Spacing.Should().Be(0);
+        tile.CellWidth.Should().Be(tile.Width);
+        tile.CellHeight.Should().Be(tile.Height);
+    }
+
+    [Theory]
+    [InlineData(48, true, 4)]
+    [InlineData(48, true, 12)]
+    [InlineData(80, true, 12)]
+    [InlineData(32, false, 8)]
+    public void Spacing_GrowsTheCell_AndLeavesTheTileAsItIs(int icon, bool showNames, int spacing)
+    {
+        var bare = TileMetrics.Compute(icon, showNames);
+
+        var spaced = TileMetrics.Compute(icon, showNames, spacing);
+
+        spaced.Width.Should().Be(bare.Width, "the tile itself, its label and its hover box keep their size");
+        spaced.Height.Should().Be(bare.Height);
+        spaced.LabelMaxWidth.Should().Be(bare.LabelMaxWidth);
+        spaced.CellWidth.Should().Be(bare.Width + spacing, "half the gap on each side of the tile");
+        spaced.CellHeight.Should().Be(bare.Height + spacing);
+        spaced.Spacing.Should().Be(spacing);
+    }
+
+    [Fact]
+    public void NegativeSpacing_IsRefused()
+    {
+        var act = () => TileMetrics.Compute(48, showNames: true, spacing: -1);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
 }

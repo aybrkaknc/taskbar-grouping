@@ -34,6 +34,7 @@ One group.
 | `Columns` | `int` | Most columns a popup row may hold, clamped to 1–6 on assignment, default 3. The grid uses fewer when the group has fewer apps. Set on the Manager's *Appearance* tab |
 | `IconSize` | `int` | Popup icon size in DIPs, one of `IconSizes` (32, 48, 64, 80); any other value snaps to the nearest on assignment. Default `DefaultIconSize` (48) |
 | `ShowNames` | `bool` | Whether popup tiles show app names, default `true`; without them tiles shrink to the icon |
+| `TileSpacing` | `int` | Gap between popup tiles in DIPs, one of `TileSpacings` (0, 4, 8, 12); any other value snaps to the nearest on assignment. Default 0, which a file written before the setting also loads as. The popup reads it through `TileMetrics` (Shared): `Compute(iconSize, showNames, spacing)` keeps the tile's own size and adds `Spacing`, `CellWidth`/`CellHeight` (tile plus gap) and `HalfSpacing` (each tile's margin) |
 | `Apps` | `List<AppEntry>` | Members of the group |
 
 #### [`AppSettings`](../src/TaskbarFolders.Shared/Models/AppSettings.cs)

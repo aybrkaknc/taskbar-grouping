@@ -445,6 +445,7 @@ public class PopupViewModelTests
             GroupName = "g",
             IconSize = 80,
             ShowNames = false,
+            TileSpacing = 8,
             Apps = { new AppEntry { Name = "a", Path = "a.exe" } },
         };
         var (sut, _, _, _, _) = CreateSut("g", config);
@@ -452,7 +453,7 @@ public class PopupViewModelTests
         await sut.LoadAsync();
 
         sut.ShowNames.Should().BeFalse();
-        sut.Tile.Should().Be(TileMetrics.Compute(80, showNames: false));
+        sut.Tile.Should().Be(TileMetrics.Compute(80, showNames: false, spacing: 8));
     }
 
     [Fact]

@@ -422,7 +422,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         // ~5-10 ms before placement could be computed. Empty / unavailable groups fall
         // back to MinHeight, keeping the banner-only layout centred.
         var cols = Math.Max(_viewModel.EffectiveColumns, 1);
-        Width = Math.Clamp(cols * _viewModel.Tile.Width + 2 * PaddingPx, MinWidth, MaxWidth);
+        Width = Math.Clamp(cols * _viewModel.Tile.CellWidth + 2 * PaddingPx, MinWidth, MaxWidth);
 
         // Height comes from measuring ChromeRoot rather than adding up tile rows, because
         // the error strip docks Bottom in a fill-last DockPanel: at a grid-only height it
@@ -461,7 +461,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         // exactly that much instead (the bar's width and margin, PopupScrollBar). Asked of the
         // laid-out scroller rather than worked out from DesiredSize, which does not yet carry the
         // tiles on the first pass. MaxWidth leaves room for the bar at six columns of the widest
-        // tile (TileMetrics at 80 DIPs with names).
+        // cell (TileMetrics at 80 DIPs with names and the widest spacing: 6 × 124 + padding).
         if (TileScroller.ComputedVerticalScrollBarVisibility == Visibility.Visible)
         {
             var barWidth = TileScroller.ActualWidth - TileScroller.ViewportWidth;

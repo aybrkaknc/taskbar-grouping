@@ -121,20 +121,41 @@ public class PreferencesSerializationTests
         config.Should().NotBeNull();
         config!.IconSize.Should().Be(GroupConfig.DefaultIconSize);
         config.ShowNames.Should().BeTrue("a group that never chose otherwise keeps its names");
+        config.TileSpacing.Should().Be(0, "a group saved before spacing existed keeps its tiles touching");
     }
 
     [Fact]
     public void GroupConfig_GridSettings_RoundTrip()
     {
-        var config = new GroupConfig { Id = "g", GroupName = "n", Columns = 5, IconSize = 64, ShowNames = false };
+        var config = new GroupConfig { Id = "g", GroupName = "n", Columns = 5, IconSize = 64, ShowNames = false, TileSpacing = 8 };
 
         var json = JsonSerializer.Serialize(config, JsonOptions.Default);
         var back = JsonSerializer.Deserialize<GroupConfig>(json, JsonOptions.Default);
 
-        json.Should().Contain("\"iconSize\": 64").And.Contain("\"showNames\": false");
+        json.Should().Contain("\"iconSize\": 64").And.Contain("\"showNames\": false").And.Contain("\"tileSpacing\": 8");
         back!.Columns.Should().Be(5);
         back.IconSize.Should().Be(64);
         back.ShowNames.Should().BeFalse();
+        back.TileSpacing.Should().Be(8);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(4, 4)]
+    [InlineData(8, 8)]
+    [InlineData(12, 12)]
+    [InlineData(-5, 0)]
+    [InlineData(2, 0)]     // halfway: the smaller step
+    [InlineData(3, 4)]
+    [InlineData(10, 8)]    // halfway: the smaller step
+    [InlineData(11, 12)]
+    [InlineData(100, 12)]
+    public void TileSpacing_SnapsToTheNearestStep(int input, int expected)
+    {
+        var config = new GroupConfig { Id = "g", GroupName = "n", TileSpacing = input };
+
+        config.TileSpacing.Should().Be(expected);
+        GroupConfig.TileSpacings.Should().Equal(0, 4, 8, 12);
     }
 
     [Fact]

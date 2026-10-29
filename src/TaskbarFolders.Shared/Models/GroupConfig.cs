@@ -21,9 +21,13 @@ public sealed class GroupConfig
 
     private int _columns = 3;
     private int _iconSize = DefaultIconSize;
+    private int _tileSpacing;
 
     /// <summary>The icon sizes, in DIPs, a group can choose from, smallest first.</summary>
     public static IReadOnlyList<int> IconSizes { get; } = [32, 48, 64, 80];
+
+    /// <summary>The gaps between popup tiles, in DIPs, a group can choose from, smallest first.</summary>
+    public static IReadOnlyList<int> TileSpacings { get; } = [0, 4, 8, 12];
 
     /// <summary>
     /// Unique identifier for the group.
@@ -57,7 +61,19 @@ public sealed class GroupConfig
     public int IconSize
     {
         get => _iconSize;
-        set => _iconSize = Snap(value);
+        set => _iconSize = Snap(value, IconSizes);
+    }
+
+    /// <summary>
+    /// Gap, in DIPs, between neighbouring tiles in the popup: one of <see cref="TileSpacings"/>,
+    /// snapped like <see cref="IconSize"/>. 0 — the tiles touching — is what every group had
+    /// before the setting existed, and what a file without it loads as.
+    /// </summary>
+    [JsonPropertyName("tileSpacing")]
+    public int TileSpacing
+    {
+        get => _tileSpacing;
+        set => _tileSpacing = Snap(value, TileSpacings);
     }
 
     /// <summary>
@@ -73,10 +89,11 @@ public sealed class GroupConfig
     [JsonPropertyName("apps")]
     public List<AppEntry> Apps { get; set; } = [];
 
-    private static int Snap(int value)
+    // The nearest of the steps; the smaller one when halfway, since the steps are ascending.
+    private static int Snap(int value, IReadOnlyList<int> steps)
     {
-        var nearest = IconSizes[0];
-        foreach (var size in IconSizes)
+        var nearest = steps[0];
+        foreach (var size in steps)
         {
             if (Math.Abs(size - value) < Math.Abs(nearest - value))
             {

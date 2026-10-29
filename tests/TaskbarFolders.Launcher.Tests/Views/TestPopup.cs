@@ -34,9 +34,10 @@ internal static class TestPopup
         ResourceDictionary? theme = null,
         Action<PopupViewModel>? beforeShow = null,
         int iconSize = GroupConfig.DefaultIconSize,
-        bool showNames = true)
+        bool showNames = true,
+        int tileSpacing = 0)
     {
-        var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = columns, IconSize = iconSize, ShowNames = showNames };
+        var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = columns, IconSize = iconSize, ShowNames = showNames, TileSpacing = tileSpacing };
         for (var i = 0; i < appCount; i++)
         {
             config.Apps.Add(new AppEntry { Name = $"App {i + 1}", Path = $@"C:\does\not\exist\app{i + 1}.exe" });

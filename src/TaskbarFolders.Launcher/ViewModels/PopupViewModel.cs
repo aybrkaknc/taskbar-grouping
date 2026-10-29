@@ -116,8 +116,9 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     private bool _showNames = true;
 
     /// <summary>
-    /// Size of each tile and of its icon, from <see cref="GroupConfig.IconSize"/> and
-    /// <see cref="GroupConfig.ShowNames"/>.
+    /// Size of each tile, of its icon and of the gap between tiles, from
+    /// <see cref="GroupConfig.IconSize"/>, <see cref="GroupConfig.ShowNames"/> and
+    /// <see cref="GroupConfig.TileSpacing"/>.
     /// </summary>
     [ObservableProperty]
     private TileMetrics _tile = TileMetrics.Default;
@@ -403,7 +404,7 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     {
         Columns = config.Columns;
         ShowNames = config.ShowNames;
-        Tile = TileMetrics.Compute(config.IconSize, config.ShowNames);
+        Tile = TileMetrics.Compute(config.IconSize, config.ShowNames, config.TileSpacing);
     }
 
     private async Task LoadIconForAsync(PopupAppViewModel app, CancellationToken token)

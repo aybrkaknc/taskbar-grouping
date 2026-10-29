@@ -8,7 +8,7 @@
         mc:Ignorable="d"
         Title="{Binding GroupName}"
         MinWidth="220"
-        MaxWidth="720"
+        MaxWidth="800"
         MinHeight="120"
         MaxHeight="800"
         WindowStyle="None"
@@ -378,7 +378,8 @@
                                          Button, so it is its own click target and the tile keeps its
                                          size, which is the group's (TileMetrics, via Tile). -->
                                     <Grid Width="{Binding DataContext.Tile.Width, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                          Height="{Binding DataContext.Tile.Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
+                                          Height="{Binding DataContext.Tile.Height, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                          Margin="{Binding DataContext.Tile.HalfSpacing, RelativeSource={RelativeSource AncestorType=ItemsControl}}">
                                         <Button x:Name="TileButton"
                                                 AutomationProperties.Name="{Binding Name}"
                                                 Style="{StaticResource AppTileButton}"
