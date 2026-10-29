@@ -4,7 +4,7 @@ The agreed roadmap for this fork: what is done, what is in progress, and the ord
 comes next. This file is kept current — an item is marked done in the same commit that
 finishes it, and a change of order or scope is recorded here when it is agreed, not later.
 
-*Last updated: 2026-10-29*
+*Last updated: 2026-10-30*
 
 ## Where we are
 
@@ -252,7 +252,7 @@ below.
 | 2 | **C6 — settings and empty state** — *done, merged* | Settings apply as they change (no *Save*); with no groups, a three-step "get started" view. |
 | 3 | **D — release v0.5.0** — *version bumped; gates and pushes pending* | Version bump, installer and portable build, installer smoke test, CHANGELOG section, release notes; open an issue for `IsPinningAllowed = false`; delete merged branches. Puts the work so far in users' hands before the larger items. |
 | 4 | **C2 — grid settings, part 2** — *done on `feature/grid-settings-2`, not yet merged* | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
-| 5 | **C4 — reorder apps by dragging** | Drag rows in the app list (drag only; the keyboard shortcut was dropped on 2026-10-29). Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
+| 5 | **C4 — reorder apps by dragging, in the popup's edit mode** | Changed 2026-10-30: not in the Manager's app list but on the popup's tiles. With edit mode on, a tile can be dragged to a new place (the others shift out of the way) and the tiles wiggle, as icons do on a phone. Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
 | 6 | **C6 — visual polish** | Let the Manager's Mica backdrop show, Fluent icons, spacing; retake screenshots. |
 | 7 | **E — add apps from a list of installed apps (research first)** | Instead of browsing for an `.exe`/`.lnk`, pick from what Windows lists under *Start → All apps*, which also covers Store/packaged apps (Calculator, Settings…) that cannot be added at all today. The research settles the source (the shell's AppsFolder vs. Start menu shortcuts), how a packaged app is stored and launched (`shell:AppsFolder\<AUMID>` rather than a path), and how its icon is read. |
 
@@ -427,47 +427,45 @@ two.
 
 **Docs:** both user guides, api-reference, CHANGELOG, this file, and screenshots.
 
-### 5. C4 — reorder apps by dragging (`feature/reorder-apps`)
+### 5. C4 — reorder apps by dragging, in the popup's edit mode (`feature/reorder-apps`)
 
-**Goal:** change the app order by dragging rows. The order matters, because the group icon uses
-the first four apps.
+**Goal:** in the popup, turning edit mode on (the pencil) lets the user drag a tile to another place
+in the grid, and the tiles wiggle while it is on. The order matters, because the group icon uses the
+first four apps.
 
-**Decided:** drag only. On 2026-10-29 the user cut the `Alt+↑` / `Alt+↓` keyboard way that was
-agreed on 2026-10-28; everything below that mentions it is struck from the scope (the
-`AppList_KeyDown` change, the STA key test, the key wording in the guides). The wording was "only
-reorder the icons by dragging" — taken to mean the app rows, which carry the icons; to be confirmed
-when C4 starts.
+**Scope history.** 2026-10-28: drag rows in the Manager's app list, plus `Alt+↑` / `Alt+↓`.
+2026-10-29: keyboard dropped, Manager drag kept. **2026-10-30: Manager drag dropped too.** The
+reordering lives in the popup, where edit mode already exists (a *Remove* badge on every tile, launching
+disabled, `PopupViewModel.IsEditing`), and the popup's tiles get an iPhone-style wiggle while editing.
+The Manager's app list is not touched; the specification that stood here for it was removed.
 
-**Changes**
-- `GroupEditorViewModel.MoveAppAsync(int from, int to)`, with a `[RelayCommand]` wrapper. Take
-  `var item = _boundItem` into a local first, as the other commands do. Move the entry in both
-  `item.Config.Apps` and `Apps` (`ObservableCollection.Move`). An out-of-range index, equal indices,
-  or no group is a no-op. Save with the `SaveOnEdit` pattern (no sync), **except** when
-  `min(from, to) < CompositeIconGenerator.MaxTiles` (4): then use `SaveAndSyncAsync`, because the
-  group icon changes.
-- `ReorderMath` (new, `src/TaskbarFolders.Manager/Views/ReorderMath.cs`), pure: the pointer's Y and
-  the row heights give the insert index, corrected for the row being removed.
-- `MainWindow.xaml.cs`:
-  - A drag starts only after `SystemParameters.MinimumVerticalDragDistance`, and never from a
-    `TextBox` or `Button`.
-  - A private data format, `"TaskbarFolders.AppRow"`, tells row drags from file drops.
-  - When a drag starts, an open details row collapses.
-  - After a drop, the click that follows is suppressed by a flag in `AppRow_MouseLeftButtonUp`.
-  - `Editor_PreviewDragOver` returns `Move` for the row format and `Copy` for `FileDrop`.
-  - `AppsTab_DragEnter` does not show "Drop to add" for row drags.
-  - The insert position is a thin `AccentBrush` line between rows.
+**Read first** (`PopupViewModel`, `PopupWindow.xaml`): edit mode is `IsEditing`, toggled by
+`ToggleEditCommand`; `RemoveAppAsync` removes from `_config.Apps` and `Apps` and calls `PersistAsync`
+(`_store.SaveAsync` + `_syncService.SyncAsync`); `LaunchApp` returns at once while `IsEditing`; the tile
+root is a `Grid` inside a `UniformGrid` of `EffectiveColumns`; `RemoveBadge` is its own overlay button.
 
-**Tests first**
-- `GroupEditorViewModelTests`: both collections end in the same order; the move saves; sync runs
-  only when the first four change; an out-of-range move is a no-op; a rebind during the move keeps
-  `_boundItem`.
-- `ReorderMathTests`.
-- The drag gesture itself is checked by hand.
+**Decisions pending with the user** — see the chat of 2026-10-30; recorded here once they are answered:
+how the dragged tile behaves (follows the pointer, others shift live), the wiggle (stops when
+*Enable animations* is off), what a cancelled drag does, edge scrolling in a scrolled group.
 
-**Docs:** both user guides (drag), CHANGELOG, this file.
+**Steps** (each its own commit, tested by hand in between):
+1. **Order in the view model.** `PopupViewModel.MoveApp(from, to)` moves the tile in `Apps`;
+   committing writes the final order back to `_config.Apps` and saves, syncing only when the first
+   four (`CompositeIconGenerator.MaxTiles`) changed; a cancel restores the order. Pure and tested.
+2. **The drag.** Pointer capture on a tile, a threshold before it starts, never from the remove badge,
+   a pure `TileGridHit` (pointer → cell index from the grid's size, columns and count) for the target,
+   the dragged tile drawn above the rest. Only while `IsEditing`.
+3. **The wiggle.** A small rotation animation on every tile while `IsEditing`, alternating direction,
+   off when animations are off.
+4. **Docs and polish** — both guides, CHANGELOG, architecture, this file.
 
-**Risks:** click versus drag; dropping onto an expanded row (the rule is the upper or lower half
-of the row).
+**Tests first:** view-model tests for the order (moved, bounds, commit saves, sync only for the first
+four, cancel restores, nothing happens outside edit mode), `TileGridHitTests`, an STA test that the
+tiles wiggle in edit mode and are still outside it. The drag gesture itself is checked by hand.
+
+**Risks:** the popup closes itself (outside click, deactivation) — a drag must never be mistaken for
+either; a tile click versus a drag; the popup and the Manager both write the group (ADR-005); the
+scroll of a tall group during a drag.
 
 ### 6. C6 — visual polish (`feature/manager-polish`)
 
