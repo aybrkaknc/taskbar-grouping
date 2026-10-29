@@ -46,7 +46,11 @@ decided with the user one at a time.
   (the service is now `IDisposable`); the event is still raised twice, which is harmless once the
   refreshes queue. Tests: a second refresh waits for the first, the newest list wins, a failed
   refresh releases the gate.
-- [ ] **The Explorer menu's "Taskbar Groups" entry shows a generic icon, not ours.** Seen in the
+- [x] **The Explorer menu's "Taskbar Groups" entry shows a generic icon, not ours.** Fixed in
+  `9c9dbfe` (`fix(launcher): give the launcher its own icon`): the Launcher csproj now sets
+  `ApplicationIcon` to `launcher.ico`; the built exe's icon matches that file. No test added, as
+  decided — a one-line project setting, verified by measurement. Still to check after install:
+  the menu shows the new icon. Seen in the
   v0.5.0 smoke test (screenshot). `ExplorerContextMenuService.Write` sets `Icon` to
   `<launcher>.exe,0` on each submenu root (`ExplorerContextMenuService.cs:133`). Cause found on
   2026-10-29: `TaskbarFolders.Launcher.csproj` has no `<ApplicationIcon>`, while the Manager's has
