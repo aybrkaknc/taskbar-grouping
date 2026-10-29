@@ -10,6 +10,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>TaskbarFolders.Launcher</RootNamespace>
     <AssemblyName>TaskbarFolders.Launcher</AssemblyName>
+    <ApplicationIcon>..\..\assets\icons\launcher.ico</ApplicationIcon>
     <Description>TaskbarFolders Launcher - Lightweight popup application for taskbar groups</Description>
     <!-- ReadyToRun: ahead-of-time compile to native code so cold-start skips the tiered-JIT
          warm-up (~100-300 ms). Especially valuable for the per-click short-lived launcher

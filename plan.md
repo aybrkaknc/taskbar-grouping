@@ -48,11 +48,14 @@ decided with the user one at a time.
   refresh releases the gate.
 - [ ] **The Explorer menu's "Taskbar Groups" entry shows a generic icon, not ours.** Seen in the
   v0.5.0 smoke test (screenshot). `ExplorerContextMenuService.Write` sets `Icon` to
-  `<launcher>.exe,0` on each submenu root (line 118). The launcher exe does have an embedded icon
-  (`ExtractAssociatedIcon` returns one), so the cause is not known yet: either the Windows 11
-  classic menu does not use `Icon` on a cascading verb, or the embedded icon is not the app's own.
-  Proposed: check both here, then point the icon at the app's own `.ico` (a stable file, not the
-  versioned group icons, per ADR-006 and ADR-007).
+  `<launcher>.exe,0` on each submenu root (`ExplorerContextMenuService.cs:133`). Cause found on
+  2026-10-29: `TaskbarFolders.Launcher.csproj` has no `<ApplicationIcon>`, while the Manager's has
+  `..\..\assets\icons\manager.ico`. So the Launcher exe carries .NET's default app icon, and
+  `assets\icons\launcher.ico` (which exists) is used by nothing. Measured: the Launcher exe's icon
+  differs from the Manager's, and from Windows' default icon, so it is some other icon — most
+  likely the .NET default. Proposed: add `<ApplicationIcon>` to the Launcher csproj, pointing at
+  `launcher.ico`, plus a test that each exe project declares an icon file that exists. Decision
+  pending: `launcher.ico` (the Launcher's own) or `manager.ico` (the one the menu is part of).
 - [ ] **After Enter the new name is saved, but nothing says so.** Seen in the smoke test. The
   name changes in the sidebar, but the header box keeps its focus border and the user cannot tell
   it was saved. Enter runs `CommitRenameCommand` (`MainWindow.xaml.cs:111-123`), and Escape moves
