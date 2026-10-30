@@ -42,6 +42,14 @@ public sealed class AppSettings
     public PopupBackdrop PopupBackdrop { get; set; } = PopupBackdrop.Mica;
 
     /// <summary>
+    /// The colour laid over every popup's backdrop, unless its group chose otherwise
+    /// (<see cref="GroupConfig.Tint"/>).
+    /// </summary>
+    [JsonPropertyName("popupTint")]
+    [JsonConverter(typeof(CamelCaseEnumConverter<PopupTint>))]
+    public PopupTint PopupTint { get; set; } = PopupTint.None;
+
+    /// <summary>
     /// Whether Explorer's classic context menu for <c>.exe</c> and <c>.lnk</c> files offers
     /// "Taskbar Groups", with one entry per group that adds the file to it.
     /// </summary>

@@ -37,6 +37,21 @@ public class PreferencesSerializationTests
     }
 
     [Fact]
+    public void Tint_IsNoneInSettings_FollowsSettingsInAGroup_AndRoundTrips()
+    {
+        JsonSerializer.Deserialize<AppSettings>("{}", JsonOptions.Default)!.PopupTint.Should().Be(PopupTint.None);
+        JsonSerializer.Deserialize<GroupConfig>("{\"groupName\":\"n\",\"apps\":[]}", JsonOptions.Default)!.Tint.Should().BeNull();
+
+        var settings = JsonSerializer.Serialize(new AppSettings { PopupTint = PopupTint.Midnight }, JsonOptions.Default);
+        var group = JsonSerializer.Serialize(new GroupConfig { Id = "g", GroupName = "n", Tint = PopupTint.Accent }, JsonOptions.Default);
+
+        settings.Should().Contain("\"popupTint\": \"midnight\"");
+        group.Should().Contain("\"tint\": \"accent\"");
+        JsonSerializer.Deserialize<AppSettings>(settings, JsonOptions.Default)!.PopupTint.Should().Be(PopupTint.Midnight);
+        JsonSerializer.Deserialize<GroupConfig>(group, JsonOptions.Default)!.Tint.Should().Be(PopupTint.Accent);
+    }
+
+    [Fact]
     public void AppSettings_FromAFileWithoutABackdrop_GivesPopupsMica()
     {
         var settings = JsonSerializer.Deserialize<AppSettings>("{\"theme\":\"dark\"}", JsonOptions.Default);

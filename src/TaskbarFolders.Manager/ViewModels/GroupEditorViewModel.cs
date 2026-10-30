@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -13,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
+using TaskbarFolders.Core.Themes;
 using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
@@ -33,6 +35,11 @@ public sealed record GridOption(int Value, string Label);
 /// <param name="Value">The backdrop, or <see langword="null"/> for the default in Settings.</param>
 /// <param name="Label">What the segmented control shows.</param>
 public sealed record BackdropOption(PopupBackdrop? Value, string Label);
+
+/// <summary>One choice of a group's popup tint; <see langword="null"/> follows Settings.</summary>
+/// <param name="Value">The tint, or <see langword="null"/> for the default in Settings.</param>
+/// <param name="Label">What the segmented control shows.</param>
+public sealed record TintOption(PopupTint? Value, string Label);
 
 /// <summary>
 /// Detail-pane view model for a single selected group. Manages the apps list, debounced
@@ -61,6 +68,12 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     private readonly IPinHelper _pinHelper;
     private readonly ILogger<GroupEditorViewModel>? _logger;
 
+    // What the preview needs beyond the group: the defaults in Settings and the theme in use.
+    private readonly IAppSettingsStore? _settings;
+    private readonly IThemeService? _theme;
+    private PopupBackdrop _defaultBackdrop = PopupBackdrop.Mica;
+    private PopupTint _defaultTint = PopupTint.None;
+
     private GroupListItemViewModel? _boundItem;
     private CancellationTokenSource? _previewCts;
     private readonly object _previewCtsLock = new();
@@ -81,6 +94,8 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         ICustomGroupIconStore customIcons,
         IPinnedTileRemover pins,
         IPinHelper pinHelper,
+        IAppSettingsStore? settings = null,
+        IThemeService? theme = null,
         ILogger<GroupEditorViewModel>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(extractor);
@@ -107,6 +122,12 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         _pins = pins;
         _pinHelper = pinHelper;
         _logger = logger;
+        _settings = settings;
+        _theme = theme;
+        if (_theme is not null)
+        {
+            _theme.ThemeChanged += OnThemeChanged;
+        }
     }
 
     /// <summary>Caption of the question asked when notifications, which Windows pin requests need, are off.</summary>
@@ -194,6 +215,17 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         new(PopupBackdrop.Off, "Off"),
     ];
 
+    /// <summary>The colours a group's popup can be tinted with: the default from Settings, then each tint.</summary>
+    public static IReadOnlyList<TintOption> TintOptions { get; } =
+    [
+        new(null, "Default"),
+        new(PopupTint.None, "None"),
+        new(PopupTint.Accent, "Accent"),
+        new(PopupTint.Midnight, "Midnight"),
+        new(PopupTint.Forest, "Forest"),
+        new(PopupTint.Sunset, "Sunset"),
+    ];
+
     /// <summary>The popup as the bound group's settings lay it out, shown on Appearance.</summary>
     public PopupPreviewViewModel Preview { get; } = new();
 
@@ -220,6 +252,13 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private PopupBackdrop? _backdrop;
 
+    /// <summary>
+    /// The colour laid over the bound group's popup, or <see langword="null"/> to follow Settings.
+    /// Saved as it changes.
+    /// </summary>
+    [ObservableProperty]
+    private PopupTint? _tint;
+
     /// <summary>Re-routes the editor to a new group selection.</summary>
     /// <param name="item">The new selection, or <see langword="null"/> to clear.</param>
     public void Bind(GroupListItemViewModel? item)
@@ -232,7 +271,16 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         Apps.CollectionChanged -= OnAppsCollectionChanged;
         Apps.Clear();
 
+        if (_boundItem is not null)
+        {
+            _boundItem.PropertyChanged -= OnBoundItemChanged;
+        }
+
         BoundItem = item;
+        if (item is not null)
+        {
+            item.PropertyChanged += OnBoundItemChanged;
+        }
         HasCustomIcon = item is not null && _customIcons.Exists(item.Config.Id);
         RefreshPinState();
         if (item is null)
@@ -250,6 +298,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
             ShowNames = item.Config.ShowNames;
             TileSpacing = item.Config.TileSpacing;
             Backdrop = item.Config.Backdrop;
+            Tint = item.Config.Tint;
         }
         finally
         {
@@ -488,9 +537,61 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
 
     partial void OnBackdropChanged(PopupBackdrop? value) => SaveGridSetting(c => c.Backdrop = value);
 
+    partial void OnTintChanged(PopupTint? value) => SaveGridSetting(c => c.Tint = value);
+
     // From the editor's own values, not the store, so it answers at once — also while a group is
     // being bound, when nothing is saved.
-    private void UpdatePreview() => Preview.Update(Apps, Columns, IconSize, ShowNames, TileSpacing);
+    private void UpdatePreview()
+    {
+        Preview.Update(Apps, Columns, IconSize, ShowNames, TileSpacing);
+        Preview.GroupName = _boundItem?.Name ?? string.Empty;
+        UpdatePreviewSurface();
+    }
+
+    /// <summary>
+    /// Re-reads the popup defaults from Settings (backdrop and tint), which a group without its
+    /// own choice follows, and repaints the preview. The window calls it on activation, which is
+    /// also when the Settings dialog has just closed.
+    /// </summary>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    /// <returns>A task that completes once the preview is repainted.</returns>
+    public async Task RefreshPopupDefaultsAsync(CancellationToken cancellationToken = default)
+    {
+        if (_settings is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var settings = await _settings.LoadAsync(cancellationToken).ConfigureAwait(true);
+            _defaultBackdrop = settings.PopupBackdrop;
+            _defaultTint = settings.PopupTint;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            _logger?.LogWarning(ex, "Could not read the popup defaults for the preview; it keeps the last ones.");
+        }
+
+        UpdatePreviewSurface();
+    }
+
+    private void UpdatePreviewSurface() =>
+        Preview.UpdateSurface(
+            Backdrop ?? _defaultBackdrop,
+            Tint ?? _defaultTint,
+            _theme?.EffectiveTheme == ThemePreference.Dark,
+            AccentShades.Read());
+
+    private void OnThemeChanged(object? sender, EventArgs e) => UpdatePreviewSurface();
+
+    private void OnBoundItemChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(GroupListItemViewModel.Name) && sender is GroupListItemViewModel item)
+        {
+            Preview.GroupName = item.Name;
+        }
+    }
 
     /// <summary>
     /// Writes a grid setting into the bound group and saves it. The popup reads the settings
@@ -825,6 +926,16 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         }
 
         Apps.CollectionChanged -= OnAppsCollectionChanged;
+        if (_theme is not null)
+        {
+            _theme.ThemeChanged -= OnThemeChanged;
+        }
+
+        if (_boundItem is not null)
+        {
+            _boundItem.PropertyChanged -= OnBoundItemChanged;
+        }
+
         lock (_previewCtsLock)
         {
             _previewCts?.Cancel();

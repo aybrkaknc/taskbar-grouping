@@ -36,6 +36,7 @@ One group.
 | `ShowNames` | `bool` | Whether popup tiles show app names, default `true`; without them tiles shrink to the icon |
 | `TileSpacing` | `int` | Gap between popup tiles in DIPs, one of `TileSpacings` (0, 4, 8, 12); any other value snaps to the nearest on assignment. Default 0, which a file written before the setting also loads as. The popup reads it through `TileMetrics` (Shared): `Compute(iconSize, showNames, spacing)` keeps the tile's own size and adds `Spacing`, `CellWidth`/`CellHeight` (tile plus gap) and `HalfSpacing` (each tile's margin) |
 | `Backdrop` | `PopupBackdrop?` | What the group's popup is drawn on; `null` (every group saved before the setting) follows `AppSettings.PopupBackdrop`. Serialised as a camel-case string |
+| `Tint` | `PopupTint?` | Colour laid over the group's popup; `null` follows `AppSettings.PopupTint`, while `None` is a choice of its own. Camel-case string |
 | `Apps` | `List<AppEntry>` | Members of the group |
 
 #### [`AppSettings`](../src/TaskbarFolders.Shared/Models/AppSettings.cs)
@@ -47,12 +48,13 @@ One group.
 | `EnableAnimations` | `bool` | `true` |
 | `PopupPosition` | `PopupPositionPreference` | `Auto` |
 | `PopupBackdrop` | `PopupBackdrop` | `Mica` |
+| `PopupTint` | `PopupTint` | `None` |
 
 On load the registry, not this file, is the source of truth for `AutoStart`.
 
 #### [`Preferences`](../src/TaskbarFolders.Shared/Models/Preferences.cs)
 
-`ThemePreference` — `System`, `Light`, `Dark`. `PopupPositionPreference` — `Auto`, `Above`, `Below`. `PopupBackdrop` — `Mica`, `MicaAlt`, `Acrylic`, `Off`. All serialise as camel-case strings.
+`ThemePreference` — `System`, `Light`, `Dark`. `PopupPositionPreference` — `Auto`, `Above`, `Below`. `PopupBackdrop` — `Mica`, `MicaAlt`, `Acrylic`, `Off`. `PopupTint` — `None`, `Accent`, `Midnight`, `Forest`, `Sunset`. All serialise as camel-case strings.
 
 ### Configuration
 
@@ -279,9 +281,13 @@ The group's newest generated `.ico` — the one sync last pointed its shortcuts 
 
 ### Interop
 
-`WindowBackdrop.TryApply(IntPtr hwnd, WindowBackdropKind kind)` requests a DWM system backdrop: `Mica` on the Manager's windows, and on the popup what `PopupBackdropChoice` (Launcher) gives — `Resolve(group, settings)` takes the group's `Backdrop` or else the default, `KindFor` maps it to a `WindowBackdropKind`, `None` for `Off`. A Manager failure is ignored and the window keeps solid brushes; a popup failure switches it to its fallback panel. `WindowBackdrop.TryExtendFrameIntoClientArea(IntPtr hwnd)` extends the frame over the whole client area (`DwmExtendFrameIntoClientArea` with −1 margins) so the backdrop is drawn behind it, keeping the caption.
+`WindowBackdrop.TryApply(IntPtr hwnd, WindowBackdropKind kind)` requests a DWM system backdrop: `Mica` on the Manager's windows, and on the popup what `PopupBackdropChoice` (Launcher) gives — `Resolve(group, settings)` takes the group's `Backdrop` or else the default, `KindFor` maps it to a `WindowBackdropKind`, `None` for `Off`; `ResolveTint(group, settings)` does the same for the tint. A Manager failure is ignored and the window keeps solid brushes; a popup failure switches it to its fallback panel. `WindowBackdrop.TryExtendFrameIntoClientArea(IntPtr hwnd)` extends the frame over the whole client area (`DwmExtendFrameIntoClientArea` with −1 margins) so the backdrop is drawn behind it, keeping the caption.
 
 `MicaSurfaces` (Manager) is the one way a Manager window gets its backdrop. `TryApply(Window)` asks for Mica and extends the frame, and on success calls `Use(Window)`, which makes the HWND's clear colour and the window's background transparent. `Use(Window, Panel sidebar, Border content)` also gives the two panes the theme's `SidebarBackdropTint` and `ContentBackdropTint` by resource reference.
+
+### Themes
+
+`PopupTints` (Core) holds the popup tints' colours. `ColorFor(PopupTint, bool dark, AccentShades accent)` gives a translucent colour per theme, `null` for `None`; `Over(top, bottom)` composes source-over (the top colour itself over a clear base, opaque over an opaque one); `SolidPanel(bool dark)` is the opaque panel the popup paints with the backdrop *Off*, equal to the Launcher themes' `PopupSolidBackground`. `AccentShades(Dark, Light)` are Windows' `Dark2` and `Light2` accent shades: `Read()` takes them from `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent\AccentPalette`, `FromPalette(byte[])` parses that value, and both fall back to `PopupTints.DefaultAccent`. `PopupTintsTests` measures text contrast on every tint.
 
 `WindowBackdrop.IsSupported` is true from Windows 11 22H2 (build 22621), the first build that honours the backdrop attribute. The popup reads it before its HWND exists, because the backdrop only paints behind a non-layered window. `WindowBackdrop.TrySetRoundedCorners(IntPtr hwnd)` sets `DWMWA_WINDOW_CORNER_PREFERENCE` to round. All three members return `false` rather than throw on a zero handle or an older Windows.
 
@@ -348,7 +354,7 @@ What the Manager does after `Unsupported`. `Diagnose` reads `NoPinningToTaskbar`
 
 | Type | Role |
 |---|---|
-| [`PopupPreviewViewModel`](../src/TaskbarFolders.Manager/ViewModels/PopupPreviewViewModel.cs) | `GroupEditorViewModel.Preview`. `Update(apps, columns, iconSize, showNames, tileSpacing)` lays out the tiles as the popup does: `Tile` (`TileMetrics`), `ShowNames`, `EffectiveColumns`, `Tiles` (at most `MaxTiles` = 12 apps, or three sample tiles when `IsSample`), `MoreCount`, and `NaturalWidth` (the grid plus its 26 DIP frame). Its names are the ones Core's `PopupTile.xaml` binds to |
+| [`PopupPreviewViewModel`](../src/TaskbarFolders.Manager/ViewModels/PopupPreviewViewModel.cs) | `GroupEditorViewModel.Preview`. `Update(apps, columns, iconSize, showNames, tileSpacing)` lays out the tiles as the popup does: `Tile` (`TileMetrics`), `ShowNames`, `EffectiveColumns`, `Tiles` (at most `MaxTiles` = 12 apps, or three sample tiles when `IsSample`), `MoreCount`, and `NaturalWidth` (the popup's width — grid plus 24 DIP padding, at least 220 — plus a 2 DIP border). `GroupName` heads it. `UpdateSurface(backdrop, tint, dark, accent)` sets `Surface`/`SurfaceBrush`: clear for Mica and Mica Alt, frosted for Acrylic, `PopupTints.SolidPanel` for Off, with the tint laid over. The editor feeds it the group's choices or, for `null`, the defaults it reads in `RefreshPopupDefaultsAsync()` (called from `MainWindowViewModel.RefreshFromStoreAsync`, so on every activation), and the theme from `IThemeService`; both are optional constructor dependencies of `GroupEditorViewModel`. Its names are the ones Core's `PopupTile.xaml` binds to |
 | [`AppEntryViewModel.IconMissing`](../src/TaskbarFolders.Manager/ViewModels/AppEntryViewModel.cs) | True while `Icon` is `null`; the shared tile draws its placeholder on it |
 | [`GroupEditorViewModel.TileSpacing`](../src/TaskbarFolders.Manager/ViewModels/GroupEditorViewModel.cs) / `TileSpacingOptions` | The bound group's gap setting and its four choices (None, Small, Medium, Large); saved as it changes, without a sync |
 | [`AppearanceLayout`](../src/TaskbarFolders.Manager/ViewModels/AppearanceLayout.cs) | Pure window arithmetic: `RequiredWindowWidth(currentWidth, previewColumnWidth, previewNaturalWidth)` (the width at which the preview shows at `MinPreviewScale` = 0.75 or more), `Target(...)` (never narrower than now, never wider than the work area) and `Left(...)` (keeps the grown window on screen). `MainWindow` applies it after each change |

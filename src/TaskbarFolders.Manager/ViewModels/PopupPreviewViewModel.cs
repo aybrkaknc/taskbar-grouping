@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using TaskbarFolders.Core.Themes;
 using TaskbarFolders.Shared.Models;
 
 namespace TaskbarFolders.Manager.ViewModels;
@@ -42,11 +44,60 @@ public sealed partial class PopupPreviewViewModel : ObservableObject
     [ObservableProperty]
     private bool _isSample;
 
-    // The surface round the grid in PopupPreview.xaml: 12 DIP of padding and a 1 DIP border on each side.
-    private const double Frame = 26;
+    /// <summary>The group's name, shown in the preview's header as the popup shows it.</summary>
+    [ObservableProperty]
+    private string _groupName = string.Empty;
 
-    /// <summary>The width the preview wants at full size: its grid of cells and the frame round it.</summary>
-    public double NaturalWidth => (EffectiveColumns * Tile.CellWidth) + Frame;
+    /// <summary>
+    /// The colour of the preview's panel: the popup's backdrop as near as a WPF brush can come,
+    /// with its tint laid over. See <see cref="UpdateSurface"/>.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SurfaceBrush))]
+    private Color _surface = Colors.Transparent;
+
+    // The popup's padding (12 DIP each side), its narrowest width, and the preview's 1 DIP border.
+    private const double Padding = 24;
+    private const double PopupMinWidth = 220;
+    private const double Border = 2;
+
+    /// <summary>
+    /// The width the preview wants at full size: the popup's width — its grid of cells and its
+    /// padding, but no narrower than the popup ever is — and the preview's border.
+    /// </summary>
+    public double NaturalWidth => Math.Max((EffectiveColumns * Tile.CellWidth) + Padding, PopupMinWidth) + Border;
+
+    /// <summary>The panel's brush, for binding.</summary>
+    public SolidColorBrush SurfaceBrush
+    {
+        get
+        {
+            var brush = new SolidColorBrush(Surface);
+            brush.Freeze();
+            return brush;
+        }
+    }
+
+    /// <summary>
+    /// Paints the panel as the popup's backdrop and tint would. Windows draws the materials behind
+    /// a real window only, so they are approached: Mica and Mica Alt leave the panel clear, and
+    /// the Manager's own Mica shows through; Acrylic is a frosted panel; Off is the popup's exact
+    /// opaque panel. The tint is laid over as the popup lays it (<see cref="PopupTints.Over"/>).
+    /// </summary>
+    /// <param name="backdrop">The popup's backdrop, resolved.</param>
+    /// <param name="tint">The popup's tint, resolved.</param>
+    /// <param name="dark">Whether the dark theme is in use.</param>
+    /// <param name="accent">The user's accent shades, for <see cref="PopupTint.Accent"/>.</param>
+    public void UpdateSurface(PopupBackdrop backdrop, PopupTint tint, bool dark, AccentShades accent)
+    {
+        var panel = backdrop switch
+        {
+            PopupBackdrop.Off => PopupTints.SolidPanel(dark),
+            PopupBackdrop.Acrylic => dark ? Color.FromArgb(0xB3, 0x2C, 0x2C, 0x2C) : Color.FromArgb(0xB3, 0xFC, 0xFC, 0xFC),
+            _ => Colors.Transparent,
+        };
+        Surface = PopupTints.ColorFor(tint, dark, accent) is { } colour ? PopupTints.Over(colour, panel) : panel;
+    }
 
     /// <summary>Lays the preview out for the given apps and grid settings.</summary>
     /// <param name="apps">The group's apps, in order.</param>

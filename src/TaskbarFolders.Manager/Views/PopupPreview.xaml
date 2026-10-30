@@ -18,15 +18,44 @@
     </UserControl.Resources>
 
     <StackPanel>
-        <!-- The popup's surface: rounded, with the popup's 12 DIP padding round the grid. Shrinks
-             a grid wider than the tab instead of clipping it. -->
-        <Border Background="{DynamicResource SurfaceMuted}"
+        <!-- The popup's surface: rounded, with the popup's 12 DIP padding round the grid and no
+             narrower than the popup (220 DIP and the border). Painted as the popup's backdrop
+             and tint would be (PopupPreviewViewModel.UpdateSurface). Shrinks a grid wider than
+             the tab instead of clipping it. -->
+        <Border x:Name="Surface"
+                Background="{Binding SurfaceBrush}"
                 BorderBrush="{DynamicResource BorderSubtle}"
                 BorderThickness="1"
                 CornerRadius="8"
                 Padding="12"
+                MinWidth="222"
                 HorizontalAlignment="Left">
-            <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
+            <DockPanel>
+            <!-- The popup's header as a picture: its name, and its edit, add, pin and close
+                 buttons as glyphs that do nothing. Spaced as PopupWindow.xaml spaces them. -->
+            <DockPanel DockPanel.Dock="Top" Margin="8,0,0,6" Height="24">
+                <DockPanel.Resources>
+                    <Style TargetType="TextBlock" x:Key="HeaderGlyph">
+                        <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+                        <Setter Property="FontSize" Value="10" />
+                        <Setter Property="Width" Value="24" />
+                        <Setter Property="TextAlignment" Value="Center" />
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
+                    </Style>
+                </DockPanel.Resources>
+                <TextBlock DockPanel.Dock="Right" Style="{StaticResource HeaderGlyph}" Text="&#xE8BB;" />
+                <TextBlock DockPanel.Dock="Right" Style="{StaticResource HeaderGlyph}" Text="&#xE718;" Margin="0,0,4,0" />
+                <TextBlock DockPanel.Dock="Right" Style="{StaticResource HeaderGlyph}" Text="&#xE710;" Margin="0,0,4,0" />
+                <TextBlock DockPanel.Dock="Right" Style="{StaticResource HeaderGlyph}" Text="&#xE70F;" Margin="0,0,4,0" />
+                <TextBlock Text="{Binding GroupName}"
+                           VerticalAlignment="Center"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource ForegroundDefault}"
+                           TextTrimming="CharacterEllipsis" />
+            </DockPanel>
+            <Viewbox Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Left">
                 <ItemsControl ItemsSource="{Binding Tiles}" Focusable="False">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -53,6 +82,7 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </Viewbox>
+            </DockPanel>
         </Border>
 
         <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource ForegroundSubtle}">

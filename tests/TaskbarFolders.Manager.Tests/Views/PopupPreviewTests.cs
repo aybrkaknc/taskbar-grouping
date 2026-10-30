@@ -46,6 +46,34 @@ public sealed class PopupPreviewTests
         return null;
     }
 
+    [Fact]
+    public void ShowsThePopupsHeader_AndPaintsItsSurface()
+    {
+        var (name, glyphs, surface) = StaThread.Run(() =>
+        {
+            var preview = new PopupPreviewViewModel { GroupName = "Tools" };
+            preview.Update([new AppEntryViewModel(new AppEntry { Name = "App 1", Path = "a.exe" })], columns: 3, 48, showNames: true, tileSpacing: 0);
+            preview.UpdateSurface(PopupBackdrop.Off, PopupTint.Midnight, dark: true, TaskbarFolders.Core.Themes.PopupTints.DefaultAccent);
+            var view = new PopupPreview { DataContext = preview };
+            view.Resources.MergedDictionaries.Add(LoadTheme("Dark.xaml"));
+            view.Measure(new Size(1000, 1000));
+            view.Arrange(new Rect(view.DesiredSize));
+            view.UpdateLayout();
+
+            var panel = Find<Border>(view, b => b.Name == "Surface")!;
+            return (
+                Find<TextBlock>(view, t => t.Text == "Tools") is not null,
+                new[] { "\uE70F", "\uE710", "\uE718", "\uE8BB" }.All(g => Find<TextBlock>(view, t => t.Text == g) is not null),
+                ((SolidColorBrush)panel.Background).Color);
+        });
+
+        name.Should().BeTrue("the header carries the group's name, as the popup's does");
+        glyphs.Should().BeTrue("and the popup's edit, add, pin and close buttons, as pictures");
+        surface.Should().Be(TaskbarFolders.Core.Themes.PopupTints.Over(
+            TaskbarFolders.Core.Themes.PopupTints.ColorFor(PopupTint.Midnight, dark: true, TaskbarFolders.Core.Themes.PopupTints.DefaultAccent)!.Value,
+            Color.FromRgb(0x20, 0x20, 0x20)));
+    }
+
     [Theory]
     [InlineData("Dark.xaml", 48, true, 0)]
     [InlineData("Light.xaml", 80, true, 12)]

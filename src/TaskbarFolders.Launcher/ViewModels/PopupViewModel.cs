@@ -142,6 +142,13 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private PopupBackdrop? _backdrop;
 
+    /// <summary>
+    /// The colour the group chose to lay over its popup, or <see langword="null"/> to follow the
+    /// default in Settings; see <see cref="Views.PopupBackdropChoice.ResolveTint"/>.
+    /// </summary>
+    [ObservableProperty]
+    private PopupTint? _tint;
+
     /// <summary>True when the loaded group does not exist or is empty — used by the UI to show an inline error.</summary>
     [ObservableProperty]
     private bool _isUnavailable;
@@ -541,6 +548,7 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         Columns = config.Columns;
         ShowNames = config.ShowNames;
         Backdrop = config.Backdrop;
+        Tint = config.Tint;
         Tile = TileMetrics.Compute(config.IconSize, config.ShowNames, config.TileSpacing);
     }
 

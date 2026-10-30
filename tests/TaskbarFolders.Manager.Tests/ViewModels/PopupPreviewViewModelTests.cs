@@ -1,5 +1,7 @@
 ﻿using System.Linq;
+using System.Windows.Media;
 using FluentAssertions;
+using TaskbarFolders.Core.Themes;
 using TaskbarFolders.Manager.ViewModels;
 using TaskbarFolders.Shared.Models;
 using Xunit;
@@ -27,10 +29,11 @@ public sealed class PopupPreviewViewModelTests
     }
 
     [Theory]
+    [InlineData(1, 48, true, 0, 220 + 2)]
     [InlineData(3, 48, true, 0, 3 * 96 + 26)]
     [InlineData(3, 80, true, 12, 3 * (112 + 12) + 26)]
-    [InlineData(2, 32, false, 8, 2 * (56 + 8) + 26)]
-    public void NaturalWidth_IsTheGridPlusThePreviewsFrame(int columns, int iconSize, bool showNames, int spacing, double expected)
+    [InlineData(2, 32, false, 8, 220 + 2)] // two small tiles: the popup is still 220 wide
+    public void NaturalWidth_IsTheGridPlusThePreviewsFrame_NoNarrowerThanThePopup(int columns, int iconSize, bool showNames, int spacing, double expected)
     {
         var sut = new PopupPreviewViewModel();
 
@@ -83,5 +86,53 @@ public sealed class PopupPreviewViewModelTests
         app.IconMissing.Should().BeTrue();
         app.Icon = System.Windows.Media.Imaging.BitmapSource.Create(1, 1, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, new byte[4], 4);
         app.IconMissing.Should().BeFalse();
+    }
+    [Theory]
+    [InlineData(true, 0x20, 0x20, 0x20)]
+    [InlineData(false, 0xF3, 0xF3, 0xF3)]
+    public void Off_IsThePopupsOpaquePanel(bool dark, byte r, byte g, byte b)
+    {
+        var sut = new PopupPreviewViewModel();
+
+        sut.UpdateSurface(PopupBackdrop.Off, PopupTint.None, dark, PopupTints.DefaultAccent);
+
+        sut.Surface.Should().Be(Color.FromRgb(r, g, b), "the popup paints exactly this panel");
+    }
+
+    [Theory]
+    [InlineData(PopupBackdrop.Mica)]
+    [InlineData(PopupBackdrop.MicaAlt)]
+    public void Mica_IsLeftClear_SoTheManagersOwnMicaShows(PopupBackdrop backdrop)
+    {
+        var sut = new PopupPreviewViewModel();
+
+        sut.UpdateSurface(backdrop, PopupTint.None, dark: true, PopupTints.DefaultAccent);
+
+        sut.Surface.A.Should().Be(0);
+    }
+
+    [Fact]
+    public void Acrylic_IsAFrostedPanel()
+    {
+        var sut = new PopupPreviewViewModel();
+
+        sut.UpdateSurface(PopupBackdrop.Acrylic, PopupTint.None, dark: true, PopupTints.DefaultAccent);
+
+        sut.Surface.A.Should().BeInRange((byte)1, (byte)254, "Windows blurs what is behind; the preview can only frost it");
+    }
+
+    [Theory]
+    [InlineData(PopupBackdrop.Off)]
+    [InlineData(PopupBackdrop.Mica)]
+    public void ATint_IsLaidOverTheSurface_AsThePopupLaysIt(PopupBackdrop backdrop)
+    {
+        var sut = new PopupPreviewViewModel();
+        sut.UpdateSurface(backdrop, PopupTint.None, dark: true, PopupTints.DefaultAccent);
+        var plain = sut.Surface;
+
+        sut.UpdateSurface(backdrop, PopupTint.Forest, dark: true, PopupTints.DefaultAccent);
+
+        sut.Surface.Should().Be(PopupTints.Over(PopupTints.ColorFor(PopupTint.Forest, dark: true, PopupTints.DefaultAccent)!.Value, plain));
+        sut.SurfaceBrush.Color.Should().Be(sut.Surface);
     }
 }

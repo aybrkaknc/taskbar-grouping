@@ -158,6 +158,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public async Task<bool> RefreshFromStoreAsync(CancellationToken cancellationToken = default)
     {
+        // Settings may have changed the popup defaults the preview follows; that read never
+        // touches a group, so it does not wait for an editor save.
+        await Editor.RefreshPopupDefaultsAsync(cancellationToken).ConfigureAwait(true);
+
         // An editor save in flight means memory is ahead of the disk, not behind it. Checked
         // before and after the read: closing the add-apps picker activates the window just
         // before the add starts saving.

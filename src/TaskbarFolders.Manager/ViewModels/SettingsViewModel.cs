@@ -78,6 +78,14 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     public static IReadOnlyList<BackdropOption> PopupBackdropOptions { get; } =
         GroupEditorViewModel.BackdropOptions.Where(o => o.Value is not null).ToArray();
 
+    /// <summary>The colours a popup can be tinted with, as the dialog lists them.</summary>
+    public static IReadOnlyList<TintOption> PopupTintOptions { get; } =
+        GroupEditorViewModel.TintOptions.Where(o => o.Value is not null).ToArray();
+
+    /// <summary>The colour laid over every popup, unless its group chose otherwise on Appearance.</summary>
+    [ObservableProperty]
+    private PopupTint _popupTint;
+
     /// <summary>What every popup is drawn on, unless its group chose otherwise on Appearance.</summary>
     [ObservableProperty]
     private PopupBackdrop _popupBackdrop;
@@ -114,6 +122,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
             ShowInExplorerMenu = settings.ShowInExplorerMenu;
             PopupPosition = settings.PopupPosition;
             PopupBackdrop = settings.PopupBackdrop;
+            PopupTint = settings.PopupTint;
         }
         finally
         {
@@ -155,6 +164,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
                 ShowInExplorerMenu = ShowInExplorerMenu,
                 PopupPosition = PopupPosition,
                 PopupBackdrop = PopupBackdrop,
+                PopupTint = PopupTint,
                 OrphanedTilesNoticeShown = stored.OrphanedTilesNoticeShown,
             }).ConfigureAwait(true);
 
@@ -252,6 +262,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     partial void OnShowInExplorerMenuChanged(bool value) => QueueApply(nameof(ShowInExplorerMenu));
     partial void OnPopupPositionChanged(PopupPositionPreference value) => QueueApply(nameof(PopupPosition));
     partial void OnPopupBackdropChanged(PopupBackdrop value) => QueueApply(nameof(PopupBackdrop));
+    partial void OnPopupTintChanged(PopupTint value) => QueueApply(nameof(PopupTint));
 
     private void QueueApply(string setting)
     {

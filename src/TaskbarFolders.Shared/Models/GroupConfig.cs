@@ -92,6 +92,15 @@ public sealed class GroupConfig
     public PopupBackdrop? Backdrop { get; set; }
 
     /// <summary>
+    /// The colour laid over this group's popup, or <see langword="null"/> to follow
+    /// <see cref="AppSettings.PopupTint"/>. <see cref="PopupTint.None"/> is a choice of its own:
+    /// no colour, whatever Settings say.
+    /// </summary>
+    [JsonPropertyName("tint")]
+    [JsonConverter(typeof(CamelCaseEnumConverter<PopupTint>))]
+    public PopupTint? Tint { get; set; }
+
+    /// <summary>
     /// Applications contained in this group.
     /// </summary>
     [JsonPropertyName("apps")]

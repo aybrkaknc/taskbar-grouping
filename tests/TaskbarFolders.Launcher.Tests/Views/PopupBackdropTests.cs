@@ -88,6 +88,64 @@ public sealed class PopupBackdropTests
         });
     }
 
+    [Theory]
+    [InlineData(null, PopupTint.Midnight, PopupTint.Midnight)]
+    [InlineData(PopupTint.None, PopupTint.Sunset, PopupTint.None)]
+    [InlineData(PopupTint.Forest, PopupTint.None, PopupTint.Forest)]
+    public void ResolveTint_PrefersTheGroupsChoice_ThenTheDefault(PopupTint? group, PopupTint settings, PopupTint expected) =>
+        PopupBackdropChoice.ResolveTint(group, settings).Should().Be(expected);
+
+    [Fact]
+    public void ATint_OnThePanel_IsMixedIntoIt_AndStaysOpaque()
+    {
+        StaThread.Run(() =>
+        {
+            var theme = LoadTheme("Dark.xaml");
+            var (window, _) = TestPopup.Show(theme: theme, groupBackdrop: PopupBackdrop.Off, settingsTint: PopupTint.Midnight);
+            try
+            {
+                var chrome = (Border)window.FindName("ChromeRoot");
+                var panel = ((SolidColorBrush)theme["PopupSolidBackground"]).Color;
+                var tint = TaskbarFolders.Core.Themes.PopupTints.ColorFor(PopupTint.Midnight, dark: true, TaskbarFolders.Core.Themes.AccentShades.Read())!.Value;
+
+                ((SolidColorBrush)chrome.Background).Color.Should().Be(TaskbarFolders.Core.Themes.PopupTints.Over(tint, panel));
+            }
+            finally
+            {
+                TestPopup.Close(window);
+            }
+
+            return 0;
+        });
+    }
+
+    [Fact]
+    public void ATint_OnAMaterial_IsPaintedAsItIs()
+    {
+        if (!WindowBackdrop.IsSupported)
+        {
+            return;
+        }
+
+        StaThread.Run(() =>
+        {
+            var (window, _) = TestPopup.Show(theme: LoadTheme("Dark.xaml"), groupTint: PopupTint.Forest);
+            try
+            {
+                var chrome = (Border)window.FindName("ChromeRoot");
+                var tint = TaskbarFolders.Core.Themes.PopupTints.ColorFor(PopupTint.Forest, dark: true, TaskbarFolders.Core.Themes.AccentShades.Read())!.Value;
+
+                ((SolidColorBrush)chrome.Background).Color.Should().Be(tint, "the material shows through the tint");
+            }
+            finally
+            {
+                TestPopup.Close(window);
+            }
+
+            return 0;
+        });
+    }
+
     private static ResourceDictionary LoadTheme(string fileName)
     {
         using var stream = File.OpenRead(Path.Combine(

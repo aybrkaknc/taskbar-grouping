@@ -92,6 +92,17 @@ public class PopupViewModelTests
     }
 
     [Fact]
+    public async Task LoadAsync_ExposesTheGroupsOwnTint()
+    {
+        var config = new GroupConfig { Id = "g1", GroupName = "Tools", Tint = PopupTint.Forest, Apps = { new AppEntry { Name = "a", Path = "C:/a.exe" } } };
+        var (sut, _, _, _, _) = CreateSut("g1", config);
+
+        await sut.LoadAsync();
+
+        sut.Tint.Should().Be(PopupTint.Forest);
+    }
+
+    [Fact]
     public async Task LoadAsync_SetsIsUnavailable_WhenGroupNotFound()
     {
         var (sut, _, _, _, _) = CreateSut("missing", config: null);

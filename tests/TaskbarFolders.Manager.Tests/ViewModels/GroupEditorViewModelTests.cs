@@ -9,6 +9,7 @@ using Moq;
 using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
+using TaskbarFolders.Core.Themes;
 using TaskbarFolders.Manager.Services;
 using TaskbarFolders.Manager.ViewModels;
 using TaskbarFolders.Shared.Configuration;
@@ -43,7 +44,9 @@ public class GroupEditorViewModelTests
                     Mock<IPinToTaskbarService> pinService) CreateSutWithCollaborators(
         Mock<ICustomGroupIconStore>? customIcons = null,
         Mock<IPinnedTileRemover>? pins = null,
-        Mock<IPinHelper>? pinHelper = null)
+        Mock<IPinHelper>? pinHelper = null,
+        AppSettings? settings = null,
+        Mock<IThemeService>? theme = null)
     {
         var extractor = new Mock<IIconExtractor>();
         extractor.Setup(e => e.ExtractIcon(It.IsAny<string>(), It.IsAny<int>())).Returns(StubIcon());
@@ -78,7 +81,9 @@ public class GroupEditorViewModelTests
             pinService.Object,
             (customIcons ?? new Mock<ICustomGroupIconStore>()).Object,
             (pins ?? new Mock<IPinnedTileRemover>()).Object,
-            (pinHelper ?? new Mock<IPinHelper>()).Object);
+            (pinHelper ?? new Mock<IPinHelper>()).Object,
+            StoreWith(settings ?? new AppSettings()),
+            (theme ?? ThemeOf(ThemePreference.Dark)).Object);
         return (sut, extractor, composer, cache, store, syncService, paths, userConfirmation, pinService);
     }
 
@@ -545,6 +550,91 @@ public class GroupEditorViewModelTests
         config.Backdrop.Should().BeNull("Default hands the choice back to Settings");
         store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Once);
         syncService.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task TheTint_IsShownWithoutSaving_AndSavedWhenChosen_WithoutSyncing()
+    {
+        var (sut, _, _, _, store, syncService, _, _, _) = CreateSutWithCollaborators();
+        var config = new GroupConfig { Id = "g", GroupName = "g", Tint = PopupTint.Sunset };
+        sut.Bind(new GroupListItemViewModel(config));
+        sut.Tint.Should().Be(PopupTint.Sunset);
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        sut.Tint = PopupTint.None;
+        await Task.Delay(50);
+
+        config.Tint.Should().Be(PopupTint.None, "None is a choice of its own, unlike Default");
+        store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        syncService.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public void TintOptions_StartWithDefault_ThenEveryTint()
+    {
+        GroupEditorViewModel.TintOptions.Select(o => o.Value)
+            .Should().Equal(null, PopupTint.None, PopupTint.Accent, PopupTint.Midnight, PopupTint.Forest, PopupTint.Sunset);
+    }
+
+    [Fact]
+    public async Task ThePreview_WearsTheGroupsBackdropAndTint_OrTheDefaultsInSettings()
+    {
+        var (sut, _, _, _, _, _, _, _, _) = CreateSutWithCollaborators(
+            settings: new AppSettings { PopupBackdrop = PopupBackdrop.Off, PopupTint = PopupTint.Sunset });
+        await sut.RefreshPopupDefaultsAsync();
+        var preview = new PopupPreviewViewModel();
+        preview.UpdateSurface(PopupBackdrop.Off, PopupTint.Sunset, dark: true, AccentShades.Read());
+        var fromSettings = preview.Surface;
+        preview.UpdateSurface(PopupBackdrop.Off, PopupTint.None, dark: true, AccentShades.Read());
+        var groupsOwn = preview.Surface;
+
+        sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g" }));
+        sut.Preview.Surface.Should().Be(fromSettings, "a group that chose nothing follows Settings");
+
+        sut.Tint = PopupTint.None;
+        sut.Preview.Surface.Should().Be(groupsOwn, "the group's own choice wins, and the preview answers at once");
+    }
+
+    [Fact]
+    public async Task ThePreview_FollowsTheTheme_WhenItChanges()
+    {
+        var theme = ThemeOf(ThemePreference.Dark);
+        var (sut, _, _, _, _, _, _, _, _) = CreateSutWithCollaborators(settings: new AppSettings { PopupBackdrop = PopupBackdrop.Off }, theme: theme);
+        await sut.RefreshPopupDefaultsAsync();
+        sut.Bind(new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "g" }));
+        sut.Preview.Surface.Should().Be(Color.FromRgb(0x20, 0x20, 0x20));
+
+        theme.SetupGet(t => t.EffectiveTheme).Returns(ThemePreference.Light);
+        theme.Raise(t => t.ThemeChanged += null, EventArgs.Empty);
+
+        sut.Preview.Surface.Should().Be(Color.FromRgb(0xF3, 0xF3, 0xF3));
+    }
+
+    [Fact]
+    public void ThePreviewsHeader_ShowsTheGroupsName_AndFollowsARename()
+    {
+        var (sut, _, _, _, _, _, _, _, _) = CreateSutWithCollaborators();
+        var item = new GroupListItemViewModel(new GroupConfig { Id = "g", GroupName = "Tools" });
+        sut.Bind(item);
+        sut.Preview.GroupName.Should().Be("Tools");
+
+        item.Name = "Games";
+
+        sut.Preview.GroupName.Should().Be("Games");
+    }
+
+    private static IAppSettingsStore StoreWith(AppSettings settings)
+    {
+        var store = new Mock<IAppSettingsStore>();
+        store.Setup(s => s.LoadAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
+        return store.Object;
+    }
+
+    private static Mock<IThemeService> ThemeOf(ThemePreference effective)
+    {
+        var theme = new Mock<IThemeService>();
+        theme.SetupGet(t => t.EffectiveTheme).Returns(effective);
+        return theme;
     }
 
     [Fact]

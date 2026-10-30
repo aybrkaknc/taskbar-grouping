@@ -12,6 +12,12 @@ public static class PopupBackdropChoice
     /// <returns>The backdrop to draw.</returns>
     public static PopupBackdrop Resolve(PopupBackdrop? group, PopupBackdrop settings) => group ?? settings;
 
+    /// <summary>The group's own tint if it chose one (<see cref="PopupTint.None"/> included), otherwise the default in Settings.</summary>
+    /// <param name="group">The group's choice, <see cref="GroupConfig.Tint"/>.</param>
+    /// <param name="settings">The default, <see cref="AppSettings.PopupTint"/>.</param>
+    /// <returns>The tint to lay over the backdrop.</returns>
+    public static PopupTint ResolveTint(PopupTint? group, PopupTint settings) => group ?? settings;
+
     /// <summary>
     /// The DWM material for <paramref name="backdrop"/>. <see cref="PopupBackdrop.Off"/> asks for
     /// none, so nothing is composed behind the opaque panel the window paints instead.

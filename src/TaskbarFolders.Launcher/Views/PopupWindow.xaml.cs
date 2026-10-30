@@ -12,6 +12,7 @@ using System.Windows.Shell;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using TaskbarFolders.Core.Interop;
+using TaskbarFolders.Core.Themes;
 using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Shared.Configuration;
@@ -49,8 +50,9 @@ public sealed partial class PopupWindow : Window, IDisposable
     private readonly AppSettings _settings;
     private readonly bool _useSystemBackdrop;
 
-    // The group's own backdrop, or the default in Settings; fixed for the popup's lifetime.
+    // The group's own backdrop and tint, or the defaults in Settings; fixed for the popup's lifetime.
     private readonly PopupBackdrop _backdrop;
+    private readonly PopupTint _tint;
     private OutsideClickWatcher? _outsideClicks;
     private TileReorderDrag? _reorder;
 
@@ -104,6 +106,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         // client area (the WindowChrome below), and DWM fills it with acrylic. Elsewhere it
         // stays layered and ChromeRoot paints a translucent fallback panel instead.
         _backdrop = PopupBackdropChoice.Resolve(viewModel.Backdrop, settings.PopupBackdrop);
+        _tint = PopupBackdropChoice.ResolveTint(viewModel.Tint, settings.PopupTint);
         _useSystemBackdrop = WindowBackdrop.IsSupported;
         if (_useSystemBackdrop)
         {
@@ -348,6 +351,10 @@ public sealed partial class PopupWindow : Window, IDisposable
         {
             ApplySystemBackdrop();
         }
+        else
+        {
+            PaintPanel(_backdrop == PopupBackdrop.Off ? "PopupSolidBackground" : "PopupFallbackBackground");
+        }
 
         ApplySizeAndPlacement();
 
@@ -412,16 +419,46 @@ public sealed partial class PopupWindow : Window, IDisposable
         if (_backdrop == PopupBackdrop.Off)
         {
             _ = WindowBackdrop.TryApply(hwnd, WindowBackdropKind.None);
-            ChromeRoot.SetResourceReference(Border.BackgroundProperty, "PopupSolidBackground");
+            PaintPanel("PopupSolidBackground");
             return;
         }
 
-        if (!WindowBackdrop.TryApply(hwnd, PopupBackdropChoice.KindFor(_backdrop)))
+        if (WindowBackdrop.TryApply(hwnd, PopupBackdropChoice.KindFor(_backdrop)))
+        {
+            PaintPanel(null);
+        }
+        else
         {
             // The window is no longer layered, so a transparent client area would render
             // black. Paint the fallback panel instead; it is near-opaque in this mode.
-            ChromeRoot.SetResourceReference(Border.BackgroundProperty, "PopupFallbackBackground");
+            PaintPanel("PopupFallbackBackground");
         }
+    }
+
+    /// <summary>
+    /// Paints the popup's panel: the theme brush <paramref name="panelKey"/> (none over a DWM
+    /// material), with the chosen tint laid over it. Untinted, the brush stays a resource
+    /// reference; tinted, the two are mixed into one brush, opaque where the panel is.
+    /// </summary>
+    private void PaintPanel(string? panelKey)
+    {
+        // The theme dictionary in use says which shade of the tint fits it.
+        var dark = TryFindResource("IsDarkTheme") is bool isDark
+            ? isDark
+            : LauncherThemeApplier.Resolve(_settings.Theme) == ThemePreference.Dark;
+        var tint = PopupTints.ColorFor(_tint, dark, AccentShades.Read());
+        if (tint is null)
+        {
+            if (panelKey is not null)
+            {
+                ChromeRoot.SetResourceReference(Border.BackgroundProperty, panelKey);
+            }
+
+            return;
+        }
+
+        var panel = panelKey is not null && TryFindResource(panelKey) is SolidColorBrush brush ? brush.Color : Colors.Transparent;
+        ChromeRoot.Background = new SolidColorBrush(PopupTints.Over(tint.Value, panel));
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)

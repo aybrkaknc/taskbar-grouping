@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
     <!-- The popup's background is DWM acrylic on Windows 11 22H2+, which no brush can
          reproduce. This panel stands in where acrylic is unavailable: on older Windows (the
          popup stays a layered window and this shows the desktop faintly through it) and if
@@ -7,6 +8,8 @@
     <SolidColorBrush x:Key="PopupFallbackBackground" Color="#E6F3F3F3" />
     <!-- The panel with the backdrop set to Off: opaque, Mica's own base colour. -->
     <SolidColorBrush x:Key="PopupSolidBackground" Color="#FFF3F3F3" />
+    <!-- Which shade of a popup tint fits this theme (Core's PopupTints). -->
+    <sys:Boolean x:Key="IsDarkTheme">False</sys:Boolean>
     <SolidColorBrush x:Key="ForegroundDefault" Color="#1A1A1A" />
     <SolidColorBrush x:Key="ForegroundSubtle" Color="#5A5A5A" />
     <SolidColorBrush x:Key="TileHoverBackground" Color="#1F0078D4" />

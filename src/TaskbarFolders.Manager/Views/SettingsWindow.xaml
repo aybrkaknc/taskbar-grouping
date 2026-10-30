@@ -8,7 +8,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Settings"
-        Width="480" Height="570"
+        Width="480" Height="640"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
@@ -55,6 +55,15 @@
                       SelectedValue="{Binding PopupBackdrop}"
                       AutomationProperties.Name="Popup backdrop"
                       ToolTip="What every popup is drawn on. A group can choose its own on Appearance."
+                      Margin="0,0,0,16" />
+
+            <TextBlock Text="Popup tint" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.PopupTintOptions}"
+                      DisplayMemberPath="Label"
+                      SelectedValuePath="Value"
+                      SelectedValue="{Binding PopupTint}"
+                      AutomationProperties.Name="Popup tint"
+                      ToolTip="A colour laid over every popup's backdrop. A group can choose its own on Appearance."
                       Margin="0,0,0,16" />
 
             <CheckBox IsChecked="{Binding EnableAnimations}" Content="Enable popup animations" Margin="0,0,0,12" />

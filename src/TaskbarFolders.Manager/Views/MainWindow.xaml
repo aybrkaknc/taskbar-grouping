@@ -513,6 +513,7 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Text="Max per row" VerticalAlignment="Center" Margin="0,0,16,0" />
@@ -553,7 +554,17 @@
                                          AutomationProperties.Name="Backdrop"
                                          ToolTip="What the popup is drawn on. Default uses the choice in Settings." />
 
-                                <CheckBox Grid.Row="4" Grid.Column="1" Margin="0,14,0,0"
+                                <TextBlock Grid.Row="4" Text="Tint" VerticalAlignment="Center" Margin="0,10,16,0" />
+                                <ListBox Grid.Row="4" Grid.Column="1" Margin="0,10,0,0"
+                                         Style="{StaticResource SegmentedList}"
+                                         ItemsSource="{x:Static vm:GroupEditorViewModel.TintOptions}"
+                                         DisplayMemberPath="Label"
+                                         SelectedValuePath="Value"
+                                         SelectedValue="{Binding Tint}"
+                                         AutomationProperties.Name="Tint"
+                                         ToolTip="A colour laid over the popup's backdrop. Default uses the choice in Settings." />
+
+                                <CheckBox Grid.Row="5" Grid.Column="1" Margin="0,14,0,0"
                                           Content="Show app names"
                                           IsChecked="{Binding ShowNames}"
                                           ToolTip="Without names the tiles shrink to their icons; pointing at one still shows its name." />
@@ -566,7 +577,7 @@
                                 <StackPanel>
                                     <TextBlock Text="Preview" FontSize="14" FontWeight="SemiBold" />
                                     <TextBlock Margin="0,4,0,10" TextWrapping="Wrap" Foreground="{DynamicResource ForegroundSubtle}"
-                                               Text="The popup as it opens from the taskbar." />
+                                               Text="The popup as it opens from the taskbar. Windows draws Mica and Acrylic behind the real popup only, so here they are shown approximately." />
                                     <views:PopupPreview DataContext="{Binding Preview}" HorizontalAlignment="Left" />
                                 </StackPanel>
                             </ScrollViewer>

@@ -32,6 +32,28 @@ public enum PopupBackdrop
     Off = 3,
 }
 
+/// <summary>
+/// A colour laid over the popup's backdrop. The colours themselves, one per theme, are in
+/// <c>TaskbarFolders.Core.Themes.PopupTints</c>.
+/// </summary>
+public enum PopupTint
+{
+    /// <summary>No colour: the backdrop as it is (default).</summary>
+    None = 0,
+
+    /// <summary>The accent colour chosen in Windows' personalisation settings.</summary>
+    Accent = 1,
+
+    /// <summary>Deep blue.</summary>
+    Midnight = 2,
+
+    /// <summary>Green.</summary>
+    Forest = 3,
+
+    /// <summary>Warm orange.</summary>
+    Sunset = 4,
+}
+
 /// <summary>Where the launcher popup is anchored relative to the taskbar icon.</summary>
 public enum PopupPositionPreference
 {

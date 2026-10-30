@@ -200,6 +200,19 @@ public class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task ThePopupTint_IsLoaded_AndSavedAsItChanges()
+    {
+        var sut = CreateSut(new AppSettings { PopupTint = PopupTint.Forest }, autoStartEnabled: false, out var store, out _, out _);
+        await sut.LoadAsync();
+        sut.PopupTint.Should().Be(PopupTint.Forest);
+
+        sut.PopupTint = PopupTint.Accent;
+        await sut.WhenIdleAsync();
+
+        store.Verify(s => s.SaveAsync(It.Is<AppSettings>(x => x.PopupTint == PopupTint.Accent), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task AChange_KeepsWhatTheDialogDoesNotShow()
     {
         // The Manager stores more in settings.json than this dialog edits; a change made here
