@@ -10,13 +10,20 @@ namespace TaskbarFolders.Shared.Models;
 public sealed class AppEntry
 {
     /// <summary>
+    /// What <see cref="Path"/> starts with for an app stored as its entry in Windows' installed-apps
+    /// list (ADR-009): the shell starts it from there exactly as Start does.
+    /// </summary>
+    public const string ShellAppsPrefix = @"shell:AppsFolder\";
+
+    /// <summary>
     /// Display name of the application.
     /// </summary>
     [JsonPropertyName("name")]
     public required string Name { get; set; }
 
     /// <summary>
-    /// Full path to the executable or shortcut file.
+    /// Full path to the executable or shortcut file, or <see cref="ShellAppsPrefix"/> followed by
+    /// the app's AppUserModelID for an app picked from the installed-apps list.
     /// </summary>
     [JsonPropertyName("path")]
     public required string Path { get; set; }
@@ -64,4 +71,33 @@ public sealed class AppEntry
         };
         return true;
     }
+
+    /// <summary>
+    /// Builds an entry for an app picked from Windows' installed-apps list that has no plain
+    /// program to point at — a packaged app, or one Start starts with arguments (ADR-009). It is
+    /// stored as <see cref="ShellAppsPrefix"/> and its AppUserModelID.
+    /// </summary>
+    /// <param name="name">The name the list shows for the app.</param>
+    /// <param name="aumid">The app's AppUserModelID, its parsing name in <c>shell:AppsFolder</c>.</param>
+    /// <param name="entry">The new entry, or <see langword="null"/> for a blank name or id.</param>
+    /// <returns><see langword="true"/> when an entry was created.</returns>
+    public static bool TryCreateFromAumid(string? name, string? aumid, [NotNullWhen(true)] out AppEntry? entry)
+    {
+        entry = null;
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(aumid))
+        {
+            return false;
+        }
+
+        entry = new AppEntry { Name = name.Trim(), Path = ShellAppsPrefix + aumid.Trim() };
+        return true;
+    }
+
+    /// <summary>Whether <paramref name="path"/> names an app by its installed-apps entry rather than a file.</summary>
+    /// <param name="path">An <see cref="AppEntry.Path"/>.</param>
+    /// <returns><see langword="true"/> for <see cref="ShellAppsPrefix"/> followed by an id.</returns>
+    public static bool IsShellApp(string? path) =>
+        path is not null
+        && path.Length > ShellAppsPrefix.Length
+        && path.StartsWith(ShellAppsPrefix, StringComparison.OrdinalIgnoreCase);
 }

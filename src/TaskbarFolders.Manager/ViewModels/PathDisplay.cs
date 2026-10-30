@@ -32,6 +32,12 @@ internal static class PathDisplay
             return path ?? string.Empty;
         }
 
+        // An installed app has no path to show; its id tells two of the same name apart.
+        if (TaskbarFolders.Shared.Models.AppEntry.IsShellApp(path))
+        {
+            return "Installed app · " + path[TaskbarFolders.Shared.Models.AppEntry.ShellAppsPrefix.Length..];
+        }
+
         string profile;
         try
         {

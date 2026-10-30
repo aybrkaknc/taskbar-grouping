@@ -22,10 +22,14 @@ public sealed partial class AppEntryViewModel : ObservableObject
 
         Entry = entry;
         _name = entry.Name;
+        _nameAsLoaded = entry.Name;
         _path = entry.Path;
         _arguments = entry.Arguments;
         _iconPath = entry.IconPath;
     }
+
+    // What a cleared name falls back to for an installed app, which has no file name.
+    private readonly string _nameAsLoaded;
 
     /// <summary>Underlying entry. Public so the editor view model can persist it.</summary>
     public AppEntry Entry { get; }
@@ -72,8 +76,11 @@ public sealed partial class AppEntryViewModel : ObservableObject
     /// <summary>Whether the app shows an image the user chose rather than the program's own icon.</summary>
     public bool HasCustomIcon => IconPath is not null;
 
-    /// <summary>The name the app gets when its display name is cleared: the file name.</summary>
-    public string DefaultName => System.IO.Path.GetFileNameWithoutExtension(Path);
+    /// <summary>
+    /// The name the app gets when its display name is cleared: the file name — or, for an app from
+    /// the installed-apps list, which has none, the name it had when this row was made.
+    /// </summary>
+    public string DefaultName => AppEntry.IsShellApp(Path) ? _nameAsLoaded : System.IO.Path.GetFileNameWithoutExtension(Path);
 
     // A cleared name falls back to the file name rather than leaving an unlabelled tile.
     partial void OnNameChanged(string value)

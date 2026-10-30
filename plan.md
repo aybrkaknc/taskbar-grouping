@@ -578,7 +578,9 @@ answered:
 Output: the research note, an ADR draft (ADR-009), and this section updated with the findings. **The
 decision goes to the user.**
 
-**Stage 1 — model and launch:** `AppEntry.TryCreateFromAumid(name, aumid)`, which sets
+**Stage 1 — model and launch — done** (`AppEntry.TryCreateFromAumid`/`IsShellApp`/`ShellAppsPrefix`,
+`PathDisplay`, `AppEntryViewModel.DefaultName`, `ProcessLauncher`; no user-visible change yet, so the
+CHANGELOG entry comes with Stage 3). As planned: `AppEntry.TryCreateFromAumid(name, aumid)`, which sets
 `Path = "shell:AppsFolder\<AUMID>"`. `ProcessLauncher` counts a `null` from `Process.Start` as success
 for `shell:` paths and sets no working directory for them (found in Stage 0). The JSON stays compatible, since it is a string.
 `AppEntryViewModel.DefaultName` and `PathDisplay.ForDisplay` get a branch for `shell:` paths. The

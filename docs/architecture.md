@@ -186,7 +186,7 @@ Placement itself: find the taskbar edge and rectangle, find the monitor under th
 
 | Path under `%APPDATA%\TaskbarFolders\` | Contents |
 |---|---|
-| `groups\<id>.json` | Group configuration. The **file name is authoritative** for the id; a mismatched `id` field inside the JSON is ignored on load. |
+| `groups\<id>.json` | Group configuration. The **file name is authoritative** for the id; a mismatched `id` field inside the JSON is ignored on load. An app's `path` is a file path, or `shell:AppsFolder\<AUMID>` for an installed app that is not a plain program ([ADR-009](adr/009-installed-apps-from-appsfolder.md)). |
 | `icons\<id>.ico` | Generated composite icon. |
 | `icons\cache\<sha256>.png` | Extracted source icons, keyed by source path, last-write time and size. Pruned after 30 days. |
 | `icons\custom\<id>.png` | Image the user chose as the group's icon, normalised to a 256 px square on import. Deleted with the group. |

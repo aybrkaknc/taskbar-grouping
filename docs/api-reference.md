@@ -17,9 +17,11 @@ One application inside a group.
 | Property | Type | Notes |
 |---|---|---|
 | `Name` | `string` | Required. Display name, filled from the file name without its extension |
-| `Path` | `string` | Required. Full path to the `.exe` or `.lnk` |
+| `Path` | `string` | Required. Full path to the `.exe` or `.lnk` — or `ShellAppsPrefix` (`shell:AppsFolder\`) and an AppUserModelID for an app from Windows' installed-apps list that is not a plain program ([ADR-009](adr/009-installed-apps-from-appsfolder.md)) |
 | `IconPath` | `string?` | Declared for a future custom-icon feature; **not read by any current code** |
 | `Arguments` | `string?` | Launch arguments; omitted from JSON when null, and not editable in the UI |
+
+`static bool TryCreateFromAumid(string? name, string? aumid, out AppEntry? entry)` builds the second kind, refusing a blank name or id; `static bool IsShellApp(string? path)` tells the two apart, and every reader of `Path` asks it: the Manager shows such a path as `Installed app · <AUMID>` (`PathDisplay`), a cleared name falls back to the name the row was made with instead of a file name, and the launcher starts it with no working directory and counts the `null` that `Process.Start` returns for a shell activation as a start.
 
 `static bool TryCreateFromPath(string? path, out AppEntry? entry)` is the one rule for turning a picked or dropped file into an entry: `.exe` and `.lnk` only, any case, named after the file. Everything that adds apps goes through it.
 

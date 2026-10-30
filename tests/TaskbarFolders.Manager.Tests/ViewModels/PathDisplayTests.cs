@@ -102,4 +102,11 @@ public sealed class PathDisplayTests
         raised.Should().BeGreaterThan(0, "the bound label would otherwise keep showing the old path");
         sut.DisplayPath.Should().Be(@"%USERPROFILE%\Desktop\other.lnk");
     }
+
+    [Fact]
+    public void ForDisplay_ShowsAnInstalledAppByItsId_NotAsAPath()
+    {
+        PathDisplay.ForDisplay(@"shell:AppsFolder\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App")
+            .Should().Be("Installed app · Microsoft.WindowsCalculator_8wekyb3d8bbwe!App");
+    }
 }

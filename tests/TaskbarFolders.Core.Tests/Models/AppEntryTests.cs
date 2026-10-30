@@ -35,4 +35,39 @@ public class AppEntryTests
 
         entry.Should().BeNull();
     }
+
+    [Theory]
+    [InlineData("Calculator", "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App")]
+    [InlineData("Play Store", "com.android.vending")]
+    [InlineData("Services", @"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\services.msc")]
+    public void TryCreateFromAumid_StoresTheAppAsItsAppsFolderEntry(string name, string aumid)
+    {
+        AppEntry.TryCreateFromAumid(name, aumid, out var entry).Should().BeTrue();
+
+        entry!.Name.Should().Be(name);
+        entry.Path.Should().Be(@"shell:AppsFolder\" + aumid, "the shell starts it from here as Start does");
+        entry.Arguments.Should().BeNull();
+        AppEntry.IsShellApp(entry.Path).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(null, "App!Id")]
+    [InlineData("  ", "App!Id")]
+    [InlineData("Name", null)]
+    [InlineData("Name", "  ")]
+    public void TryCreateFromAumid_RefusesABlankNameOrId(string? name, string? aumid)
+    {
+        AppEntry.TryCreateFromAumid(name, aumid, out var entry).Should().BeFalse();
+        entry.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(@"shell:AppsFolder\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App", true)]
+    [InlineData(@"SHELL:appsfolder\Chrome", true)]
+    [InlineData(@"C:\Windows\System32\calc.exe", false)]
+    [InlineData(@"shell:AppsFolder", false)]
+    [InlineData(@"shell:Desktop\x.lnk", false)]
+    [InlineData(null, false)]
+    public void IsShellApp_RecognisesAppsFolderEntriesOnly(string? path, bool expected) =>
+        AppEntry.IsShellApp(path).Should().Be(expected);
 }

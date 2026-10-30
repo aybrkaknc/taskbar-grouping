@@ -58,4 +58,19 @@ public class AppEntryViewModelTests
         entry.IconPath.Should().Be(@"C:\icons\x.png");
         sut.HasCustomIcon.Should().BeTrue();
     }
+
+    [Fact]
+    public void Name_FallsBackToTheNameItCameWith_ForAnInstalledApp()
+    {
+        // An installed app has no file name to fall back to: the id's last part would give
+        // "Microsoft" for Calculator.
+        var entry = new AppEntry { Name = "Calculator", Path = @"shell:AppsFolder\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App" };
+        var sut = new AppEntryViewModel(entry);
+        sut.Name = "Calc";
+
+        sut.Name = " ";
+
+        sut.Name.Should().Be("Calculator");
+        entry.Name.Should().Be("Calculator");
+    }
 }
