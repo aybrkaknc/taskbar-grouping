@@ -239,7 +239,8 @@ comes first so that C1–C4 land in their final place instead of being laid out 
 - [ ] **Visual polish** — let the Manager's Mica backdrop show through (it is applied but
   hidden under solid brushes), Fluent icons, consistent spacing; retake the screenshots.
   Ranked #6 below. *In progress on `feature/manager-polish`: Mica shows app-wide, the popup's
-  backdrop and tint are choices, the preview shows them; next Fluent icons, spacing, screenshots.*
+  backdrop and tint are choices, the preview shows them, spacing is on one scale; next the
+  New group icon and the screenshots.*
 
 ## Up next, in order
 
@@ -522,7 +523,14 @@ retaken.
    Core. **With it, asked for by the user:** the preview shows the whole popup — its header, and
    its backdrop and tint (Off and tints exactly, the materials approximately), following Settings
    and the theme. Tried by the user.
-4. [ ] Fluent icons, the spacing scale, and the screenshots (the user switches the display to
+4. [x] **The spacing scale.** 42 margins and paddings moved onto 4 DIP steps (1 and 2 kept for
+   hairlines); `SpacingScaleTests` gates the Manager's markup, checked to fail on a 14. Not built
+   as `Controls.xaml` resources as first planned — decided with the user on 2026-10-30: a
+   resource per `Thickness` is verbose and stops nothing, the test stops every stray value.
+   Tried by the user.
+5. [ ] **Fluent icons.** The pass found them already used throughout; only *+ New group* (sidebar
+   and the empty state) still writes a text "+". It becomes the Fluent + glyph and a label.
+6. [ ] **Screenshots**, retaken with the recipe in `CLAUDE.md` (the user switches the display to
    150 % for them).
 
 **Tests:** theme dictionary tests, and a pixel test for the Mica area.

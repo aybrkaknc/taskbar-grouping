@@ -33,7 +33,7 @@
             <DockPanel>
             <!-- The popup's header as a picture: its name, and its edit, add, pin and close
                  buttons as glyphs that do nothing. Spaced as PopupWindow.xaml spaces them. -->
-            <DockPanel DockPanel.Dock="Top" Margin="8,0,0,6" Height="24">
+            <DockPanel DockPanel.Dock="Top" Margin="8,0,0,8" Height="24">
                 <DockPanel.Resources>
                     <Style TargetType="TextBlock" x:Key="HeaderGlyph">
                         <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
@@ -85,7 +85,7 @@
             </DockPanel>
         </Border>
 
-        <TextBlock Margin="0,6,0,0" Foreground="{DynamicResource ForegroundSubtle}">
+        <TextBlock Margin="0,8,0,0" Foreground="{DynamicResource ForegroundSubtle}">
             <TextBlock.Style>
                 <Style TargetType="TextBlock">
                     <Setter Property="Visibility" Value="Collapsed" />
@@ -98,7 +98,7 @@
                 </Style>
             </TextBlock.Style>
         </TextBlock>
-        <TextBlock Margin="0,6,0,0"
+        <TextBlock Margin="0,8,0,0"
                    Foreground="{DynamicResource ForegroundSubtle}"
                    Text="{Binding MoreCount, StringFormat='and {0} more in the popup'}">
             <TextBlock.Style>

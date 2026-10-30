@@ -122,6 +122,7 @@ Conventions:
 - Strict MVVM. No business logic in code-behind; commands via `[RelayCommand]`.
 - Constructor injection everywhere; register services in the project's `*ServiceCollectionExtensions`. `CompositionRootTests` validates that the graph resolves.
 - Async I/O throughout, with one deliberate exception: `IIconCache.TryGet`/`Set` are synchronous because they sit on the popup's hot path.
+- One spacing scale in the Manager's markup: every literal `Margin` and `Padding` in `Views/*.xaml` and `Themes/Controls.xaml` is one of 0, 4, 8, 12, 16, 20, 24, 28 or 32 DIP, or 1 and 2 for hairlines. `SpacingScaleTests` fails on anything else; bound values are not checked.
 
 Six analyzer rules are suppressed, each with its rationale next to the suppression in `.editorconfig`: `CA1716` globally (namespace name versus a VB.NET keyword), `CA1848`/`CA1873` globally (no `LoggerMessage` source generators; cold-path logging only — opt back in locally for a hot path), and `CA1707`/`CA1859`/`CA1861` under `tests/**` only. If you add a suppression, add the reason beside it.
 

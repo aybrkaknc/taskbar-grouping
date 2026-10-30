@@ -27,7 +27,7 @@
         <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="Padding" Value="12,4" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Template">
             <Setter.Value>
@@ -280,7 +280,7 @@
     <Style x:Key="ListRowItem" TargetType="ListBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Padding" Value="8,6" />
+        <Setter Property="Padding" Value="8,8" />
         <Setter Property="Margin" Value="0,1" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Template">
@@ -310,7 +310,7 @@
     <Style x:Key="SidebarItem" TargetType="ListBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Padding" Value="12,8,10,8" />
+        <Setter Property="Padding" Value="12,8,8,8" />
         <Setter Property="Margin" Value="0,1" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
@@ -349,7 +349,7 @@
     <Style x:Key="SidebarFooterButton" TargetType="Button">
         <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Padding" Value="10,8" />
+        <Setter Property="Padding" Value="12,8" />
         <Setter Property="HorizontalContentAlignment" Value="Left" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="Template">
@@ -493,7 +493,7 @@
     <Style TargetType="ComboBoxItem">
         <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Padding" Value="8,5" />
+        <Setter Property="Padding" Value="8,4" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Template">
             <Setter.Value>
@@ -542,7 +542,7 @@
                                             SnapsToDevicePixels="True">
                                         <Path HorizontalAlignment="Right"
                                               VerticalAlignment="Center"
-                                              Margin="0,0,10,0"
+                                              Margin="0,0,8,0"
                                               Data="M 0,0 L 4,4 L 8,0"
                                               Stroke="{DynamicResource ForegroundSubtle}"
                                               StrokeThickness="1.4" />
@@ -626,7 +626,7 @@
     <Style TargetType="MenuItem">
         <Setter Property="Foreground" Value="{DynamicResource ForegroundDefault}" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="Padding" Value="12,6" />
+        <Setter Property="Padding" Value="12,8" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
@@ -683,7 +683,7 @@
                     <Border x:Name="Root"
                             Background="{DynamicResource ControlBorder}"
                             CornerRadius="4"
-                            Margin="3" />
+                            Margin="4" />
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Root" Property="Background" Value="{DynamicResource ControlBorderHover}" />
@@ -732,6 +732,6 @@
         <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
         <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Padding" Value="8,5" />
+        <Setter Property="Padding" Value="8,4" />
     </Style>
 </ResourceDictionary>

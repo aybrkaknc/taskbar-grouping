@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The preview shows the whole popup.** It now draws the popup's header (the group's name and its buttons, as pictures) and its backdrop and tint: *Off* and the tints exactly, Mica and Acrylic approximately, since Windows draws those behind the real popup only. It follows Settings once the dialog closes and the theme when it changes, and is never narrower than the popup (220 DIP).
 - **Spacing between the popup's tiles.** *Appearance → Popup → Spacing* sets the gap between the tiles to *None* (the default, as before), *Small*, *Medium* or *Large*. The tiles keep their size; the popup grows by the gaps, and its largest width went from 720 to 800 so six of the widest spaced tiles still fit. Groups saved earlier keep the tiles touching.
 
+### Changed
+
+- **The Manager's spacing follows one scale.** Margins and paddings had drifted to 3, 5, 6, 10 and 14 DIP; all of them now sit on 4 DIP steps, so rows, buttons and sections line up. The app list's rows and the *Pin to taskbar* button are slightly roomier, the *Appearance* rows slightly closer, and the popup's header sits 2 DIP further from its tiles.
+
 ### Fixed
 
 - **The Manager's drop-down lists show the chosen item's label.** A list whose items carry a separate label showed the item's internal description in its closed box instead; the theme's template did not apply the label. The lists until now held plain values, so nothing showed it before *Popup backdrop*.

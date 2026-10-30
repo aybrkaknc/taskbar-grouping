@@ -249,7 +249,7 @@
         <DockPanel>
             <!-- Header: group name and close button, in every state. Part of ChromeRoot, so
                  the measured window height includes it with no sizing code of its own. -->
-            <DockPanel x:Name="HeaderBar" DockPanel.Dock="Top" Margin="8,0,0,6">
+            <DockPanel x:Name="HeaderBar" DockPanel.Dock="Top" Margin="8,0,0,8">
                 <!-- The header's last slot: the close button, or in edit mode the most tiles per
                      row — one more per click, back to 1 after 6. The number is collapsed outside
                      edit mode and shares the slot, so showing it moves nothing; PopupWindow pops
