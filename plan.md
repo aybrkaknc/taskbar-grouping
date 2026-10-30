@@ -239,8 +239,8 @@ comes first so that C1–C4 land in their final place instead of being laid out 
 - [ ] **Visual polish** — let the Manager's Mica backdrop show through (it is applied but
   hidden under solid brushes), Fluent icons, consistent spacing; retake the screenshots.
   Ranked #6 below. *In progress on `feature/manager-polish`: Mica shows app-wide, the popup's
-  backdrop and tint are choices, the preview shows them, spacing is on one scale; next the
-  New group icon and the screenshots.*
+  backdrop and tint are choices, the preview shows them, spacing is on one scale, icons are
+  Fluent throughout; next the screenshots.*
 
 ## Up next, in order
 
@@ -528,8 +528,10 @@ retaken.
    as `Controls.xaml` resources as first planned — decided with the user on 2026-10-30: a
    resource per `Thickness` is verbose and stops nothing, the test stops every stray value.
    Tried by the user.
-5. [ ] **Fluent icons.** The pass found them already used throughout; only *+ New group* (sidebar
-   and the empty state) still writes a text "+". It becomes the Fluent + glyph and a label.
+5. [x] **Fluent icons.** The pass found them already used throughout; only *+ New group* (sidebar
+   and the empty state) still wrote a text "+". It is now the Fluent + glyph beside a label, and
+   `ButtonNameTests` fails on a Manager button whose label starts with a typed symbol. Tried by
+   the user (the empty-state button by code only: showing it needs a profile without groups).
 6. [ ] **Screenshots**, retaken with the recipe in `CLAUDE.md` (the user switches the display to
    150 % for them).
 

@@ -45,10 +45,15 @@
         <DockPanel x:Name="Sidebar" Grid.Column="0" Background="{DynamicResource SidebarBackground}">
             <DockPanel DockPanel.Dock="Top" Margin="16,12,12,8">
                 <Button DockPanel.Dock="Right"
-                        Content="+ New group"
                         Padding="12,4"
+                        AutomationProperties.Name="New group"
                         ToolTip="Creates a group and lets you name it right away."
-                        Command="{Binding NewGroupCommand}" />
+                        Command="{Binding NewGroupCommand}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Text="New group" Margin="8,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
                 <TextBlock Text="Groups" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
             </DockPanel>
 
@@ -164,14 +169,20 @@
                 </StackPanel>
             </Grid>
 
-            <Button Style="{StaticResource AccentButton}" Content="+ New group" HorizontalAlignment="Left" Padding="16,8"
-                    Command="{Binding NewGroupCommand}" />
+            <Button Style="{StaticResource AccentButton}" HorizontalAlignment="Left" Padding="16,8"
+                    AutomationProperties.Name="New group"
+                    Command="{Binding NewGroupCommand}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE710;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" />
+                    <TextBlock Text="New group" Margin="8,0,0,0" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
         </StackPanel>
 
         <!-- Detail pane: drives off MainWindowViewModel.Editor -->
         <Grid Grid.Column="1" DataContext="{Binding Editor}">
             <!-- Placeholder shown when groups exist but none is selected -->
-            <TextBlock Text="Select a group to view details, or click + New group to create one."
+            <TextBlock Text="Select a group to view details, or click New group to create one."
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        Foreground="{DynamicResource ForegroundSubtle}">
                 <TextBlock.Style>
