@@ -252,7 +252,7 @@ below.
 | 2 | **C6 — settings and empty state** — *done, merged* | Settings apply as they change (no *Save*); with no groups, a three-step "get started" view. |
 | 3 | **D — release v0.5.0** — *version bumped; gates and pushes pending* | Version bump, installer and portable build, installer smoke test, CHANGELOG section, release notes; open an issue for `IsPinningAllowed = false`; delete merged branches. Puts the work so far in users' hands before the larger items. |
 | 4 | **C2 — grid settings, part 2** — *done on `feature/grid-settings-2`, not yet merged* | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
-| 5 | **C4 — reorder apps by dragging, in the popup's edit mode** | Changed 2026-10-30: not in the Manager's app list but on the popup's tiles. With edit mode on, a tile can be dragged to a new place (the others shift out of the way) and the tiles wiggle, as icons do on a phone. Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
+| 5 | **C4 — reorder apps by dragging, in the popup's edit mode** — *done, merged into `develop`* | Changed 2026-10-30: not in the Manager's app list but on the popup's tiles. With edit mode on, a tile can be dragged to a new place (the others shift out of the way) and the tiles wiggle, as icons do on a phone. Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
 | 6 | **C6 — visual polish** | Let the Manager's Mica backdrop show, Fluent icons, spacing; retake screenshots. |
 | 7 | **E — add apps from a list of installed apps (research first)** | Instead of browsing for an `.exe`/`.lnk`, pick from what Windows lists under *Start → All apps*, which also covers Store/packaged apps (Calculator, Settings…) that cannot be added at all today. The research settles the source (the shell's AppsFolder vs. Start menu shortcuts), how a packaged app is stored and launched (`shell:AppsFolder\<AUMID>` rather than a path), and how its icon is read. |
 
@@ -466,9 +466,11 @@ root is a `Grid` inside a `UniformGrid` of `EffectiveColumns`; `RemoveBadge` is 
    **Added with the user while trying it:** in edit mode the header's add, pin and close buttons fade
    out and the pencil slides to the header's right end; both back when editing ends. All of it
    without animation when *Enable animations* is off. Tested by hand by the user.
-3. **The wiggle.** A small rotation animation on every tile while `IsEditing`, alternating direction,
-   off when animations are off.
-4. **Docs and polish** — both guides, CHANGELOG, architecture, this file.
+3. [x] **The wiggle.** `PopupWindow.Wiggle`: each tile's root (tile and badge) rotates ±1.5° about its
+   centre while `IsEditing`, neighbours in opposite directions at 120–148 ms, re-applied to tiles
+   rebuilt while editing; none when animations are off. `PopupWiggleTests`. Tried by the user.
+4. [x] **Docs** went with each step (both guides, CHANGELOG, CLAUDE.md, this file), as the repo
+   policy asks; no separate step was needed.
 
 **Tests first:** view-model tests for the order (moved, bounds, commit saves, sync only for the first
 four, cancel restores, nothing happens outside edit mode), `TileGridHitTests`, an STA test that the

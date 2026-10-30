@@ -417,6 +417,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         if (e.PropertyName == nameof(PopupViewModel.IsEditing))
         {
             ShowHeaderButtons(!_viewModel.IsEditing);
+            Wiggle(_viewModel.IsEditing);
             return;
         }
 
@@ -480,6 +481,49 @@ public sealed partial class PopupWindow : Window, IDisposable
             slide.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(show ? 0 : 10, duration) { EasingFunction = ease });
         }
     }
+
+    /// <summary>
+    /// In edit mode every tile wiggles, as icons do on a phone: a small rotation about its centre,
+    /// neighbours starting in opposite directions and at slightly different speeds so the grid does
+    /// not move in step. The tile's root is rotated (tile and badge together), never its container,
+    /// whose transform belongs to a drag. Off when animations are off.
+    /// </summary>
+    private void Wiggle(bool on)
+    {
+        for (var i = 0; i < TileList.Items.Count; i++)
+        {
+            if (TileList.ItemContainerGenerator.ContainerFromIndex(i) is not ContentPresenter container
+                || VisualTreeHelper.GetChildrenCount(container) == 0
+                || VisualTreeHelper.GetChild(container, 0) is not FrameworkElement tile)
+            {
+                continue;
+            }
+
+            if (!on || !_settings.EnableAnimations)
+            {
+                if (tile.RenderTransform is RotateTransform still)
+                {
+                    still.BeginAnimation(RotateTransform.AngleProperty, null);
+                    still.Angle = 0;
+                }
+
+                continue;
+            }
+
+            var lean = i % 2 == 0 ? WiggleDegrees : -WiggleDegrees;
+            var rotate = new RotateTransform(-lean);
+            tile.RenderTransformOrigin = new Point(0.5, 0.5);
+            tile.RenderTransform = rotate;
+            rotate.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(-lean, lean, TimeSpan.FromMilliseconds(120 + (i % 3 * 14)))
+            {
+                AutoReverse = true,
+                RepeatBehavior = RepeatBehavior.Forever,
+                EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut },
+            });
+        }
+    }
+
+    private const double WiggleDegrees = 1.5;
 
     /// <summary>
     /// Moves the pencil to the header's right end, where the close button was, while the others
@@ -712,6 +756,12 @@ public sealed partial class PopupWindow : Window, IDisposable
             if (!_closeAnimating && !_closeConfirmed)
             {
                 ApplySizeAndPlacement();
+
+                // A tile rebuilt while editing (a reload, a removal) wiggles with the rest.
+                if (_viewModel.IsEditing)
+                {
+                    Wiggle(true);
+                }
             }
         }));
     }
