@@ -1,5 +1,6 @@
 ﻿using System.Runtime.Versioning;
 using Microsoft.Extensions.DependencyInjection;
+using TaskbarFolders.Core.Apps;
 using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
@@ -61,6 +62,7 @@ public static class ManagerServiceCollectionExtensions
         services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddSingleton<IPinToTaskbarService, LauncherProcessPinService>();
         services.AddSingleton<IGroupIconReader, GroupIconReader>();
+        services.AddSingleton<IInstalledAppsProvider, ShellInstalledAppsProvider>();
 
         // View models — MainWindow is itself a singleton conceptually (one main window per
         // process), so the backing VM is singleton too. App.OnStartup loads groups into it
@@ -74,10 +76,13 @@ public static class ManagerServiceCollectionExtensions
         // defaults and writing them over settings.json on Save. LoadAsync re-reads on every
         // open, so sharing one instance across dialog sessions carries no stale state.
         services.AddSingleton<SettingsViewModel>();
+        // Transient with its window: each opening reads the list afresh, and the window disposes it.
+        services.AddTransient<InstalledAppsPickerViewModel>();
 
         // Views — transient so each Show creates a fresh window instance.
         services.AddTransient<MainWindow>();
         services.AddTransient<SettingsWindow>();
+        services.AddTransient<InstalledAppsWindow>();
 
         return services;
     }

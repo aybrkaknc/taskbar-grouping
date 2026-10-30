@@ -392,6 +392,25 @@ public partial class MainWindow : Window
         }
     }
 
+    // The picker reads the list as it opens; the group's apps are shown as already in it.
+    private async void AddInstalledApps_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm || Application.Current is not App { Services: { } services })
+        {
+            return;
+        }
+
+        var picker = services.GetRequiredService<InstalledAppsWindow>();
+        picker.Owner = this;
+        var load = picker.ViewModel.LoadAsync(vm.Editor.Apps.Select(a => a.Path).ToList());
+        var picked = picker.ShowDialog() == true ? picker.ViewModel.Selected : [];
+        await load.ConfigureAwait(true);
+        if (picked.Count > 0)
+        {
+            await vm.Editor.AddInstalledAppsCommand.ExecuteAsync(picked).ConfigureAwait(true);
+        }
+    }
+
     private async void OpenSettings_Click(object sender, RoutedEventArgs e)
     {
         if (Application.Current is not App app || app.Services is null)

@@ -191,6 +191,30 @@ public class GroupEditorViewModelTests
         store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    [Fact]
+    public async Task AddInstalledApps_StoresEachByRuleC_SkipsTheGroupsOwn_AndSyncsOnce()
+    {
+        var (sut, _, _, _, store, syncService, _, _, _) = CreateSutWithCollaborators();
+        var config = new GroupConfig { Id = "g", GroupName = "g" };
+        config.Apps.Add(new AppEntry { Name = "Notepad", Path = @"C:\Windows\System32\notepad.exe" });
+        sut.Bind(new GroupListItemViewModel(config));
+
+        await sut.AddInstalledAppsCommand.ExecuteAsync(new[]
+        {
+            new TaskbarFolders.Core.Apps.InstalledApp("Calculator", "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App", null, null, "pkg"),
+            new TaskbarFolders.Core.Apps.InstalledApp("Notepad", "Notepad.Id", @"C:\Windows\System32\notepad.exe", null, null),
+            new TaskbarFolders.Core.Apps.InstalledApp("Git Bash", "Git.Bash", @"C:\Program Files\Git\git-bash.exe", "--cd-to-home", null),
+        });
+
+        config.Apps.Select(a => (a.Name, a.Path)).Should().Equal(
+            ("Notepad", @"C:\Windows\System32\notepad.exe"),
+            ("Calculator", @"shell:AppsFolder\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App"),
+            ("Git Bash", @"shell:AppsFolder\Git.Bash"));
+        sut.Apps.Should().HaveCount(3);
+        store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        syncService.Verify(s => s.SyncAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     [Theory]
     [InlineData("C:/some/document.pdf")]
     [InlineData("C:/some/image.png")]

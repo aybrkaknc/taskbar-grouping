@@ -133,9 +133,10 @@ Current, deliberate or not-yet-implemented — not bugs to report:
 
 - **The "Taskbar Groups" menu is classic-menu only on Windows 11** (*Show more options*). The Manager rewrites it whenever a group is created, renamed or deleted; only a group file edited by hand while the Manager is closed shows its old name there until the Manager next starts.
 - **A portable folder deleted by hand leaves its tiles, menu entry and data behind** — only *Settings → Uninstall TaskbarFolders…* cleans up. To do it afterwards, extract the portable ZIP again, start its Manager and use that.
-- **On Windows 11 22H2+ the glass panel does not fade when the popup closes.** DWM draws it and does not animate this window's hide, so only the icons fade.
-- **The blurred popup background needs Windows 11 22H2 or later.** Older versions get a plain translucent panel. With Windows' *Transparency effects* turned off, the background is a solid colour instead of glass.
-- **No reordering** of apps from the interface.
+- **On Windows 11 22H2+ the popup's backdrop does not fade when the popup closes.** DWM draws it and does not animate this window's hide, so only the icons fade.
+- **The popup's Mica, Mica Alt and Acrylic backdrops need Windows 11 22H2 or later.** Older versions get a plain translucent panel. With Windows' *Transparency effects* turned off they are solid colours, and Windows draws Mica as a solid colour while the popup is not the active window.
+- **An installed app works only where it is installed.** An app added through *Installed apps…* as the installed app itself (Store apps, and Start entries with arguments) is stored by its Windows id, not a file; a group file copied to another PC shows its placeholder icon and fails to start it there until the same app is installed.
+- **The installed-apps list is in your Windows language** and is searched by the names it shows.
 - **Renaming a group that currently has no apps keeps its old Start menu entry** until an app is added. An empty group writes no shortcuts at all, so there is nothing yet to replace the old entry with.
 - **Renaming a group's JSON file changes its identity**, orphaning its icon, shortcut and any existing pin. Rename from the Manager instead; that changes only the display name.
 - **x64 only.** There is no ARM64 build.

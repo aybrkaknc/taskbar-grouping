@@ -335,6 +335,14 @@
                                             <TextBlock Text="Add apps…" Margin="8,0,0,0" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Button>
+                                    <Button Padding="12,4" Margin="8,0,0,0" Click="AddInstalledApps_Click"
+                                            AutomationProperties.Name="Installed apps…"
+                                            ToolTip="Pick from the apps Windows lists under Start, including Store apps such as Calculator.">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="&#xE71D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="12" VerticalAlignment="Center" />
+                                            <TextBlock Text="Installed apps…" Margin="8,0,0,0" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Button>
                                     <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
                                                Foreground="{DynamicResource ForegroundSubtle}"
                                                Text="or drop .exe and .lnk files here" />

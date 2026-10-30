@@ -255,7 +255,7 @@ below.
 | 4 | **C2 — grid settings, part 2** — *done on `feature/grid-settings-2`, not yet merged* | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
 | 5 | **C4 — reorder apps by dragging, in the popup's edit mode** — *done, merged into `develop`* | Changed 2026-10-30: not in the Manager's app list but on the popup's tiles. With edit mode on, a tile can be dragged to a new place (the others shift out of the way) and the tiles wiggle, as icons do on a phone. Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
 | 6 | **C6 — visual polish** — *done* | Let the Manager's Mica backdrop show, Fluent icons, spacing; retake screenshots. |
-| 7 | **E — add apps from a list of installed apps** — *research done (ADR-009), Stage 1 next on `feature/installed-apps`* | Instead of browsing for an `.exe`/`.lnk`, pick from what Windows lists under *Start → All apps*, which also covers Store/packaged apps (Calculator, Settings…) that cannot be added at all today. The research settles the source (the shell's AppsFolder vs. Start menu shortcuts), how a packaged app is stored and launched (`shell:AppsFolder\<AUMID>` rather than a path), and how its icon is read. |
+| 7 | **E — add apps from a list of installed apps** — *done on `feature/installed-apps` (ADR-009)* | Instead of browsing for an `.exe`/`.lnk`, pick from what Windows lists under *Start → All apps*, which also covers Store/packaged apps (Calculator, Settings…) that cannot be added at all today. The research settles the source (the shell's AppsFolder vs. Start menu shortcuts), how a packaged app is stored and launched (`shell:AppsFolder\<AUMID>` rather than a path), and how its icon is read. |
 
 ## Item specifications
 
@@ -596,7 +596,10 @@ on every RCW; shell calls go through the existing shell lock. `ShellIconExtracto
 place of the write time for them, and its version moves to `v4`. The provider applies rule C and the
 filter (ADR-009).
 
-**Stage 3 — UI:** a dialog with search, multi-select, lazily loaded icons and a loading state.
+**Stage 3 — UI — done** (`InstalledAppsWindow` behind an *Installed apps…* button beside *Add apps…* on
+the Apps tab, decided with the user; `InstalledAppsPickerViewModel`; tried by the user). The popup's
+own + still browses for files: offering the picker there too is a separate, later step (decided
+2026-10-31), since the popup closes on outside clicks. As planned: a dialog with search, multi-select, lazily loaded icons and a loading state.
 `GroupEditorViewModel.AddInstalledAppsAsync` follows the `AddAppsAsync` pattern and saves through
 `SaveAndSyncAsync`.
 

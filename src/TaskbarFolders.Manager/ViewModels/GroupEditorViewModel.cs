@@ -11,6 +11,7 @@ using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
+using TaskbarFolders.Core.Apps;
 using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
@@ -362,6 +363,46 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
 
         if (added > 0)
         {
+            await SaveAndSyncAsync(item).ConfigureAwait(true);
+        }
+    }
+
+    /// <summary>
+    /// Adds apps picked from Windows' installed-apps list, each stored as ADR-009's rule C gives
+    /// it (<see cref="InstalledApp.ToEntry"/>). An app the group already holds is skipped. Saves and
+    /// syncs once.
+    /// </summary>
+    [RelayCommand]
+    private async Task AddInstalledAppsAsync(IEnumerable<InstalledApp>? apps)
+    {
+        // Held in a local, as in AddAppsAsync: closing the picker re-activates the window.
+        var item = _boundItem;
+        if (apps is null || item is null)
+        {
+            return;
+        }
+
+        var held = new HashSet<string>(item.Config.Apps.Select(a => a.Path), StringComparer.OrdinalIgnoreCase);
+        var added = 0;
+        foreach (var app in apps)
+        {
+            var entry = app.ToEntry();
+            if (!held.Add(entry.Path))
+            {
+                continue;
+            }
+
+            item.Config.Apps.Add(entry);
+            var appVm = new AppEntryViewModel(entry);
+            Apps.Add(appVm);
+            LoadIconInto(appVm);
+            SaveOnEdit(item, appVm);
+            added++;
+        }
+
+        if (added > 0)
+        {
+            _logger?.LogInformation("Added {Count} installed app(s) to group {GroupId}.", added, item.Id);
             await SaveAndSyncAsync(item).ConfigureAwait(true);
         }
     }

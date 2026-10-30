@@ -92,9 +92,12 @@ In der Liste links stehen alle Gruppen alphabetisch. Jede Zeile zeigt das Symbol
 Wählen Sie eine Gruppe aus. Dann auf der Registerkarte **Apps** entweder
 
 - Dateien mit der Maus aus dem Explorer irgendwo auf die Registerkarte **ziehen** — sie wird dabei umrandet —, oder
-- auf **Add apps…** klicken und eine oder mehrere Dateien auswählen.
+- auf **Add apps…** klicken und eine oder mehrere Dateien auswählen, oder
+- auf **Installed apps…** klicken und Programme in der Liste ankreuzen, die Windows unter *Start → Alle Apps* zeigt.
 
-Es werden nur Programmdateien (`.exe`) und Verknüpfungen (`.lnk`) übernommen. Ziehen Sie versehentlich anderes mit, wird es kommentarlos übergangen.
+**Installed apps…** ist der Weg für Programme ohne Programmdatei — Rechner, Einstellungen, Kurznotizen und alles aus dem Microsoft Store — und erspart die Suche nach dem Ordner eines Programms. Suchen Sie nach dem Namen, den die Liste zeigt (in der Sprache Ihres Windows), kreuzen Sie beliebig viele an und klicken Sie auf **Add**. Programme, die schon in der Gruppe sind, erscheinen ausgegraut als *In group*; Weblinks und Hilfedateien aus dem Startmenü werden nicht aufgeführt. Ein gewöhnliches Programm wird genau so übernommen, als hätten Sie seine Datei ausgewählt; eine Store-App oder ein Eintrag, den Start mit zusätzlichen Angaben öffnet, wird als installierte App übernommen und zeigt statt eines Pfads *Installed app* und ihre Windows-Kennung. Eine solche App funktioniert nur auf einem PC, auf dem sie installiert ist.
+
+Beim Auswählen von Dateien werden nur Programmdateien (`.exe`) und Verknüpfungen (`.lnk`) übernommen. Ziehen Sie versehentlich anderes mit, wird es kommentarlos übergangen.
 
 Der angezeigte Name stammt aus dem Dateinamen, das Symbol aus der Datei selbst — bei einer Verknüpfung aus dem Programm, auf das sie zeigt. Ein Programm ohne eigenes Symbol — oder dessen Datei nicht mehr auffindbar ist — erscheint stattdessen als schlichter Fensterumriss, in der Liste, im Aufklapp-Fenster und im Symbol der Gruppe.
 

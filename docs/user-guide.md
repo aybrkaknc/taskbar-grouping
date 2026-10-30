@@ -38,9 +38,12 @@ Groups are listed alphabetically. Each row shows the group's icon as it appears 
 With a group selected, on its **Apps** tab, either:
 
 - **drag** `.exe` or `.lnk` files from Explorer anywhere onto the tab — it is outlined while you drag — or
-- click **Add apps…** and pick one or more files.
+- click **Add apps…** and pick one or more files, or
+- click **Installed apps…** and tick apps in the list Windows shows under *Start → All apps*.
 
-Only `.exe` and `.lnk` are accepted; anything else in a dropped selection is ignored without an error. The display name comes from the file name, and the icon is read from the file itself — for a shortcut, from whatever it points at. A program that has no icon of its own — or whose file can no longer be found — shows a plain window outline instead, in the list, in the popup and in the group's icon.
+**Installed apps…** is the way to add apps that have no program file to pick — Calculator, Settings, Sticky Notes and anything else from the Microsoft Store — and saves looking for a program's folder. Search by the name the list shows (in your Windows language: Calculator is *Hesap Makinesi* on a Turkish Windows), tick any number, and click **Add**. Apps the group already holds are shown greyed out as *In group*; web links and help files from the Start menu are not listed. An ordinary program is added exactly as if you had picked its file; a Store app, or an entry Start opens with extra settings, is added as the installed app itself and shows *Installed app* and its Windows id where other apps show their path. Such an app works only on a PC where it is installed.
+
+When browsing for files, only `.exe` and `.lnk` are accepted; anything else in a dropped selection is ignored without an error. The display name comes from the file name, and the icon is read from the file itself — for a shortcut, from whatever it points at. A program that has no icon of its own — or whose file can no longer be found — shows a plain window outline instead, in the list, in the popup and in the group's icon.
 
 The path under each name is shortened for display: anything inside your user folder shows as `%USERPROFILE%\…` so your account name is not on screen in a screenshot or a screen share. Hover the path to see it in full. What is stored and launched is always the real path.
 
