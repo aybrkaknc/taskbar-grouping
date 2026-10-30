@@ -531,6 +531,30 @@ public class GroupEditorViewModelTests
     }
 
     [Fact]
+    public async Task TheBackdrop_IsShownWithoutSaving_AndSavedWhenChosen_WithoutSyncing()
+    {
+        var (sut, _, _, _, store, syncService, _, _, _) = CreateSutWithCollaborators();
+        var config = new GroupConfig { Id = "g", GroupName = "g", Backdrop = PopupBackdrop.MicaAlt };
+        sut.Bind(new GroupListItemViewModel(config));
+        sut.Backdrop.Should().Be(PopupBackdrop.MicaAlt);
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        sut.Backdrop = null;
+        await Task.Delay(50);
+
+        config.Backdrop.Should().BeNull("Default hands the choice back to Settings");
+        store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        syncService.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public void BackdropOptions_StartWithDefault_ThenEveryMaterial()
+    {
+        GroupEditorViewModel.BackdropOptions.Select(o => o.Value)
+            .Should().Equal(null, PopupBackdrop.Mica, PopupBackdrop.MicaAlt, PopupBackdrop.Acrylic, PopupBackdrop.Off);
+    }
+
+    [Fact]
     public async Task ChangingAGridSetting_AfterRebinding_SavesOnlyTheNewGroup()
     {
         var (sut, _, _, _, store, _, _, _, _) = CreateSutWithCollaborators();

@@ -159,7 +159,7 @@ Diesen Ordner erreichen Sie jederzeit über **⋯ → Show shortcut…** neben *
 
 ## Eine Gruppe benutzen
 
-Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fenster mit allen Programmen der Gruppe. Unter Windows 11 22H2 und neuer liegt es auf einer leicht verschwommenen, durchscheinenden Glasfläche im Farbton Ihres Erscheinungsbilds, wie die Menüs von Windows selbst. Ältere Versionen zeigen eine schlichte durchscheinende Fläche.
+Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fenster mit allen Programmen der Gruppe. Unter Windows 11 22H2 und neuer liegt es standardmäßig auf Mica, demselben Material wie der Manager; wählbar sind stattdessen Mica Alt, ein verschwommenes Glas (Acrylic) oder eine schlichte, deckende Fläche — siehe *Popup backdrop* unter [Einstellungen](#einstellungen) und *Backdrop* unter [Aufbau des Aufklapp-Fensters](#aufbau-des-aufklapp-fensters). Ältere Versionen zeigen eine schlichte durchscheinende Fläche.
 
 ![Das Aufklapp-Fenster](../assets/screenshots/popup.png)
 
@@ -173,7 +173,7 @@ Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fe
 - **Klick daneben** oder **`Esc`** schließt das Fenster. Der Klick daneben wirkt auch dann, wenn Windows dem Fenster den Fokus nicht gegeben hat.
 - **Erneuter Klick auf die Taskleistenkachel** der Gruppe schließt das Fenster, ohne es wieder zu öffnen.
 
-Ist *Enable popup animations* eingeschaltet, blendet sich das Fenster beim Schließen kurz aus. Unter Windows 11 22H2 und neuer kann die Glasfläche selbst nicht ausblenden; sie verschwindet unmittelbar nach den Symbolen.
+Ist *Enable popup animations* eingeschaltet, blendet sich das Fenster beim Schließen kurz aus. Unter Windows 11 22H2 und neuer kann der Hintergrund selbst nicht ausblenden; er verschwindet unmittelbar nach den Symbolen.
 
 Das Aufklapp-Fenster lässt sich mit der Tastatur bedienen. Beim Öffnen hat das erste Programm den Fokus, `Enter` startet es also sofort. Die Pfeiltasten wechseln zwischen den Programmen — links und rechts laufen über das Zeilenende hinweg, hoch und runter bleiben in der Spalte und springen von der untersten Zeile wieder nach oben —, `Pos1`/`Ende` springen zum ersten und letzten Programm; das aktuelle ist umrandet. `Esc` schließt das Fenster (im Bearbeitungsmodus beendet der erste Druck die Bearbeitung). Die Umrandung erscheint erst, wenn Sie die Tastatur benutzen; wer mit der Maus öffnet, sieht keine.
 
@@ -205,6 +205,7 @@ Zu erreichen über den **⚙**-Knopf oben rechts.
 |---|---|---|---|
 | Theme | System, Light, Dark | System | *System* übernimmt das Windows-Erscheinungsbild und wechselt sofort mit, wenn Sie es in Windows umstellen. |
 | Popup position | Auto, Above, Below | Auto | *Auto* wählt die zur aktuellen Taskleistenposition passende Seite. |
+| Popup backdrop | Mica, Mica Alt, Acrylic, Off | Mica | Worauf jedes Aufklapp-Fenster liegt. *Mica* passt zum Manager; *Mica Alt* zeigt die Farbe des Desktops kräftiger; *Acrylic* zeigt verschwommen, was hinter dem Fenster liegt; *Off* ist eine schlichte, deckende Fläche. Eine Gruppe kann unter *Appearance* ihre eigene Wahl treffen. Ab Windows 11 22H2. |
 | Enable popup animations | ein / aus | ein | Blendet das Aufklapp-Fenster animiert ein. |
 | Start TaskbarFolders Manager when Windows starts | ein / aus | aus | Startet den Manager bei der Anmeldung. |
 | Show "Taskbar Groups" in Explorer's right-click menu | ein / aus | ein | Zeigt Ihre Gruppen unter *Weitere Optionen anzeigen* für `.exe`- und `.lnk`-Dateien. Der Manager hält die Liste aktuell. |
@@ -225,6 +226,7 @@ Jede Gruppe legt ihr Aufklapp-Fenster selbst fest, im Manager auf der Registerka
 - **Icon size** — *Small*, *Medium* (Standard), *Large* oder *Extra large*. Die Kacheln wachsen mit dem Symbol, damit die Namen weiter hineinpassen.
 - **Spacing** — der Abstand zwischen den Kacheln: *None* (Standard), *Small*, *Medium* oder *Large*. Die Kacheln behalten ihre Größe; das Fenster wird um die Abstände breiter.
 - **Show app names** — standardmäßig an. Ohne Namen schrumpfen die Kacheln auf ihre Symbole, das Fenster wird deutlich kleiner; zeigt man auf ein Symbol, erscheint sein Name trotzdem.
+- **Backdrop** — worauf das Aufklapp-Fenster dieser Gruppe liegt: *Default* (Standard) übernimmt *Popup backdrop* aus den Einstellungen; *Mica*, *Mica Alt*, *Acrylic* oder *Off* gelten nur für diese Gruppe. Die Materialien zeichnet Windows selbst, deshalb zeigt die Vorschau sie nicht — öffnen Sie das Fenster, um sie zu sehen.
 
 Rechts neben diesen Einstellungen zeigt **Preview** das Aufklapp-Fenster, wie Sie es eingestellt haben, mit den eigenen Programmen und Symbolen der Gruppe (die ersten zwölf; eine Gruppe ohne Programme zeigt Beispielkacheln). Sie folgt jeder Änderung sofort und wird so gezeichnet, wie das Aufklapp-Fenster seine Kacheln zeichnet — was man sieht, öffnet sich auch aus der Taskleiste. Würde das Fenster für den vorhandenen Platz zu breit, vergrößert sich das Manager-Fenster bis zur Breite des Bildschirms; von selbst wird es nie schmaler, und die Einstellungen lassen sich scrollen, wenn das Fenster niedrig ist.
 
@@ -268,7 +270,7 @@ Ausführlicher, mit Zuordnung von Protokollzeilen zu Ursachen: [Troubleshooting]
 Keine Fehler, sondern bewusste oder noch offene Grenzen:
 
 - Programme lassen sich **nicht umsortieren**.
-- Der verschwommene Glas-Hintergrund des Aufklapp-Fensters braucht Windows 11 22H2 oder neuer. Sind in Windows die *Transparenzeffekte* ausgeschaltet, ist er eine einfarbige Fläche.
+- Die Hintergründe des Aufklapp-Fensters (Mica, Mica Alt, Acrylic) brauchen Windows 11 22H2 oder neuer. Sind in Windows die *Transparenzeffekte* ausgeschaltet, sind sie einfarbige Flächen. Mica und Mica Alt zeigt Windows außerdem einfarbig, solange das Fenster nicht aktiv ist.
 - Es gibt **keine ARM64-Fassung**.
 - Nichts hindert daran, den Manager **zweimal gleichzeitig** zu starten. Die zweite Instanz kann Änderungen der ersten überschreiben.
 - Das **Deinstallieren löscht auch Ihre Gruppen und Einstellungen**. Sichern Sie `%APPDATA%\TaskbarFolders\groups` vorher, wenn Sie sie behalten möchten.

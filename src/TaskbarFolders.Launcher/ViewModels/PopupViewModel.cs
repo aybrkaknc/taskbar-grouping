@@ -135,6 +135,13 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private TileMetrics _tile = TileMetrics.Default;
 
+    /// <summary>
+    /// What the group chose to draw its popup on, or <see langword="null"/> to follow the default
+    /// in Settings; see <see cref="Views.PopupBackdropChoice.Resolve"/>.
+    /// </summary>
+    [ObservableProperty]
+    private PopupBackdrop? _backdrop;
+
     /// <summary>True when the loaded group does not exist or is empty — used by the UI to show an inline error.</summary>
     [ObservableProperty]
     private bool _isUnavailable;
@@ -533,6 +540,7 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     {
         Columns = config.Columns;
         ShowNames = config.ShowNames;
+        Backdrop = config.Backdrop;
         Tile = TileMetrics.Compute(config.IconSize, config.ShowNames, config.TileSpacing);
     }
 

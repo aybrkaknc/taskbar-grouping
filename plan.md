@@ -238,8 +238,8 @@ comes first so that C1–C4 land in their final place instead of being laid out 
   groups, a three-step "get started" view. `a6cb480`, merged into `develop`.
 - [ ] **Visual polish** — let the Manager's Mica backdrop show through (it is applied but
   hidden under solid brushes), Fluent icons, consistent spacing; retake the screenshots.
-  Ranked #6 below. *In progress on `feature/manager-polish`: Mica shows app-wide; next the
-  popup's backdrop and colour tints.*
+  Ranked #6 below. *In progress on `feature/manager-polish`: Mica shows app-wide, the popup's
+  backdrop is a choice; next the colour tints.*
 
 ## Up next, in order
 
@@ -510,9 +510,12 @@ retaken.
    in both themes; `BackdropTintTests` measures contrast, `MicaSurfacesTests` the surfaces.
    The pixel test planned for the Mica area was dropped: PrintWindow draws Mica as its plain
    colour, so a headless test cannot see the material.
-2. [ ] **The popup's backdrop, chosen** (asked for by the user on 2026-10-30): *Mica* (default, the
+2. [x] **The popup's backdrop, chosen** (asked for by the user on 2026-10-30): *Mica* (default, the
    Manager's look), *Mica Alt*, *Acrylic* (today's), or *Off* (an opaque theme colour). A default
-   for all popups in Settings, and a per-group override on *Appearance*.
+   for all popups in Settings (`AppSettings.PopupBackdrop`), and a per-group override on
+   *Appearance* (`GroupConfig.Backdrop`, `null` = Settings); `PopupBackdropChoice` resolves it.
+   ADR-004 amended. Looking at Settings found the themed `ComboBox` showing a record's
+   `ToString()` — fixed in the same commit, with a test. Tried by the user.
 3. [ ] **Colour tints for the popup** (same request): *Default*, the Windows accent colour, and a few
    ready palettes laid over the material, with text contrast tested; placed as in step 2.
 4. [ ] Fluent icons, the spacing scale, and the screenshots (the user switches the display to

@@ -78,6 +78,19 @@ public class PopupViewModelTests
         sut.IsUnavailable.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(PopupBackdrop.Acrylic)]
+    public async Task LoadAsync_ExposesTheGroupsOwnBackdrop_OrNone(PopupBackdrop? chosen)
+    {
+        var config = new GroupConfig { Id = "g1", GroupName = "Tools", Backdrop = chosen, Apps = { new AppEntry { Name = "a", Path = "C:/a.exe" } } };
+        var (sut, _, _, _, _) = CreateSut("g1", config);
+
+        await sut.LoadAsync();
+
+        sut.Backdrop.Should().Be(chosen);
+    }
+
     [Fact]
     public async Task LoadAsync_SetsIsUnavailable_WhenGroupNotFound()
     {

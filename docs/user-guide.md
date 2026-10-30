@@ -103,7 +103,7 @@ You can open that folder yourself at any time with **⋯ → Show shortcut…** 
 
 ## Using a group
 
-Click the pinned tile. A popup opens next to the taskbar, anchored near the tile you clicked, showing every app in the group. On Windows 11 22H2 and later it sits on a blurred, translucent glass panel in your theme's tone, like Windows' own flyouts. Older versions get a plain translucent panel.
+Click the pinned tile. A popup opens next to the taskbar, anchored near the tile you clicked, showing every app in the group. On Windows 11 22H2 and later it sits on Mica by default, the same material as the Manager; you can choose Mica Alt, a blurred glass (Acrylic) or a plain opaque panel instead — see *Popup backdrop* in [Settings](#settings) and *Backdrop* under [Popup layout](#popup-layout). Older versions get a plain translucent panel.
 
 ![The popup](../assets/screenshots/popup.png)
 
@@ -117,7 +117,7 @@ Click the pinned tile. A popup opens next to the taskbar, anchored near the tile
 - **Click anywhere else**, or press **Escape**, to dismiss the popup. A click outside works even if Windows did not give the popup the focus.
 - **Click the group's taskbar tile again** to close the popup; it does not reopen.
 
-With *Enable popup animations* on, the popup fades out briefly as it closes. On Windows 11 22H2 and later the glass panel itself cannot fade, so it disappears right after the icons have.
+With *Enable popup animations* on, the popup fades out briefly as it closes. On Windows 11 22H2 and later the backdrop itself cannot fade, so it disappears right after the icons have.
 
 The popup works from the keyboard. The first app holds the focus when it opens, so `Enter` starts it straight away. The arrow keys move between apps — left and right run on across the ends of rows, up and down keep the column and wrap round from the bottom row to the top — and `Home`/`End` jump to the first and last app; the app you are on is outlined. `Escape` closes the popup; in edit mode the first press leaves edit mode. The outline appears only once you use the keyboard, so opening the popup with the mouse shows no outline.
 
@@ -151,6 +151,7 @@ Open with the **⚙** button in the top right.
 |---|---|---|---|
 | Theme | System, Light, Dark | System | *System* follows the Windows app theme and switches live when you change it. |
 | Popup position | Auto, Above, Below | Auto | *Auto* places the popup on the sensible side of the taskbar for its current edge. |
+| Popup backdrop | Mica, Mica Alt, Acrylic, Off | Mica | What every popup is drawn on. *Mica* matches the Manager; *Mica Alt* shows your desktop's colour more strongly; *Acrylic* blurs whatever is behind the popup; *Off* is a plain opaque panel. A group can choose its own on *Appearance*. Windows 11 22H2 and later. |
 | Enable popup animations | on / off | on | Turns the popup's open animation on or off. |
 | Start TaskbarFolders Manager when Windows starts | on / off | off | Adds or removes the per-user Run registry entry. |
 | Show "Taskbar Groups" in Explorer's right-click menu | on / off | on | Lists your groups under *Show more options* for `.exe` and `.lnk` files. Kept up to date by the Manager. |
@@ -173,6 +174,7 @@ Each group sets out its own popup on the **Appearance** tab of the Manager, unde
 - **Icon size** — *Small*, *Medium* (the default), *Large* or *Extra large*. The tiles grow with the icon so the names still fit.
 - **Spacing** — the gap between the tiles: *None* (the default), *Small*, *Medium* or *Large*. The tiles keep their size; the popup grows by the gaps.
 - **Show app names** — on by default. Without names the tiles shrink to their icons, so the popup gets much smaller; pointing at an icon still shows its name.
+- **Backdrop** — what this group's popup is drawn on: *Default* (the default) uses *Popup backdrop* from Settings; *Mica*, *Mica Alt*, *Acrylic* or *Off* override it for this group only. Windows draws the materials, so the preview does not show them — open the popup to see.
 
 To the right of these settings, **Preview** shows the popup as you set it, with the group's own apps and icons (the first twelve; a group without apps shows sample tiles). It follows every change at once, and it is drawn the way the popup draws its tiles, so what you see is what opens from the taskbar. If the settings make the popup too wide for the space, the window grows to make room, up to the width of your screen; it never shrinks by itself, and the settings scroll if the window is short.
 

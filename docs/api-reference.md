@@ -35,6 +35,7 @@ One group.
 | `IconSize` | `int` | Popup icon size in DIPs, one of `IconSizes` (32, 48, 64, 80); any other value snaps to the nearest on assignment. Default `DefaultIconSize` (48) |
 | `ShowNames` | `bool` | Whether popup tiles show app names, default `true`; without them tiles shrink to the icon |
 | `TileSpacing` | `int` | Gap between popup tiles in DIPs, one of `TileSpacings` (0, 4, 8, 12); any other value snaps to the nearest on assignment. Default 0, which a file written before the setting also loads as. The popup reads it through `TileMetrics` (Shared): `Compute(iconSize, showNames, spacing)` keeps the tile's own size and adds `Spacing`, `CellWidth`/`CellHeight` (tile plus gap) and `HalfSpacing` (each tile's margin) |
+| `Backdrop` | `PopupBackdrop?` | What the group's popup is drawn on; `null` (every group saved before the setting) follows `AppSettings.PopupBackdrop`. Serialised as a camel-case string |
 | `Apps` | `List<AppEntry>` | Members of the group |
 
 #### [`AppSettings`](../src/TaskbarFolders.Shared/Models/AppSettings.cs)
@@ -45,12 +46,13 @@ One group.
 | `Theme` | `ThemePreference` | `System` |
 | `EnableAnimations` | `bool` | `true` |
 | `PopupPosition` | `PopupPositionPreference` | `Auto` |
+| `PopupBackdrop` | `PopupBackdrop` | `Mica` |
 
 On load the registry, not this file, is the source of truth for `AutoStart`.
 
 #### [`Preferences`](../src/TaskbarFolders.Shared/Models/Preferences.cs)
 
-`ThemePreference` — `System`, `Light`, `Dark`. `PopupPositionPreference` — `Auto`, `Above`, `Below`. Both serialise as camel-case strings.
+`ThemePreference` — `System`, `Light`, `Dark`. `PopupPositionPreference` — `Auto`, `Above`, `Below`. `PopupBackdrop` — `Mica`, `MicaAlt`, `Acrylic`, `Off`. All serialise as camel-case strings.
 
 ### Configuration
 
@@ -277,7 +279,7 @@ The group's newest generated `.ico` — the one sync last pointed its shortcuts 
 
 ### Interop
 
-`WindowBackdrop.TryApply(IntPtr hwnd, WindowBackdropKind kind)` requests a DWM system backdrop: `Mica` on the Manager's windows, `Acrylic` on the popup. A Manager failure is ignored and the window keeps solid brushes; a popup failure switches it to its fallback panel. `WindowBackdrop.TryExtendFrameIntoClientArea(IntPtr hwnd)` extends the frame over the whole client area (`DwmExtendFrameIntoClientArea` with −1 margins) so the backdrop is drawn behind it, keeping the caption.
+`WindowBackdrop.TryApply(IntPtr hwnd, WindowBackdropKind kind)` requests a DWM system backdrop: `Mica` on the Manager's windows, and on the popup what `PopupBackdropChoice` (Launcher) gives — `Resolve(group, settings)` takes the group's `Backdrop` or else the default, `KindFor` maps it to a `WindowBackdropKind`, `None` for `Off`. A Manager failure is ignored and the window keeps solid brushes; a popup failure switches it to its fallback panel. `WindowBackdrop.TryExtendFrameIntoClientArea(IntPtr hwnd)` extends the frame over the whole client area (`DwmExtendFrameIntoClientArea` with −1 margins) so the backdrop is drawn behind it, keeping the caption.
 
 `MicaSurfaces` (Manager) is the one way a Manager window gets its backdrop. `TryApply(Window)` asks for Mica and extends the frame, and on success calls `Use(Window)`, which makes the HWND's clear colour and the window's background transparent. `Use(Window, Panel sidebar, Border content)` also gives the two panes the theme's `SidebarBackdropTint` and `ContentBackdropTint` by resource reference.
 

@@ -13,6 +13,25 @@ public enum ThemePreference
     Dark = 2,
 }
 
+/// <summary>
+/// What the launcher popup is drawn on. The materials are DWM's, on Windows 11 22H2 and later;
+/// older Windows show a plain translucent panel for all three.
+/// </summary>
+public enum PopupBackdrop
+{
+    /// <summary>Mica, the Manager's own material: a tint taken from the desktop background (default).</summary>
+    Mica = 0,
+
+    /// <summary>Mica Alt: Mica with the desktop's colour shown more strongly.</summary>
+    MicaAlt = 1,
+
+    /// <summary>Acrylic: a blur of whatever is behind the popup.</summary>
+    Acrylic = 2,
+
+    /// <summary>No material: an opaque panel in the theme's colour.</summary>
+    Off = 3,
+}
+
 /// <summary>Where the launcher popup is anchored relative to the taskbar icon.</summary>
 public enum PopupPositionPreference
 {

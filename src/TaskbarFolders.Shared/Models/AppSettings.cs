@@ -35,6 +35,13 @@ public sealed class AppSettings
     public PopupPositionPreference PopupPosition { get; set; } = PopupPositionPreference.Auto;
 
     /// <summary>
+    /// What every popup is drawn on, unless its group chose otherwise (<see cref="GroupConfig.Backdrop"/>).
+    /// </summary>
+    [JsonPropertyName("popupBackdrop")]
+    [JsonConverter(typeof(CamelCaseEnumConverter<PopupBackdrop>))]
+    public PopupBackdrop PopupBackdrop { get; set; } = PopupBackdrop.Mica;
+
+    /// <summary>
     /// Whether Explorer's classic context menu for <c>.exe</c> and <c>.lnk</c> files offers
     /// "Taskbar Groups", with one entry per group that adds the file to it.
     /// </summary>

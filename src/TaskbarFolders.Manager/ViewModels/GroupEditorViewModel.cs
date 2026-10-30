@@ -29,6 +29,11 @@ public sealed record AppIconChoice(AppEntryViewModel App, string ImagePath);
 /// <param name="Label">What the choice reads as.</param>
 public sealed record GridOption(int Value, string Label);
 
+/// <summary>One choice of a group's popup backdrop; <see langword="null"/> follows Settings.</summary>
+/// <param name="Value">The backdrop, or <see langword="null"/> for the default in Settings.</param>
+/// <param name="Label">What the segmented control shows.</param>
+public sealed record BackdropOption(PopupBackdrop? Value, string Label);
+
 /// <summary>
 /// Detail-pane view model for a single selected group. Manages the apps list, debounced
 /// composite-icon preview, and add/remove operations. <see cref="Bind"/> swaps the
@@ -179,6 +184,16 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
         new(12, "Large"),
     ];
 
+    /// <summary>What a group's popup can be drawn on: the default from Settings, then each material.</summary>
+    public static IReadOnlyList<BackdropOption> BackdropOptions { get; } =
+    [
+        new(null, "Default"),
+        new(PopupBackdrop.Mica, "Mica"),
+        new(PopupBackdrop.MicaAlt, "Mica Alt"),
+        new(PopupBackdrop.Acrylic, "Acrylic"),
+        new(PopupBackdrop.Off, "Off"),
+    ];
+
     /// <summary>The popup as the bound group's settings lay it out, shown on Appearance.</summary>
     public PopupPreviewViewModel Preview { get; } = new();
 
@@ -197,6 +212,13 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     /// <summary>Gap between the bound group's popup tiles, in DIPs. Saved as it changes.</summary>
     [ObservableProperty]
     private int _tileSpacing;
+
+    /// <summary>
+    /// What the bound group's popup is drawn on, or <see langword="null"/> to follow Settings.
+    /// Saved as it changes.
+    /// </summary>
+    [ObservableProperty]
+    private PopupBackdrop? _backdrop;
 
     /// <summary>Re-routes the editor to a new group selection.</summary>
     /// <param name="item">The new selection, or <see langword="null"/> to clear.</param>
@@ -227,6 +249,7 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
             IconSize = item.Config.IconSize;
             ShowNames = item.Config.ShowNames;
             TileSpacing = item.Config.TileSpacing;
+            Backdrop = item.Config.Backdrop;
         }
         finally
         {
@@ -462,6 +485,8 @@ public sealed partial class GroupEditorViewModel : ObservableObject, IDisposable
     partial void OnShowNamesChanged(bool value) => SaveGridSetting(c => c.ShowNames = value);
 
     partial void OnTileSpacingChanged(int value) => SaveGridSetting(c => c.TileSpacing = value);
+
+    partial void OnBackdropChanged(PopupBackdrop? value) => SaveGridSetting(c => c.Backdrop = value);
 
     // From the editor's own values, not the store, so it answers at once — also while a group is
     // being bound, when nothing is saved.

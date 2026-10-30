@@ -187,6 +187,19 @@ public class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task ThePopupBackdrop_IsLoaded_AndSavedAsItChanges()
+    {
+        var sut = CreateSut(new AppSettings { PopupBackdrop = PopupBackdrop.Acrylic }, autoStartEnabled: false, out var store, out _, out _);
+        await sut.LoadAsync();
+        sut.PopupBackdrop.Should().Be(PopupBackdrop.Acrylic);
+
+        sut.PopupBackdrop = PopupBackdrop.Off;
+        await sut.WhenIdleAsync();
+
+        store.Verify(s => s.SaveAsync(It.Is<AppSettings>(x => x.PopupBackdrop == PopupBackdrop.Off), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task AChange_KeepsWhatTheDialogDoesNotShow()
     {
         // The Manager stores more in settings.json than this dialog edits; a change made here

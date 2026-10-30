@@ -48,6 +48,9 @@ public sealed partial class PopupWindow : Window, IDisposable
     private readonly ITaskbarPositionHelper _positionHelper;
     private readonly AppSettings _settings;
     private readonly bool _useSystemBackdrop;
+
+    // The group's own backdrop, or the default in Settings; fixed for the popup's lifetime.
+    private readonly PopupBackdrop _backdrop;
     private OutsideClickWatcher? _outsideClicks;
     private TileReorderDrag? _reorder;
 
@@ -100,6 +103,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         // available the popup becomes an ordinary window whose frame covers the whole
         // client area (the WindowChrome below), and DWM fills it with acrylic. Elsewhere it
         // stays layered and ChromeRoot paints a translucent fallback panel instead.
+        _backdrop = PopupBackdropChoice.Resolve(viewModel.Backdrop, settings.PopupBackdrop);
         _useSystemBackdrop = WindowBackdrop.IsSupported;
         if (_useSystemBackdrop)
         {
@@ -116,7 +120,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         }
         else
         {
-            ChromeRoot.SetResourceReference(Border.BackgroundProperty, "PopupFallbackBackground");
+            ChromeRoot.SetResourceReference(Border.BackgroundProperty, _backdrop == PopupBackdrop.Off ? "PopupSolidBackground" : "PopupFallbackBackground");
             ChromeRoot.CornerRadius = new CornerRadius(8);
         }
 
@@ -384,8 +388,9 @@ public sealed partial class PopupWindow : Window, IDisposable
     }
 
     /// <summary>
-    /// Puts DWM's acrylic behind the popup, tinted to match the theme, with rounded corners.
-    /// With Windows' transparency effects switched off DWM substitutes a solid tint itself.
+    /// Puts the chosen DWM material behind the popup (Mica, Mica Alt or Acrylic), tinted to match
+    /// the theme, with rounded corners — or, with the backdrop off, none, behind an opaque theme
+    /// panel. With Windows' transparency effects switched off DWM substitutes a solid tint itself.
     /// </summary>
     private void ApplySystemBackdrop()
     {
@@ -404,7 +409,14 @@ public sealed partial class PopupWindow : Window, IDisposable
         _ = WindowBackdrop.TrySetDarkTitleBar(hwnd, dark);
         _ = WindowBackdrop.TrySetRoundedCorners(hwnd);
 
-        if (!WindowBackdrop.TryApply(hwnd, WindowBackdropKind.Acrylic))
+        if (_backdrop == PopupBackdrop.Off)
+        {
+            _ = WindowBackdrop.TryApply(hwnd, WindowBackdropKind.None);
+            ChromeRoot.SetResourceReference(Border.BackgroundProperty, "PopupSolidBackground");
+            return;
+        }
+
+        if (!WindowBackdrop.TryApply(hwnd, PopupBackdropChoice.KindFor(_backdrop)))
         {
             // The window is no longer layered, so a transparent client area would render
             // black. Paint the fallback panel instead; it is near-opaque in this mode.

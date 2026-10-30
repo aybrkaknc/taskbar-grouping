@@ -265,6 +265,52 @@ public sealed class ControlStyleTests
         otherFill.A.Should().Be(0, "the other choices are not filled");
     }
 
+    [Fact]
+    public void ComboBox_ShowsTheDisplayMember_InItsClosedBox()
+    {
+        // WPF applies DisplayMemberPath through ItemTemplateSelector, not SelectionBoxItemTemplate;
+        // a template that binds only the latter shows the chosen item's ToString() instead.
+        var shown = StaThread.Run(() =>
+        {
+            var resources = new ResourceDictionary();
+            resources.MergedDictionaries.Add(LoadTheme("Dark.xaml"));
+            resources.MergedDictionaries.Add(LoadControls());
+
+            var box = new ComboBox
+            {
+                Resources = resources,
+                ItemsSource = new[] { new KeyValuePair<int, string>(1, "Mica"), new KeyValuePair<int, string>(2, "Acrylic") },
+                DisplayMemberPath = "Value",
+                SelectedIndex = 1,
+            };
+            box.Measure(new Size(300, 40));
+            box.Arrange(new Rect(0, 0, 300, 40));
+            box.UpdateLayout();
+
+            return string.Concat(FindAll<TextBlock>(box).Select(t => t.Text));
+        });
+
+        shown.Should().Be("Acrylic");
+    }
+
+    private static IEnumerable<T> FindAll<T>(DependencyObject root)
+        where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+            {
+                yield return match;
+            }
+
+            foreach (var deeper in FindAll<T>(child))
+            {
+                yield return deeper;
+            }
+        }
+    }
+
     private static ResourceDictionary LoadTheme(string fileName)
     {
         using var stream = File.OpenRead(Path.Combine(

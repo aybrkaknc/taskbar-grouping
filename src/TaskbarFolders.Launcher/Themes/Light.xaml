@@ -5,6 +5,8 @@
          popup stays a layered window and this shows the desktop faintly through it) and if
          DWM refuses the backdrop (the window is then opaque, so the alpha barely matters). -->
     <SolidColorBrush x:Key="PopupFallbackBackground" Color="#E6F3F3F3" />
+    <!-- The panel with the backdrop set to Off: opaque, Mica's own base colour. -->
+    <SolidColorBrush x:Key="PopupSolidBackground" Color="#FFF3F3F3" />
     <SolidColorBrush x:Key="ForegroundDefault" Color="#1A1A1A" />
     <SolidColorBrush x:Key="ForegroundSubtle" Color="#5A5A5A" />
     <SolidColorBrush x:Key="TileHoverBackground" Color="#1F0078D4" />

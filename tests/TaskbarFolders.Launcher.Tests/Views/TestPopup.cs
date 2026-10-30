@@ -36,9 +36,11 @@ internal static class TestPopup
         Action<PopupViewModel>? beforeShow = null,
         int iconSize = GroupConfig.DefaultIconSize,
         bool showNames = true,
-        int tileSpacing = 0)
+        int tileSpacing = 0,
+        PopupBackdrop? groupBackdrop = null,
+        PopupBackdrop settingsBackdrop = PopupBackdrop.Mica)
     {
-        var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = columns, IconSize = iconSize, ShowNames = showNames, TileSpacing = tileSpacing };
+        var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = columns, IconSize = iconSize, ShowNames = showNames, TileSpacing = tileSpacing, Backdrop = groupBackdrop };
         for (var i = 0; i < appCount; i++)
         {
             config.Apps.Add(new AppEntry { Name = $"App {i + 1}", Path = $@"C:\does\not\exist\app{i + 1}.exe" });
@@ -69,7 +71,7 @@ internal static class TestPopup
             .Setup(h => h.ComputePlacement(It.IsAny<Size>(), It.IsAny<PopupPositionPreference>()))
             .Returns(new PopupPlacement(-32000, -32000));
 
-        var window = new PopupWindow(viewModel, positionHelper.Object, new AppSettings { EnableAnimations = enableAnimations });
+        var window = new PopupWindow(viewModel, positionHelper.Object, new AppSettings { EnableAnimations = enableAnimations, PopupBackdrop = settingsBackdrop });
 
         // Production merges the theme into Application.Resources; with no Application in the
         // test host, the window's own resources sit on the same lookup path.

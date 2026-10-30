@@ -40,3 +40,9 @@ Everywhere else the popup stays layered, and `ChromeRoot` paints the theme's tra
 - The whole popup rectangle is now hit-testable. Before, clicks between tiles fell through to whatever was behind the transparent window.
 - When the user turns off Windows' transparency effects, DWM shows a solid tint instead of acrylic. No code is involved.
 - The labels' halo stays. On acrylic it is barely needed, but on the fallback panel over older Windows it still earns its place.
+
+## Amendment (2026-10-30): the material is a choice, Mica by default
+
+The window-mode decision stands; the material behind the non-layered window is no longer fixed to Acrylic. `AppSettings.PopupBackdrop` sets it for every popup — Mica, Mica Alt, Acrylic or Off — and `GroupConfig.Backdrop` overrides it per group (`null` follows Settings). The default became **Mica**, so the popup matches the Manager, which wears Mica since C6. *Off* keeps the non-layered mode but asks DWM for no backdrop and paints the opaque `PopupSolidBackground` panel; on older Windows *Off* paints the same panel in the layered mode.
+
+Mica is a material for a window that has the focus: DWM draws it as a plain tint while the window is inactive, and a popup is not always activated when it opens. Acrylic is the choice for anyone who wants the glass look in every state; it stays one click away in both places.

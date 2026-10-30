@@ -24,6 +24,39 @@ public class PreferencesSerializationTests
     }
 
     [Theory]
+    [InlineData(PopupBackdrop.Mica, "\"mica\"")]
+    [InlineData(PopupBackdrop.MicaAlt, "\"micaAlt\"")]
+    [InlineData(PopupBackdrop.Acrylic, "\"acrylic\"")]
+    [InlineData(PopupBackdrop.Off, "\"off\"")]
+    public void AppSettings_PopupBackdrop_RoundTripsAsCamelCase(PopupBackdrop value, string expectedFragment)
+    {
+        var json = JsonSerializer.Serialize(new AppSettings { PopupBackdrop = value }, JsonOptions.Default);
+
+        json.Should().Contain($"\"popupBackdrop\": {expectedFragment}");
+        JsonSerializer.Deserialize<AppSettings>(json, JsonOptions.Default)!.PopupBackdrop.Should().Be(value);
+    }
+
+    [Fact]
+    public void AppSettings_FromAFileWithoutABackdrop_GivesPopupsMica()
+    {
+        var settings = JsonSerializer.Deserialize<AppSettings>("{\"theme\":\"dark\"}", JsonOptions.Default);
+
+        settings!.PopupBackdrop.Should().Be(PopupBackdrop.Mica, "the popup wears the Manager's material unless told otherwise");
+    }
+
+    [Fact]
+    public void GroupConfig_Backdrop_FollowsSettingsUntilChosen_AndRoundTrips()
+    {
+        var old = JsonSerializer.Deserialize<GroupConfig>("{\"id\":\"x\",\"groupName\":\"n\",\"apps\":[]}", JsonOptions.Default);
+        old!.Backdrop.Should().BeNull("a group that never chose one follows the default in Settings");
+
+        var json = JsonSerializer.Serialize(new GroupConfig { Id = "g", GroupName = "n", Backdrop = PopupBackdrop.Acrylic }, JsonOptions.Default);
+
+        json.Should().Contain("\"backdrop\": \"acrylic\"");
+        JsonSerializer.Deserialize<GroupConfig>(json, JsonOptions.Default)!.Backdrop.Should().Be(PopupBackdrop.Acrylic);
+    }
+
+    [Theory]
     [InlineData(PopupPositionPreference.Auto, "\"auto\"")]
     [InlineData(PopupPositionPreference.Above, "\"above\"")]
     [InlineData(PopupPositionPreference.Below, "\"below\"")]

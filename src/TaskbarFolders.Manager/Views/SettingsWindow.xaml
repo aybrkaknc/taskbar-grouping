@@ -8,7 +8,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Settings"
-        Width="480" Height="500"
+        Width="480" Height="570"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         d:DataContext="{d:DesignInstance Type=vm:SettingsViewModel}"
@@ -46,6 +46,15 @@
             <TextBlock Text="Popup position" FontWeight="SemiBold" Margin="0,0,0,4" />
             <ComboBox SelectedItem="{Binding PopupPosition}"
                       ItemsSource="{Binding Source={StaticResource PopupPositionValues}}"
+                      Margin="0,0,0,16" />
+
+            <TextBlock Text="Popup backdrop" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <ComboBox ItemsSource="{x:Static vm:SettingsViewModel.PopupBackdropOptions}"
+                      DisplayMemberPath="Label"
+                      SelectedValuePath="Value"
+                      SelectedValue="{Binding PopupBackdrop}"
+                      AutomationProperties.Name="Popup backdrop"
+                      ToolTip="What every popup is drawn on. A group can choose its own on Appearance."
                       Margin="0,0,0,16" />
 
             <CheckBox IsChecked="{Binding EnableAnimations}" Content="Enable popup animations" Margin="0,0,0,12" />

@@ -84,6 +84,14 @@ public sealed class GroupConfig
     public bool ShowNames { get; set; } = true;
 
     /// <summary>
+    /// What this group's popup is drawn on, or <see langword="null"/> — every group before the
+    /// setting existed — to follow <see cref="AppSettings.PopupBackdrop"/>.
+    /// </summary>
+    [JsonPropertyName("backdrop")]
+    [JsonConverter(typeof(CamelCaseEnumConverter<PopupBackdrop>))]
+    public PopupBackdrop? Backdrop { get; set; }
+
+    /// <summary>
     /// Applications contained in this group.
     /// </summary>
     [JsonPropertyName("apps")]

@@ -74,6 +74,14 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private PopupPositionPreference _popupPosition;
 
+    /// <summary>The materials a popup can be drawn on, as the dialog lists them.</summary>
+    public static IReadOnlyList<BackdropOption> PopupBackdropOptions { get; } =
+        GroupEditorViewModel.BackdropOptions.Where(o => o.Value is not null).ToArray();
+
+    /// <summary>What every popup is drawn on, unless its group chose otherwise on Appearance.</summary>
+    [ObservableProperty]
+    private PopupBackdrop _popupBackdrop;
+
     /// <summary>Whether Explorer's context menu offers "Taskbar Groups" for .exe and .lnk files.</summary>
     [ObservableProperty]
     private bool _showInExplorerMenu = true;
@@ -105,6 +113,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
             EnableAnimations = settings.EnableAnimations;
             ShowInExplorerMenu = settings.ShowInExplorerMenu;
             PopupPosition = settings.PopupPosition;
+            PopupBackdrop = settings.PopupBackdrop;
         }
         finally
         {
@@ -145,6 +154,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
                 EnableAnimations = EnableAnimations,
                 ShowInExplorerMenu = ShowInExplorerMenu,
                 PopupPosition = PopupPosition,
+                PopupBackdrop = PopupBackdrop,
                 OrphanedTilesNoticeShown = stored.OrphanedTilesNoticeShown,
             }).ConfigureAwait(true);
 
@@ -241,6 +251,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     partial void OnEnableAnimationsChanged(bool value) => QueueApply(nameof(EnableAnimations));
     partial void OnShowInExplorerMenuChanged(bool value) => QueueApply(nameof(ShowInExplorerMenu));
     partial void OnPopupPositionChanged(PopupPositionPreference value) => QueueApply(nameof(PopupPosition));
+    partial void OnPopupBackdropChanged(PopupBackdrop value) => QueueApply(nameof(PopupBackdrop));
 
     private void QueueApply(string setting)
     {
