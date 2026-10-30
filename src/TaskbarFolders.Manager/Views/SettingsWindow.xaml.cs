@@ -31,6 +31,8 @@ public partial class SettingsWindow : Window
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
+        // The same material as the main window; the form sits straight on it.
+        _ = MicaSurfaces.TryApply(this);
         ApplyTitleBarTheme();
 
         // Saving from this dialog is what changes the theme, so it has to repaint its own

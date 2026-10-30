@@ -238,7 +238,8 @@ comes first so that C1–C4 land in their final place instead of being laid out 
   groups, a three-step "get started" view. `a6cb480`, merged into `develop`.
 - [ ] **Visual polish** — let the Manager's Mica backdrop show through (it is applied but
   hidden under solid brushes), Fluent icons, consistent spacing; retake the screenshots.
-  Ranked #6 below.
+  Ranked #6 below. *In progress on `feature/manager-polish`: Mica shows app-wide; next the
+  popup's backdrop and colour tints.*
 
 ## Up next, in order
 
@@ -498,6 +499,24 @@ retaken.
 - All screenshots retaken, with the recipe in `CLAUDE.md`.
 
 **Start with** a 20-minute read-only pass that lists which brushes are opaque.
+
+**Progress**
+1. [x] **Mica shows, app-wide.** The pass found two covers, not one: the opaque `WindowBackground`
+   and `SidebarBackground`, and WPF clearing the HWND to black. `MicaSurfaces.TryApply` extends
+   the frame (`WindowBackdrop.TryExtendFrameIntoClientArea`) and clears both; the sidebar sits on
+   the material, the content pane on Fluent's layer fill (`ContentBackdropTint`), rounded where
+   they meet. The Settings dialog wears it too. The window background stays transparent rather
+   than translucent (a tint on it would also lie under the sidebar). Tested by hand by the user
+   in both themes; `BackdropTintTests` measures contrast, `MicaSurfacesTests` the surfaces.
+   The pixel test planned for the Mica area was dropped: PrintWindow draws Mica as its plain
+   colour, so a headless test cannot see the material.
+2. [ ] **The popup's backdrop, chosen** (asked for by the user on 2026-10-30): *Mica* (default, the
+   Manager's look), *Mica Alt*, *Acrylic* (today's), or *Off* (an opaque theme colour). A default
+   for all popups in Settings, and a per-group override on *Appearance*.
+3. [ ] **Colour tints for the popup** (same request): *Default*, the Windows accent colour, and a few
+   ready palettes laid over the material, with text contrast tested; placed as in step 2.
+4. [ ] Fluent icons, the spacing scale, and the screenshots (the user switches the display to
+   150 % for them).
 
 **Tests:** theme dictionary tests, and a pixel test for the Mica area.
 

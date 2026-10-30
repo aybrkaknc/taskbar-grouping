@@ -9,6 +9,11 @@
     <SolidColorBrush x:Key="SidebarBackground" Color="#252525" />
     <SolidColorBrush x:Key="SurfaceMuted" Color="#2D2D2D" />
     <SolidColorBrush x:Key="DropZoneBackground" Color="#2A2A2A" />
+    <!-- With Mica behind the main window (Windows 11 22H2+) these replace the two surfaces
+         above: the sidebar sits straight on the material, the content area on Fluent's layer
+         fill. They must stay translucent; BackdropTintTests measures text contrast on them. -->
+    <SolidColorBrush x:Key="SidebarBackdropTint" Color="#00000000" />
+    <SolidColorBrush x:Key="ContentBackdropTint" Color="#4C3A3A3A" />
 
     <!-- Text -->
     <SolidColorBrush x:Key="ForegroundDefault" Color="#F0F0F0" />

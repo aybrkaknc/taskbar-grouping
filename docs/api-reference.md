@@ -277,7 +277,9 @@ The group's newest generated `.ico` — the one sync last pointed its shortcuts 
 
 ### Interop
 
-`WindowBackdrop.TryApply(IntPtr hwnd, WindowBackdropKind kind)` requests a DWM system backdrop: `Mica` on the Manager window, `Acrylic` on the popup. A Manager failure is ignored and the window keeps solid brushes; a popup failure switches it to its fallback panel.
+`WindowBackdrop.TryApply(IntPtr hwnd, WindowBackdropKind kind)` requests a DWM system backdrop: `Mica` on the Manager's windows, `Acrylic` on the popup. A Manager failure is ignored and the window keeps solid brushes; a popup failure switches it to its fallback panel. `WindowBackdrop.TryExtendFrameIntoClientArea(IntPtr hwnd)` extends the frame over the whole client area (`DwmExtendFrameIntoClientArea` with −1 margins) so the backdrop is drawn behind it, keeping the caption.
+
+`MicaSurfaces` (Manager) is the one way a Manager window gets its backdrop. `TryApply(Window)` asks for Mica and extends the frame, and on success calls `Use(Window)`, which makes the HWND's clear colour and the window's background transparent. `Use(Window, Panel sidebar, Border content)` also gives the two panes the theme's `SidebarBackdropTint` and `ContentBackdropTint` by resource reference.
 
 `WindowBackdrop.IsSupported` is true from Windows 11 22H2 (build 22621), the first build that honours the backdrop attribute. The popup reads it before its HWND exists, because the backdrop only paints behind a non-layered window. `WindowBackdrop.TrySetRoundedCorners(IntPtr hwnd)` sets `DWMWA_WINDOW_CORNER_PREFERENCE` to round. All three members return `false` rather than throw on a zero handle or an older Windows.
 

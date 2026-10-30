@@ -112,6 +112,39 @@ public static class WindowBackdrop
         return hr == 0;
     }
 
+    /// <summary>
+    /// Extends the window frame over the whole client area, so the system backdrop is drawn
+    /// behind the client area and not only behind the caption. The caption itself is kept.
+    /// </summary>
+    /// <param name="hwnd">Target window handle (non-zero).</param>
+    /// <returns><see langword="true"/> if the call succeeded.</returns>
+    /// <remarks>
+    /// Only half of what a WPF window needs: WPF still clears the client area to its own
+    /// colour, which the caller sets to transparent on the window's composition target.
+    /// </remarks>
+    public static bool TryExtendFrameIntoClientArea(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        var margins = new Margins { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+        return DwmExtendFrameIntoClientArea(hwnd, ref margins) == 0;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Margins
+    {
+        public int Left;
+        public int Right;
+        public int Top;
+        public int Bottom;
+    }
+
+    [DllImport("dwmapi.dll", ExactSpelling = true)]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref Margins margins);
+
     [DllImport("dwmapi.dll", ExactSpelling = true)]
     private static extern int DwmSetWindowAttribute(IntPtr hWnd, uint attr, ref int attrValue, int attrSize);
 }

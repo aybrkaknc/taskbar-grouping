@@ -9,6 +9,9 @@
     <SolidColorBrush x:Key="SidebarBackground" Color="#F5F5F5" />
     <SolidColorBrush x:Key="SurfaceMuted" Color="#F0F0F0" />
     <SolidColorBrush x:Key="DropZoneBackground" Color="#F5F5F5" />
+    <!-- Mica tints; see Dark.xaml. -->
+    <SolidColorBrush x:Key="SidebarBackdropTint" Color="#00FFFFFF" />
+    <SolidColorBrush x:Key="ContentBackdropTint" Color="#80FFFFFF" />
 
     <!-- Text -->
     <SolidColorBrush x:Key="ForegroundDefault" Color="#1A1A1A" />

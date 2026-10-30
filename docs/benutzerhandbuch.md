@@ -47,7 +47,7 @@ Das Programm besteht aus zwei Teilen:
 Zwei Funktionen richten sich nach Ihrer Windows-Version, fallen aber nicht aus, sondern weichen aus:
 
 - **Anheften per Knopfdruck** braucht Windows 10 Version 2004 oder neuer. Wo es nicht verfügbar ist — auch in verwalteten Firmenumgebungen — öffnet TaskbarFolders den Ordner mit der Verknüpfung, damit Sie von Hand anheften können.
-- **Der Mica-Hintergrund** des Manager-Fensters braucht Windows 11 22H2 oder neuer. Ältere Versionen zeigen eine schlichte Farbfläche.
+- **Der Mica-Hintergrund** des Manager-Fensters und des Einstellungsfensters braucht Windows 11 22H2 oder neuer. Ältere Versionen zeigen schlichte Farbflächen.
 
 ## Installation
 
@@ -214,6 +214,8 @@ Jede Einstellung wirkt und wird gespeichert, sobald Sie sie ändern; es gibt kei
 Der Autostart-Haken zeigt den tatsächlichen Zustand in der Windows-Registrierung. Wenn Sie den Eintrag von Hand entfernen, erscheint der Haken beim nächsten Öffnen ausgeschaltet.
 
 **Uninstall TaskbarFolders…** ganz unten startet das Deinstallationsprogramm dieser Fassung und schließt den Manager — siehe [Deinstallieren](#deinstallieren).
+
+Ab Windows 11 22H2 liegen der Manager und das Einstellungsfenster auf Mica, dem Material, das auch die Windows-Einstellungen und der Explorer verwenden: eine sanfte Tönung aus Ihrem Desktop-Hintergrund. Die Gruppenliste liegt direkt darauf, der rechte Bereich auf einer etwas helleren Ebene. Solange das Fenster im Hintergrund ist, zeigt Windows Mica als schlichte Farbe.
 
 ### Aufbau des Aufklapp-Fensters
 

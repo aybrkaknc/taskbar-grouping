@@ -163,6 +163,8 @@ The autostart checkbox reflects the registry, not the settings file — if you r
 
 The theme covers the whole interface, including the Settings dialog, the standard controls and the window title bar. Switching it takes effect immediately; there is no restart.
 
+On Windows 11 22H2 and later the Manager and the Settings dialog sit on Mica, the material Windows' own Settings and File Explorer use: a soft tint taken from your desktop background. The group list lies straight on it and the right-hand pane on a slightly lighter layer. While the window is in the background Windows shows Mica as a plain colour. Older Windows versions get plain theme colours throughout.
+
 ### Popup layout
 
 Each group sets out its own popup on the **Appearance** tab of the Manager, under **Popup**:

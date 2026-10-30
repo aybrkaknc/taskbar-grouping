@@ -93,11 +93,13 @@ public partial class MainWindow : Window
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
-        // Enable Mica on the title-bar area for the Win11-native look (Settings / File
-        // Explorer wear Mica too). Pre-22H2 Windows return non-zero HRESULT and we keep
-        // the themed solid brushes — no visual regression on older systems.
-        var hwnd = new WindowInteropHelper(this).Handle;
-        _ = WindowBackdrop.TryApply(hwnd, WindowBackdropKind.Mica);
+        // Mica behind the whole window, as Settings and File Explorer wear it: the frame is
+        // extended over the client area and WPF stops painting over it. Pre-22H2 Windows
+        // refuse the backdrop and the themed solid brushes stay — no visual regression there.
+        if (MicaSurfaces.TryApply(this))
+        {
+            MicaSurfaces.Use(this, Sidebar, ContentSurface);
+        }
 
         ApplyTitleBarTheme();
 

@@ -36,8 +36,13 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
+        <!-- Behind the content column. Paints nothing (the window's background shows) until
+             MicaSurfaces gives it the layer tint; rounded where it meets the sidebar and the
+             caption, as Windows' own apps draw their content layer. -->
+        <Border x:Name="ContentSurface" Grid.Column="1" CornerRadius="8,0,0,0" />
+
         <!-- Sidebar: group list, new-group and settings buttons -->
-        <DockPanel Grid.Column="0" Background="{DynamicResource SidebarBackground}">
+        <DockPanel x:Name="Sidebar" Grid.Column="0" Background="{DynamicResource SidebarBackground}">
             <DockPanel DockPanel.Dock="Top" Margin="16,14,12,10">
                 <Button DockPanel.Dock="Right"
                         Content="+ New group"
