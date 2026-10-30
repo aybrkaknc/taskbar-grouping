@@ -4,7 +4,7 @@ The agreed roadmap for this fork: what is done, what is in progress, and the ord
 comes next. This file is kept current — an item is marked done in the same commit that
 finishes it, and a change of order or scope is recorded here when it is agreed, not later.
 
-*Last updated: 2026-10-30*
+*Last updated: 2026-10-31*
 
 ## Where we are
 
@@ -255,7 +255,7 @@ below.
 | 4 | **C2 — grid settings, part 2** — *done on `feature/grid-settings-2`, not yet merged* | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
 | 5 | **C4 — reorder apps by dragging, in the popup's edit mode** — *done, merged into `develop`* | Changed 2026-10-30: not in the Manager's app list but on the popup's tiles. With edit mode on, a tile can be dragged to a new place (the others shift out of the way) and the tiles wiggle, as icons do on a phone. Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
 | 6 | **C6 — visual polish** — *done* | Let the Manager's Mica backdrop show, Fluent icons, spacing; retake screenshots. |
-| 7 | **E — add apps from a list of installed apps (research first)** | Instead of browsing for an `.exe`/`.lnk`, pick from what Windows lists under *Start → All apps*, which also covers Store/packaged apps (Calculator, Settings…) that cannot be added at all today. The research settles the source (the shell's AppsFolder vs. Start menu shortcuts), how a packaged app is stored and launched (`shell:AppsFolder\<AUMID>` rather than a path), and how its icon is read. |
+| 7 | **E — add apps from a list of installed apps** — *research done (ADR-009), Stage 1 next on `feature/installed-apps`* | Instead of browsing for an `.exe`/`.lnk`, pick from what Windows lists under *Start → All apps*, which also covers Store/packaged apps (Calculator, Settings…) that cannot be added at all today. The research settles the source (the shell's AppsFolder vs. Start menu shortcuts), how a packaged app is stored and launched (`shell:AppsFolder\<AUMID>` rather than a path), and how its icon is read. |
 
 ## Item specifications
 
@@ -551,7 +551,15 @@ Settings), which cannot be added today.
 
 **Decided:** a written plan first, then the research, then the code. No prototype commit.
 
-**Stage 0 — research note** (no commit; any temporary files are deleted afterwards). It answers:
+**Stage 0 — research — done 2026-10-31.** The measurements and the decision are in
+[ADR-009](docs/adr/009-installed-apps-from-appsfolder.md): 195 apps in 270 ms; four identity shapes,
+not two (also known-folder paths and bare Win32 AUMIDs such as Android apps'); 32 Win32 items carry
+link arguments, which a target path alone drops; `Process.Start` returns `null` for a `shell:` launch,
+which `ProcessLauncher` counts as a failure today; icons via `IShellItemImageFactory` are clean
+(22–62 ms); the package full name carries the version for the icon cache key. **Decided with the
+user:** rule C — a plain program (an `.exe`/`.lnk` target, no arguments) by its path, everything else
+as `shell:AppsFolder\<AUMID>`; web addresses and documents left out of the picker. The questions it
+answered:
 1. Enumeration: bind `shell:AppsFolder` with `SHCreateItemFromParsingName`, then `BHID_EnumItems`
    into `IEnumShellItems`. How many items, and how long does it take? The target is under 1 s.
 2. Identity: `PKEY_AppUserModel_ID` for each item. Are the Win32 items paths or `{GUID}\…`? Do the
@@ -570,8 +578,9 @@ Settings), which cannot be added today.
 Output: the research note, an ADR draft (ADR-009), and this section updated with the findings. **The
 decision goes to the user.**
 
-**Stage 1 — model:** `AppEntry.TryCreateFromAumid(name, aumid)`, which sets
-`Path = "shell:AppsFolder\<AUMID>"`. The JSON stays compatible, since it is a string.
+**Stage 1 — model and launch:** `AppEntry.TryCreateFromAumid(name, aumid)`, which sets
+`Path = "shell:AppsFolder\<AUMID>"`. `ProcessLauncher` counts a `null` from `Process.Start` as success
+for `shell:` paths and sets no working directory for them (found in Stage 0). The JSON stays compatible, since it is a string.
 `AppEntryViewModel.DefaultName` and `PathDisplay.ForDisplay` get a branch for `shell:` paths. The
 duplicate check in `CommandLineAppAdder` already works on `Path`.
 
@@ -579,7 +588,9 @@ duplicate check in `CommandLineAppAdder` already works on `Path`.
 `Core/Interop`. Declare every method in order, because `IContextMenu.cs` warns that COM vtables are
 positional. `IInstalledAppsProvider` in Core, with asynchronous enumeration. `FinalReleaseComObject`
 on every RCW; shell calls go through the existing shell lock. `ShellIconExtractor` gets an
-`IShellItemImageFactory` branch for `shell:` paths.
+`IShellItemImageFactory` branch for `shell:` paths; the icon cache key uses the package full name in
+place of the write time for them, and its version moves to `v4`. The provider applies rule C and the
+filter (ADR-009).
 
 **Stage 3 — UI:** a dialog with search, multi-select, lazily loaded icons and a loading state.
 `GroupEditorViewModel.AddInstalledAppsAsync` follows the `AddAppsAsync` pattern and saves through

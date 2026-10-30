@@ -16,6 +16,7 @@ Write one when a decision constrains future work, when a plausible alternative w
 | [006](006-versioned-group-icons.md) | Versioned group icons, and updating our own pinned shortcut | Accepted |
 | [007](007-explorer-menu-registry-verbs.md) | Explorer's "Taskbar Groups" menu as per-user registry verbs | Accepted |
 | [008](008-per-user-install-and-complete-uninstall.md) | Per-user install, and an uninstall that leaves nothing behind | Accepted |
+| [009](009-installed-apps-from-appsfolder.md) | Adding apps from Windows' installed-apps list | Accepted |
 
 ## Conventions
 
