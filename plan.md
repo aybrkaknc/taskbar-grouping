@@ -586,7 +586,9 @@ for `shell:` paths and sets no working directory for them (found in Stage 0). Th
 `AppEntryViewModel.DefaultName` and `PathDisplay.ForDisplay` get a branch for `shell:` paths. The
 duplicate check in `CommandLineAppAdder` already works on `Path`.
 
-**Stage 2 — core:** COM interfaces `IEnumShellItems`, `IShellItem2` and `IShellItemImageFactory` in
+**Stage 2 — core — done** (`InstalledApp` with rule C and the filter, `IInstalledAppsProvider` /
+`ShellInstalledAppsProvider`, `AppsFolderIcon`, the cache key; the shell lock moved to `ShellAccess`
+so both share it; no cache version bump, see ADR-009). As planned: COM interfaces `IEnumShellItems`, `IShellItem2` and `IShellItemImageFactory` in
 `Core/Interop`. Declare every method in order, because `IContextMenu.cs` warns that COM vtables are
 positional. `IInstalledAppsProvider` in Core, with asynchronous enumeration. `FinalReleaseComObject`
 on every RCW; shell calls go through the existing shell lock. `ShellIconExtractor` gets an

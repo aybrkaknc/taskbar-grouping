@@ -24,7 +24,7 @@ Measured on the maintainer's machine (Windows 11, 195 entries), 2026-10-31:
 
 **The picker lists what starts something.** Items whose target is a web address or a document (`.url`, `.chm`, `.html`, `.pdf`, `.txt`) are left out of the list: they are links and help files, not apps.
 
-Also: `ProcessLauncher` counts a `null` from `Process.Start` as success for `shell:` paths and sets no working directory for them; icons for `shell:` paths come from `IShellItemImageFactory`, through the shell lock; the cache key for them uses the package full name in place of the write time, and the cache version moves to `v4`; the JSON format does not change, since `Path` stays a string.
+Also: `ProcessLauncher` counts a `null` from `Process.Start` as success for `shell:` paths and sets no working directory for them; icons for `shell:` paths come from `IShellItemImageFactory`, through the shell lock; the cache key for them uses the package full name in place of the write time (the cache version stays: no such key was ever written, so nothing stale can be found); the JSON format does not change, since `Path` stays a string.
 
 ## Alternatives considered
 

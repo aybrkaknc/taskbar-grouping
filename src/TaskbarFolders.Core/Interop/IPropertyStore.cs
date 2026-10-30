@@ -83,4 +83,25 @@ internal static class PropertyKeys
         fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"),
         pid = 5,
     };
+
+    /// <summary><c>PKEY_AppUserModel_PackageFullName</c>: a packaged app's package, version included.</summary>
+    public static readonly PROPERTYKEY PackageFullName = new()
+    {
+        fmtid = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"),
+        pid = 21,
+    };
+
+    /// <summary><c>PKEY_Link_TargetParsingPath</c>: what a Win32 entry of the installed-apps list starts.</summary>
+    public static readonly PROPERTYKEY LinkTargetParsingPath = new()
+    {
+        fmtid = new Guid("B9B4B3FC-2B51-4A42-B5D8-324146AFCF25"),
+        pid = 2,
+    };
+
+    /// <summary><c>PKEY_Link_Arguments</c>: the arguments Start passes to that target.</summary>
+    public static readonly PROPERTYKEY LinkArguments = new()
+    {
+        fmtid = new Guid("436F2667-14E2-4FEB-B30A-146C53B5B674"),
+        pid = 100,
+    };
 }

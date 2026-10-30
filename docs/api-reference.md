@@ -160,7 +160,7 @@ void Set(string sourcePath, int size, BitmapSource icon);
 void StartBackgroundPrune() { }
 ```
 
-`TryGet`/`Set` are synchronous **on purpose** — they sit on the popup's hot path. `FileSystemIconCache` keys entries by source path, last-write time and size, and prunes after 30 days.
+`TryGet`/`Set` are synchronous **on purpose** — they sit on the popup's hot path. `FileSystemIconCache` keys entries by source path, last-write time and size, and prunes after 30 days; for an installed app stored as `shell:AppsFolder\<AUMID>`, which has no file, the package's full name (version included) takes the place of the write time, so an updated app's icon is read afresh. `ShellIconExtractor` draws such an app through `IShellItemImageFactory` (`AppsFolderIcon`), inside the same shell lock (`ShellAccess.Lock`), and returns `null` when the app is not installed.
 
 #### [`ICustomGroupIconStore`](../src/TaskbarFolders.Core/Icons/ICustomGroupIconStore.cs)
 
@@ -184,6 +184,12 @@ public static BitmapSource? TryLoad(string? path);
 ```
 
 Decodes an image file the user chose — the largest frame of an `.ico` — into a frozen bitmap, or returns `null` for a blank path or a missing or unreadable file. Sync, the Manager and the popup try it on `AppEntry.IconPath` before asking `IIconExtractor` for the program's icon.
+
+### Installed apps
+
+`InstalledApp(Name, Aumid, Target, Arguments, PackageFullName)` (Core.Apps) is one entry of `shell:AppsFolder`, Windows' installed-apps list. `IsListed` is false for an entry whose target is a web address or a document (`.url`, `.chm`, `.html`, `.pdf`, `.txt` and the like); `ToEntry()` applies [ADR-009](adr/009-installed-apps-from-appsfolder.md)'s rule C — a target that `AppEntry.TryCreateFromPath` accepts, started without arguments, becomes that path; anything else `shell:AppsFolder\<AUMID>` — and names the entry as Start does.
+
+`IInstalledAppsProvider.ListAsync(CancellationToken)` returns the listed entries, one per AUMID, sorted by name. `ShellInstalledAppsProvider` reads them with `IShellItem2` and `IEnumShellItems` (declared positionally in `Core/Interop/ShellItems.cs`) off the caller's thread, inside the shell lock, in about 250 ms for 195 apps.
 
 ### Shortcuts
 

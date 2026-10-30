@@ -138,4 +138,32 @@ public class ShellIconExtractorTests
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public async Task ExtractIcon_DrawsAnInstalledApp_FromItsAppsFolderEntry()
+    {
+        const string aumid = "Microsoft.WindowsCalculator_8wekyb3d8bbwe!App";
+        var installed = await new TaskbarFolders.Core.Apps.ShellInstalledAppsProvider().ListAsync();
+        if (!installed.Any(a => a.Aumid == aumid))
+        {
+            return; // Calculator is not installed on this machine (Windows Server images).
+        }
+
+        var icon = new ShellIconExtractor().ExtractIcon(@"shell:AppsFolder\" + aumid, 64);
+
+        icon.Should().NotBeNull("Calculator is installed, so the shell has an icon for it");
+
+        icon!.PixelWidth.Should().Be(64);
+        icon.IsFrozen.Should().BeTrue("it crosses to the UI thread");
+        var pixels = new byte[64 * 64 * 4];
+        new System.Windows.Media.Imaging.FormatConvertedBitmap(icon, System.Windows.Media.PixelFormats.Pbgra32, null, 0).CopyPixels(pixels, 64 * 4, 0);
+        pixels.Where((_, i) => i % 4 == 3).Should().Contain(a => a == 0, "the icon keeps its transparent edge");
+        pixels.Where((_, i) => i % 4 == 3).Should().Contain(a => a == 255, "and is drawn");
+    }
+
+    [Fact]
+    public void ExtractIcon_ReturnsNull_ForAnInstalledAppThatIsNotThere()
+    {
+        new ShellIconExtractor().ExtractIcon(@"shell:AppsFolder\No.Such.App_0000000000000!App", 64).Should().BeNull();
+    }
 }

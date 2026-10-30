@@ -9,6 +9,7 @@ using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using Microsoft.Extensions.Logging;
 using TaskbarFolders.Core.Interop;
+using TaskbarFolders.Shared.Models;
 
 namespace TaskbarFolders.Core.Icons;
 
@@ -28,7 +29,7 @@ namespace TaskbarFolders.Core.Icons;
 public sealed class ShellIconExtractor : IIconExtractor
 {
     // Process-wide: the state the concurrent calls trip over is the shell's, not this instance's.
-    private static readonly object _shellLock = new();
+    private static readonly object _shellLock = ShellAccess.Lock;
 
     private readonly ILogger<ShellIconExtractor>? _logger;
 
@@ -46,6 +47,15 @@ public sealed class ShellIconExtractor : IIconExtractor
 
         try
         {
+            // An installed app stored by its AppsFolder entry (ADR-009) has no file to read.
+            if (AppEntry.IsShellApp(filePath))
+            {
+                lock (_shellLock)
+                {
+                    return AppsFolderIcon.Extract(filePath, size);
+                }
+            }
+
             var (resolved, ownIcon, ownIndex) = ResolveShortcut(filePath);
 
             // A shortcut's icon is its own, not its target's: Explorer shows it, so must we.

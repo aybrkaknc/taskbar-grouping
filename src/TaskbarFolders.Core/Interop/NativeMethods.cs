@@ -48,6 +48,17 @@ internal static class NativeMethods
         ref Guid riid,
         [MarshalAs(UnmanagedType.Interface)] out IShellItem ppv);
 
+    /// <summary>
+    /// The same call for any interface the item offers: an installed app's
+    /// <see cref="IShellItem2"/> or <see cref="IShellItemImageFactory"/>.
+    /// </summary>
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true, EntryPoint = "SHCreateItemFromParsingName")]
+    public static extern int SHCreateItemFromParsingNameAny(
+        string pszPath,
+        IntPtr pbc,
+        ref Guid riid,
+        [MarshalAs(UnmanagedType.Interface)] out object? ppv);
+
     // --- user32 -----------------------------------------------------------
 
     /// <summary>

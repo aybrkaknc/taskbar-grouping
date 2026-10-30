@@ -204,4 +204,18 @@ public sealed class FileSystemIconCacheTests : IDisposable
         var act = () => sut.Set(_sourceFile, 64, null!);
         act.Should().Throw<ArgumentNullException>();
     }
+
+    [Fact]
+    public void AnInstalledAppsEntry_IsKeyedByItsPackageVersion_SoAnUpdateIsReadAfresh()
+    {
+        const string app = @"shell:AppsFolder\Microsoft.WindowsCalculator_8wekyb3d8bbwe!App";
+        var version = "Microsoft.WindowsCalculator_11.2607.0.0_x64__8wekyb3d8bbwe";
+        var sut = new FileSystemIconCache(_paths, _ => version);
+        sut.Set(app, 64, SolidBitmap(64, Colors.Red));
+        sut.TryGet(app, 64, out _).Should().BeTrue();
+
+        version = "Microsoft.WindowsCalculator_11.2700.0.0_x64__8wekyb3d8bbwe";
+
+        sut.TryGet(app, 64, out _).Should().BeFalse("the package was updated, and its icon may have been");
+    }
 }

@@ -7,7 +7,9 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Media.Imaging;
 using Microsoft.Extensions.Logging;
+using TaskbarFolders.Core.Interop;
 using TaskbarFolders.Shared.Configuration;
+using TaskbarFolders.Shared.Models;
 
 namespace TaskbarFolders.Core.Icons;
 
@@ -28,16 +30,32 @@ public sealed class FileSystemIconCache : IIconCache
 
     private readonly string _cacheDir;
     private readonly ILogger<FileSystemIconCache>? _logger;
+    private readonly Func<string, string?> _shellAppVersion;
 
     /// <summary>Initializes a new instance.</summary>
     /// <param name="paths">Path provider for locating the cache directory.</param>
     /// <param name="logger">Optional logger.</param>
     public FileSystemIconCache(IAppDataPathProvider paths, ILogger<FileSystemIconCache>? logger = null)
+        : this(paths, ShellAppVersion, logger)
+    {
+    }
+
+    /// <summary>For tests: <paramref name="shellAppVersion"/> stands in for the shell's package lookup.</summary>
+    internal FileSystemIconCache(IAppDataPathProvider paths, Func<string, string?> shellAppVersion, ILogger<FileSystemIconCache>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(paths);
 
         _cacheDir = Path.Combine(paths.IconsDirectory, CacheFolderName);
+        _shellAppVersion = shellAppVersion;
         _logger = logger;
+    }
+
+    private static string? ShellAppVersion(string path)
+    {
+        lock (ShellAccess.Lock)
+        {
+            return AppsFolderIcon.PackageFullName(path);
+        }
     }
 
     /// <inheritdoc/>
@@ -140,11 +158,16 @@ public sealed class FileSystemIconCache : IIconCache
     internal string GetCachePath(string sourcePath, int size) =>
         Path.Combine(_cacheDir, ComputeKey(sourcePath, size));
 
-    private static string ComputeKey(string sourcePath, int size)
+    private string ComputeKey(string sourcePath, int size)
     {
-        var lastWriteTicks = File.Exists(sourcePath)
-            ? File.GetLastWriteTimeUtc(sourcePath).Ticks
-            : 0L;
+        // An installed app stored by its AppsFolder entry has no file whose date could change;
+        // its package's full name carries the version instead (ADR-009). Other such entries have
+        // neither and keep one key until the cache ages them out.
+        var lastWriteTicks = AppEntry.IsShellApp(sourcePath)
+            ? (object)(_shellAppVersion(sourcePath) ?? string.Empty)
+            : File.Exists(sourcePath)
+                ? File.GetLastWriteTimeUtc(sourcePath).Ticks
+                : 0L;
 
         // The version changes whenever what is extracted for a path does, so entries written by
         // an older extractor are never found: v2 followed the fix for icons that came back as
