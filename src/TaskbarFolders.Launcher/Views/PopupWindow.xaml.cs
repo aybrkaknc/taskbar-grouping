@@ -421,6 +421,29 @@ public sealed partial class PopupWindow : Window, IDisposable
             return;
         }
 
+        if (e.PropertyName == nameof(PopupViewModel.Columns))
+        {
+            PopNumber();
+            return;
+        }
+
+        // The number button in edit mode changes how many tiles a row holds: the window follows,
+        // once the grid has been laid out with the new count, and the tiles glide to their new
+        // cells from where they are drawn now — read before the layout pass moves them.
+        if (e.PropertyName == nameof(PopupViewModel.EffectiveColumns))
+        {
+            var drawnAt = _settings.EnableAnimations ? TilePositions() : [];
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                if (IsLoaded && !_closeAnimating && !_closeConfirmed)
+                {
+                    ApplySizeAndPlacement();
+                    GlideTilesFrom(drawnAt);
+                }
+            }));
+            return;
+        }
+
         if (e.PropertyName is not (nameof(PopupViewModel.LastError) or nameof(PopupViewModel.IsUnavailable)))
         {
             return;
@@ -438,6 +461,7 @@ public sealed partial class PopupWindow : Window, IDisposable
     /// </summary>
     private void ShowHeaderButtons(bool show)
     {
+        ShowColumnsButton(!show);
         SlidePencil(toTheEnd: !show);
 
         foreach (var button in new UIElement[] { AddAppsButton, PinButton, CloseButton })
@@ -526,18 +550,19 @@ public sealed partial class PopupWindow : Window, IDisposable
     private const double WiggleDegrees = 1.5;
 
     /// <summary>
-    /// Moves the pencil to the header's right end, where the close button was, while the others
-    /// are hidden, and back to its own place afterwards. The hidden buttons keep their layout
-    /// slots, so the distance is read from the slots, not from where anything is drawn.
+    /// Moves the pencil to where the pin button was while the others are hidden — the number
+    /// takes the close button's place, right of it — and back to its own place afterwards. The
+    /// hidden buttons keep their layout slots, so the distance is read from the slots, not from
+    /// where anything is drawn.
     /// </summary>
     private void SlidePencil(bool toTheEnd)
     {
         var offset = 0.0;
         if (toTheEnd)
         {
-            var close = LayoutInformation.GetLayoutSlot(CloseButton);
+            var pin = LayoutInformation.GetLayoutSlot(PinButton);
             var pencil = LayoutInformation.GetLayoutSlot(EditButton);
-            offset = (close.Right - CloseButton.Margin.Right) - (pencil.Right - EditButton.Margin.Right);
+            offset = (pin.Right - PinButton.Margin.Right) - (pencil.Right - EditButton.Margin.Right);
         }
 
         var slide = EditButton.RenderTransform as TranslateTransform ?? new TranslateTransform();
@@ -552,6 +577,110 @@ public sealed partial class PopupWindow : Window, IDisposable
         slide.BeginAnimation(
             TranslateTransform.XProperty,
             new DoubleAnimation(offset, TimeSpan.FromMilliseconds(220)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+    }
+
+    /// <summary>
+    /// The edit-mode number button: collapsed outside edit mode, so it takes no room from the
+    /// group's name; in edit mode it grows into the close button's place, fading in.
+    /// </summary>
+    private void ShowColumnsButton(bool show)
+    {
+        ColumnsButton.IsHitTestVisible = show;
+        if (!_settings.EnableAnimations)
+        {
+            ColumnsButton.BeginAnimation(OpacityProperty, null);
+            ColumnsButton.Opacity = 1;
+            ColumnsButton.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            return;
+        }
+
+        if (show)
+        {
+            ColumnsButton.Visibility = Visibility.Visible;
+            ColumnsButton.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
+            ScaleNumber(from: 0.6, TimeSpan.FromMilliseconds(220), new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.4 });
+            return;
+        }
+
+        var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(120));
+        fade.Completed += (_, _) =>
+        {
+            if (!_viewModel.IsEditing)
+            {
+                ColumnsButton.Visibility = Visibility.Collapsed;
+            }
+        };
+        ColumnsButton.BeginAnimation(OpacityProperty, fade);
+    }
+
+    // A click on the number makes it pop, so the change is seen where the eye is.
+    private void PopNumber()
+    {
+        if (_settings.EnableAnimations && _viewModel.IsEditing)
+        {
+            ScaleNumber(from: 1.3, TimeSpan.FromMilliseconds(200), new QuadraticEase { EasingMode = EasingMode.EaseOut });
+        }
+    }
+
+    private void ScaleNumber(double from, TimeSpan duration, IEasingFunction ease)
+    {
+        var scale = ColumnsButton.RenderTransform as ScaleTransform ?? new ScaleTransform();
+        ColumnsButton.RenderTransformOrigin = new Point(0.5, 0.5);
+        ColumnsButton.RenderTransform = scale;
+        var grow = new DoubleAnimation(from, 1, duration) { EasingFunction = ease };
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+    }
+
+    // Where each tile is drawn now: its cell plus any slide it is in the middle of.
+    private List<(UIElement Tile, Point At)> TilePositions()
+    {
+        var positions = new List<(UIElement, Point)>();
+        for (var i = 0; i < TileList.Items.Count; i++)
+        {
+            if (TileList.ItemContainerGenerator.ContainerFromIndex(i) is UIElement tile)
+            {
+                var at = (Point)VisualTreeHelper.GetOffset(tile);
+                if (tile.RenderTransform is TranslateTransform slide)
+                {
+                    at += new Vector(slide.X, slide.Y);
+                }
+
+                positions.Add((tile, at));
+            }
+        }
+
+        return positions;
+    }
+
+    /// <summary>
+    /// After a change of tiles per row, lets every tile glide from where it was drawn to its new
+    /// cell instead of jumping there (FLIP). The container's transform is free: a reorder drag,
+    /// its only other user, cannot run while the number is being clicked.
+    /// </summary>
+    private void GlideTilesFrom(List<(UIElement Tile, Point At)> drawnAt)
+    {
+        if (drawnAt.Count == 0)
+        {
+            return;
+        }
+
+        TileList.UpdateLayout();
+        foreach (var (tile, at) in drawnAt)
+        {
+            var from = at - (Point)VisualTreeHelper.GetOffset(tile);
+            if (from.Length < 0.5)
+            {
+                continue;
+            }
+
+            var slide = new TranslateTransform(from.X, from.Y);
+            tile.RenderTransform = slide;
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var duration = TimeSpan.FromMilliseconds(260);
+            slide.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(from.X, 0, duration) { EasingFunction = ease });
+            slide.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(from.Y, 0, duration) { EasingFunction = ease });
+        }
     }
 
     /// <summary>

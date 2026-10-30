@@ -340,6 +340,28 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// The edit-mode number button: one more tile per row, back to
+    /// <see cref="GroupConfig.MinColumns"/> after <see cref="GroupConfig.MaxColumns"/>. Saved at
+    /// once, without a sync — the popup's layout is not part of the group's icon. The same
+    /// setting as the Manager's Max per row.
+    /// </summary>
+    [RelayCommand]
+    private async Task CycleColumnsAsync()
+    {
+        if (!IsEditing || _config is null)
+        {
+            return;
+        }
+
+        var next = Columns >= GroupConfig.MaxColumns ? GroupConfig.MinColumns : Columns + 1;
+        _config.Columns = next;
+        Columns = next;
+
+        _logger?.LogInformation("Group {GroupId}: at most {Columns} per row, set in the popup.", _options.GroupId, next);
+        await PersistAsync(sync: false).ConfigureAwait(true);
+    }
+
+    /// <summary>
     /// Starts dragging a tile. Refused outside edit mode, for a group that could not be read, and
     /// while another drag is still open.
     /// </summary>

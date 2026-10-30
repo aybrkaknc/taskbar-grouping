@@ -125,6 +125,36 @@
             </Setter>
         </Style>
 
+        <!-- The edit-mode number (most tiles per row): a framed box, so it reads as something
+             to click rather than a label. -->
+        <Style x:Key="PopupNumberButton" TargetType="Button" BasedOn="{StaticResource PopupIconButton}">
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ForegroundSubtle}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource TileHoverBackground}" />
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ForegroundDefault}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Round remove badge on a tile in edit mode. Sets Foreground itself, like the other
              popup buttons. -->
         <Style x:Key="PopupBadgeButton" TargetType="Button">
@@ -220,13 +250,25 @@
             <!-- Header: group name and close button, in every state. Part of ChromeRoot, so
                  the measured window height includes it with no sizing code of its own. -->
             <DockPanel x:Name="HeaderBar" DockPanel.Dock="Top" Margin="8,0,0,6">
-                <Button x:Name="CloseButton"
-                        DockPanel.Dock="Right"
-                        Style="{StaticResource PopupIconButton}"
-                        Content="&#xE8BB;"
-                        ToolTip="Close"
-                        AutomationProperties.Name="Close"
-                        Command="{Binding CloseCommand}" />
+                <!-- The header's last slot: the close button, or in edit mode the most tiles per
+                     row — one more per click, back to 1 after 6. The number is collapsed outside
+                     edit mode and shares the slot, so showing it moves nothing; PopupWindow pops
+                     it in and slides the pencil next to it. -->
+                <Grid DockPanel.Dock="Right">
+                    <Button x:Name="CloseButton"
+                            Style="{StaticResource PopupIconButton}"
+                            Content="&#xE8BB;"
+                            ToolTip="Close"
+                            AutomationProperties.Name="Close"
+                            Command="{Binding CloseCommand}" />
+                    <Button x:Name="ColumnsButton"
+                            Visibility="Collapsed"
+                            Style="{StaticResource PopupNumberButton}"
+                            Content="{Binding Columns}"
+                            Command="{Binding CycleColumnsCommand}"
+                            ToolTip="Most tiles per row; click for one more"
+                            AutomationProperties.Name="{Binding Columns, StringFormat='Max per row: {0}'}" />
+                </Grid>
                 <!-- Pin toggle: keeps the popup open across clicks elsewhere and launches;
                      tinted plate while on, like the edit toggle. -->
                 <Button x:Name="PinButton"
@@ -268,7 +310,7 @@
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource PopupIconButton}">
                             <Setter Property="Content" Value="&#xE70F;" />
-                            <Setter Property="ToolTip" Value="Remove apps from this group" />
+                            <Setter Property="ToolTip" Value="Edit: arrange, remove, tiles per row" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsEditing}" Value="True">
                                     <Setter Property="Content" Value="&#xE73E;" />

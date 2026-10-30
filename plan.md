@@ -466,6 +466,10 @@ root is a `Grid` inside a `UniformGrid` of `EffectiveColumns`; `RemoveBadge` is 
    **Added with the user while trying it:** in edit mode the header's add, pin and close buttons fade
    out and the pencil slides to the header's right end; both back when editing ends. All of it
    without animation when *Enable animations* is off. Tested by hand by the user.
+   **Then, also asked for by the user:** a framed *Max per row* number in the close button's place
+   while editing (pencil beside it, at the pin's place): one more per click, back to 1 after 6, saved
+   at once; it pops on each click and the tiles glide into their new rows
+   (`PopupViewModel.CycleColumnsCommand`, `PopupWindow.GlideTilesFrom`). Tried by the user.
 3. [x] **The wiggle.** `PopupWindow.Wiggle`: each tile's root (tile and badge) rotates ±1.5° about its
    centre while `IsEditing`, neighbours in opposite directions at 120–148 ms, re-applied to tiles
    rebuilt while editing; none when animations are off. `PopupWiggleTests`. Tried by the user.

@@ -785,6 +785,62 @@ public class PopupViewModelTests
         store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    // --- Max per row in edit mode ---------------------------------------------------
+
+    [Theory]
+    [InlineData(1, 2)]
+    [InlineData(3, 4)]
+    [InlineData(5, 6)]
+    [InlineData(6, 1)]
+    public async Task CycleColumns_AddsOne_AndGoesBackToOneAfterTheMost(int before, int after)
+    {
+        var config = SixApps();
+        config.Columns = before;
+        var sync = new Mock<IGroupSyncService>();
+        var (sut, store, _, _, _) = CreateSut("g", config, sync);
+        await sut.LoadAsync();
+        sut.ToggleEditCommand.Execute(null);
+
+        await sut.CycleColumnsCommand.ExecuteAsync(null);
+
+        sut.Columns.Should().Be(after);
+        config.Columns.Should().Be(after);
+        store.Verify(s => s.SaveAsync(config, It.IsAny<CancellationToken>()), Times.Once);
+        sync.Verify(s => s.SyncAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never,
+            "the layout of the popup is not part of the group's icon");
+    }
+
+    [Fact]
+    public async Task CycleColumns_ChangesTheColumnsTheGridUses()
+    {
+        var config = SixApps();
+        config.Columns = 3;
+        var (sut, _, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+        sut.ToggleEditCommand.Execute(null);
+        var changed = new List<string?>();
+        sut.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        await sut.CycleColumnsCommand.ExecuteAsync(null);
+
+        sut.EffectiveColumns.Should().Be(4);
+        changed.Should().Contain(nameof(PopupViewModel.EffectiveColumns), "the grid and the window follow it");
+    }
+
+    [Fact]
+    public async Task CycleColumns_DoesNothing_OutsideEditMode()
+    {
+        var config = SixApps();
+        config.Columns = 3;
+        var (sut, store, _, _, _) = CreateSut("g", config);
+        await sut.LoadAsync();
+
+        await sut.CycleColumnsCommand.ExecuteAsync(null);
+
+        sut.Columns.Should().Be(3);
+        store.Verify(s => s.SaveAsync(It.IsAny<GroupConfig>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     [Fact]
     public async Task RemoveAppCommand_LeavesEditMode_WhenTheLastAppGoes()
     {
