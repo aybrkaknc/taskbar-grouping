@@ -55,7 +55,7 @@ public sealed class PopupEditModeHeaderTests
             }
             finally
             {
-                window.Close();
+                TestPopup.Close(window);
             }
 
             return 0;

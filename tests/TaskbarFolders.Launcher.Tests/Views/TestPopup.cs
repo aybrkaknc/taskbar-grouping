@@ -10,6 +10,7 @@ using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Launcher.Views;
 using TaskbarFolders.Shared.Configuration;
 using TaskbarFolders.Shared.Models;
+using TaskbarFolders.TestSupport;
 
 namespace TaskbarFolders.Launcher.Tests.Views;
 
@@ -81,5 +82,19 @@ internal static class TestPopup
         window.Show();
         window.UpdateLayout();
         return (window, viewModel);
+    }
+
+    /// <summary>
+    /// Closes the popup and waits until it really has. With animations on, the first Close() only
+    /// starts the fade-out; a test that ends its STA thread then leaves the window alive, and the
+    /// next message to it crashes the whole test host (NullReferenceException in
+    /// HwndSubclass.SubclassWndProc) — CI aborted the Launcher run on exactly that.
+    /// </summary>
+    public static void Close(Window window)
+    {
+        var closed = false;
+        window.Closed += (_, _) => closed = true;
+        window.Close();
+        StaThread.PumpUntil(() => closed, TimeSpan.FromSeconds(2));
     }
 }

@@ -50,7 +50,7 @@ public sealed class PopupWiggleTests
             }
             finally
             {
-                window.Close();
+                TestPopup.Close(window);
             }
 
             return 0;
@@ -80,7 +80,7 @@ public sealed class PopupWiggleTests
             }
             finally
             {
-                window.Close();
+                TestPopup.Close(window);
             }
 
             return 0;
@@ -103,7 +103,7 @@ public sealed class PopupWiggleTests
             }
             finally
             {
-                window.Close();
+                TestPopup.Close(window);
             }
 
             return 0;
