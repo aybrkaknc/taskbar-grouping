@@ -236,11 +236,10 @@ comes first so that C1–C4 land in their final place instead of being laid out 
   group icon choice until C1 + C2 fill it. `90c3ee4`, merged into `develop`.
 - [x] **Settings and empty state** — settings apply as they are changed (no *Save*); with no
   groups, a three-step "get started" view. `a6cb480`, merged into `develop`.
-- [ ] **Visual polish** — let the Manager's Mica backdrop show through (it is applied but
+- [x] **Visual polish** — let the Manager's Mica backdrop show through (it is applied but
   hidden under solid brushes), Fluent icons, consistent spacing; retake the screenshots.
-  Ranked #6 below. *In progress on `feature/manager-polish`: Mica shows app-wide, the popup's
-  backdrop and tint are choices, the preview shows them, spacing is on one scale, icons are
-  Fluent throughout; next the screenshots.*
+  Ranked #6 below. *Done on `feature/manager-polish`: Mica app-wide, the popup's backdrop and
+  tint as choices, a preview that shows them, one spacing scale, Fluent icons, new screenshots.*
 
 ## Up next, in order
 
@@ -255,7 +254,7 @@ below.
 | 3 | **D — release v0.5.0** — *version bumped; gates and pushes pending* | Version bump, installer and portable build, installer smoke test, CHANGELOG section, release notes; open an issue for `IsPinningAllowed = false`; delete merged branches. Puts the work so far in users' hands before the larger items. |
 | 4 | **C2 — grid settings, part 2** — *done on `feature/grid-settings-2`, not yet merged* | Live preview of the popup next to the settings, and tile spacing. The preview reuses the popup's own tile style rather than a copy. |
 | 5 | **C4 — reorder apps by dragging, in the popup's edit mode** — *done, merged into `develop`* | Changed 2026-10-30: not in the Manager's app list but on the popup's tiles. With edit mode on, a tile can be dragged to a new place (the others shift out of the way) and the tiles wiggle, as icons do on a phone. Order matters: the group icon is built from the first four apps, and today the only way to change it is to remove and re-add apps. |
-| 6 | **C6 — visual polish** | Let the Manager's Mica backdrop show, Fluent icons, spacing; retake screenshots. |
+| 6 | **C6 — visual polish** — *done* | Let the Manager's Mica backdrop show, Fluent icons, spacing; retake screenshots. |
 | 7 | **E — add apps from a list of installed apps (research first)** | Instead of browsing for an `.exe`/`.lnk`, pick from what Windows lists under *Start → All apps*, which also covers Store/packaged apps (Calculator, Settings…) that cannot be added at all today. The research settles the source (the shell's AppsFolder vs. Start menu shortcuts), how a packaged app is stored and launched (`shell:AppsFolder\<AUMID>` rather than a path), and how its icon is read. |
 
 ## Item specifications
@@ -532,8 +531,11 @@ retaken.
    and the empty state) still wrote a text "+". It is now the Fluent + glyph beside a label, and
    `ButtonNameTests` fails on a Manager button whose label starts with a typed symbol. Tried by
    the user (the empty-state button by code only: showing it needs a profile without groups).
-6. [ ] **Screenshots**, retaken with the recipe in `CLAUDE.md` (the user switches the display to
-   150 % for them).
+6. [x] **Screenshots**, retaken with the recipe in `CLAUDE.md` at 150 % (the user switched the
+   display): manager-dark, manager-light, popup, settings, from a demo group of Windows' own
+   programs created for them and deleted through the Manager afterwards. `tbgroup.gif` (a screen
+   recording) is unchanged. The README's popup description and settings table were stale and are
+   current again. **C6 is complete.**
 
 **Tests:** theme dictionary tests, and a pixel test for the Mica area.
 

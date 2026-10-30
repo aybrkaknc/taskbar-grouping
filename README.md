@@ -27,7 +27,7 @@
 - **Groups of apps behind one taskbar tile.** Drag `.exe` or `.lnk` files into a group; the group gets its own pinnable shortcut.
 - **Composite group icons.** Each group's icon is generated from the icons of the apps inside it — one centred, two side by side, three in an iOS-style arrangement, four or more as a 2×2 of the first four.
 - **One-click pinning.** The Manager asks Windows to pin the group for you. Windows shows its own confirmation dialog; if your edition or policy blocks programmatic pinning, the Manager opens the shortcut folder so you can pin it by hand.
-- **A popup with no chrome.** Clicking a pinned group opens a fully transparent popup next to the taskbar — only the icons are visible. It closes when it loses focus or after you launch something.
+- **A popup that looks like Windows.** Clicking a pinned group opens a popup next to the taskbar on Mica, the material of Windows' own apps — or Mica Alt, Acrylic or a plain panel, with an optional colour tint, per group or for all. It closes when it loses focus or after you launch something, unless you keep it open.
 - **Follows your Windows theme.** Light, dark, or system; the system option live-switches when Windows does.
 - **Multi-monitor and high-DPI aware.** The popup anchors to the monitor under the cursor and places correctly at 100–200 % display scaling.
 
@@ -100,24 +100,27 @@ graph LR
 ```
 
 <p align="center">
-  <img src="assets/screenshots/popup.png" alt="The popup: icons and labels only, no window chrome" width="286">
+  <img src="assets/screenshots/popup.png" alt="The popup: the group's name and buttons above its apps, on Mica" width="310">
 </p>
 
 Full detail in [docs/architecture.md](docs/architecture.md), and the reasoning behind the shared-launcher design in [ADR-002](docs/adr/002-per-group-lnk-aumid.md).
 
 ## Settings
 
-Open with the **⚙** button. Each setting applies and is stored as soon as you change it.
+Open with **Settings** at the bottom of the group list. Each setting applies and is stored as soon as you change it.
 
 | Setting | Options | Default |
 |---|---|---|
 | Theme | System, Light, Dark | System |
 | Popup position | Auto, Above, Below | Auto |
+| Popup backdrop | Mica, Mica Alt, Acrylic, Off | Mica |
+| Popup tint | None, Accent, Midnight, Forest, Sunset | None |
 | Enable popup animations | on / off | on |
 | Start TaskbarFolders Manager when Windows starts | on / off | off |
+| Show "Taskbar Groups" in Explorer's right-click menu | on / off | on |
 
 <p align="center">
-  <img src="assets/screenshots/settings.png" alt="Settings dialog" width="466">
+  <img src="assets/screenshots/settings.png" alt="Settings dialog" width="349">
 </p>
 
 Autostart is a per-user `HKCU\…\CurrentVersion\Run` entry — no scheduled task, no service. The registry is read as the source of truth, so removing that entry by hand is respected.

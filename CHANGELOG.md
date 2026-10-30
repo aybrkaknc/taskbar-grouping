@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **The Manager's spacing follows one scale.** Margins and paddings had drifted to 3, 5, 6, 10 and 14 DIP; all of them now sit on 4 DIP steps, so rows, buttons and sections line up. The app list's rows and the *Pin to taskbar* button are slightly roomier, the *Appearance* rows slightly closer, and the popup's header sits 2 DIP further from its tiles.
+- **New screenshots.** The Manager in both themes, the popup and Settings were retaken at 150 % display scaling from a group of Windows' own programs; the old ones still showed the layout from before v0.5. The README described the popup as fully transparent and listed four of the seven settings; both are current again.
 - ***New group* carries the Fluent + icon.** It was the only button whose icon was a "+" typed into its label, in a different weight and size from every other icon; it now has the glyph beside the label, as *Add apps…* does, in the sidebar and on the empty start screen. Screen readers read it as "New group".
 
 ### Fixed
