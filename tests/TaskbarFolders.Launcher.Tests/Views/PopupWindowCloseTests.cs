@@ -241,6 +241,24 @@ public sealed class PopupWindowCloseTests
             .Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void TheOutsideClickHook_IsInstalled_OnlyWhenThePopupRespondsToTheDesktop(bool responds)
+    {
+        // Test popups do not listen: a person clicking elsewhere while the suite ran closed them.
+        var watches = StaThread.Run(() =>
+        {
+            var (window, _) = TestPopup.Show(beforeWindowShown: w => w.RespondsToDesktop = responds);
+            StaThread.PumpUntil(() => window.WatchesOutsideClicks, TimeSpan.FromSeconds(2));
+            var installed = window.WatchesOutsideClicks;
+            TestPopup.Close(window);
+            return installed;
+        });
+
+        watches.Should().Be(responds);
+    }
+
     private static PopupWindow CreatePopup(bool enableAnimations, bool launchSucceeds = false) =>
         TestPopup.Show(enableAnimations: enableAnimations, launchSucceeds: launchSucceeds).Window;
 }

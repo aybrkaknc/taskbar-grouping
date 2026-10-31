@@ -64,6 +64,15 @@ public sealed partial class PopupWindow : Window, IDisposable
     private bool _closeConfirmed;
     private DispatcherTimer? _safetyTimer;
     private DispatcherTimer? _activationFallbackTimer;
+
+    /// <summary>
+    /// Whether the desktop can dismiss the popup: a press outside it (the low-level mouse hook),
+    /// focus moving elsewhere (<c>Deactivated</c>), and the fallback for a popup never activated.
+    /// On in the app. Window tests turn it off before showing a popup: Windows activates a test
+    /// popup, and whoever was using the PC while the suite ran clicked or switched windows and
+    /// closed it mid-test — a different test failed each time, and never on CI.
+    /// </summary>
+    internal bool RespondsToDesktop { get; set; } = true;
     private bool _wasActivated;
 
     /// <summary>
@@ -158,7 +167,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         {
             Dispatcher.BeginInvoke(() => FocusTile(0), DispatcherPriority.Loaded);
         }
-        if (_closeAnimating || _closeConfirmed)
+        if (_closeAnimating || _closeConfirmed || !RespondsToDesktop)
         {
             return;
         }
@@ -377,6 +386,11 @@ public sealed partial class PopupWindow : Window, IDisposable
         // as an orphaned Topmost window forever. Re-arms while the pointer is over the
         // popup so a user interacting with a never-activated popup is not interrupted;
         // OnActivated disarms it on the normal path.
+        if (!RespondsToDesktop)
+        {
+            return;
+        }
+
         _activationFallbackTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
             Interval = _activationFallbackInterval,
@@ -888,6 +902,18 @@ public sealed partial class PopupWindow : Window, IDisposable
             }
         };
         _safetyTimer.Start();
+    }
+
+    /// <summary>Whether the outside-click hook is installed (it is from the first render on).</summary>
+    internal bool WatchesOutsideClicks => _outsideClicks is not null;
+
+    // The window's own Deactivated event; tests call OnDeactivated directly.
+    private void OnWindowDeactivated(object? sender, EventArgs e)
+    {
+        if (RespondsToDesktop)
+        {
+            OnDeactivated(sender, e);
+        }
     }
 
     internal void OnDeactivated(object? sender, EventArgs e)

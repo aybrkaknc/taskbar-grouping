@@ -16,7 +16,7 @@
         ShowInTaskbar="False"
         Topmost="True"
         WindowStartupLocation="Manual"
-        Deactivated="OnDeactivated"
+        Deactivated="OnWindowDeactivated"
         d:DataContext="{d:DesignInstance Type=vm:PopupViewModel}">
     <Window.Resources>
       <ResourceDictionary>

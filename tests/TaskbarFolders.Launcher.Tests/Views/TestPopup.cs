@@ -40,7 +40,8 @@ internal static class TestPopup
         PopupBackdrop? groupBackdrop = null,
         PopupBackdrop settingsBackdrop = PopupBackdrop.Mica,
         PopupTint? groupTint = null,
-        PopupTint settingsTint = PopupTint.None)
+        PopupTint settingsTint = PopupTint.None,
+        Action<PopupWindow>? beforeWindowShown = null)
     {
         var config = new GroupConfig { Id = "g1", GroupName = "Tools", Columns = columns, IconSize = iconSize, ShowNames = showNames, TileSpacing = tileSpacing, Backdrop = groupBackdrop, Tint = groupTint };
         for (var i = 0; i < appCount; i++)
@@ -82,6 +83,11 @@ internal static class TestPopup
             window.Resources.MergedDictionaries.Add(theme);
         }
 
+        // Deaf to the desktop: Windows activates the popup anyway, and a click or a switch of
+        // windows by whoever uses the PC while the suite runs closed it mid-test - a different
+        // window test failed each run, never on CI. A test of dismissal turns it back on.
+        window.RespondsToDesktop = false;
+        beforeWindowShown?.Invoke(window);
         window.ShowActivated = false;
         window.Show();
         window.UpdateLayout();
