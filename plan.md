@@ -8,16 +8,19 @@ finishes it, and a change of order or scope is recorded here when it is agreed, 
 
 ## Where we are
 
-- **`develop`:** v0.5.1 prepared — version bumped in the five places, CHANGELOG section dated
-  2026-10-29, collecting the fixes from the v0.5.0 smoke test (below). Pushing `develop`, pushing
-  the `v0.5.1` tag and fast-forwarding `main` each wait for approval; after the tag, the install
-  smoke test of the published assets comes before any announcement.
-- **`main`:** still at `18c929e`; to be fast-forwarded to the v0.5.1 commit once the tag is out.
-- **Branch:** none open locally. `origin/perf/launcher-startup` and the dependabot branch are not
-  merged and stay.
-- **Still open:** the `IsPinningAllowed` issue (issues are off on the fork; turning them on is a
-  repository setting, and the user said not now). `assets/screenshots/settings.png` still shows
-  the Save button; retaking it needs 150 % scaling (C6 polish retakes all of them). Then C2.
+- **`develop`:** v0.6.0 prepared — version bumped in the five places, CHANGELOG section dated
+  2026-10-31: C2 (preview, spacing), C4 (reorder in the popup's edit mode, *Max per row* there),
+  C6 visual polish (Mica, the popup's backdrop and tint, spacing scale, new screenshots) and E
+  (installed apps, ADR-009). Pushing `develop`, pushing the `v0.6.0` tag and fast-forwarding
+  `main` each wait for approval; after the tag, the install smoke test of the published assets
+  comes before any announcement.
+- **`main`:** at the v0.5.1 commit `f8de37e`; to be fast-forwarded to the v0.6.0 commit once the
+  tag is out and verified.
+- **Branches:** `feature/manager-polish` and `feature/installed-apps` are merged into `develop`
+  (fast-forward) and can go once v0.6.0 is out; deleting a branch waits for approval.
+- **Still open:** the four items below (rename feedback, pin retry still unproven, Launcher exe
+  icon) and the popup's + offering the installed-apps picker. The Manager screenshots predate the
+  *Installed apps…* button; the user chose not to retake them for v0.6.0.
 
 ## Found in the v0.5.0 smoke test (2026-10-28)
 
@@ -123,7 +126,11 @@ decided with the user one at a time.
   whether they have only small frames. Suspected: `ShellIconExtractor` takes the big shell image
   and a source with only small frames comes back as a small icon on a large transparent canvas.
   Next: extract both at 96 and 256 px in a throwaway test and measure the non-transparent box.
-- [ ] **A popup sizing test failed once and passed on rerun.**
+- [x] **A popup sizing test failed once and passed on rerun.** Explained and fixed on 2026-10-31 in
+  `0acbe4b` (`test(launcher): keep test popups deaf to the desktop`): Windows activates a test
+  popup despite `ShowActivated = false`, and a click or window switch by whoever used the PC while
+  the suite ran closed it mid-test through `Deactivated` or the outside-click hook. It struck a
+  different window test each time and never CI. The original note:
   `PopupWindowSizingTests.AddingATileToTheSameRow_ShowsItsLabelInsideTheWindow` failed in one full
   run on 2026-10-29 with no Launcher change, then passed three times alone and in a full rerun.
   Watch for it; if it fails again, find what the layout pass races with. Checked 2026-10-29: six

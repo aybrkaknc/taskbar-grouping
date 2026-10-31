@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-31
+
 ### Added
 
 - **Rearrange a group's apps in the popup.** With ✎ on, a tile can be dragged to another place: it follows the pointer, the other tiles slide out of its way, and it settles into its cell when let go. The group's icon is rebuilt when one of the first four apps moved. Letting go outside the tiles or pressing Escape puts every tile back, and a group taller than the popup scrolls while the tile is held near its edge. In edit mode the tiles wiggle, as icons do on a phone, and the header shows only the pencil and, in the close button's place, a framed number: *Max per row*, one more per click and back to 1 after 6, with the tiles gliding into their new rows. Add, pin and close come back when editing ends. With *Enable animations* off the tiles stay still and everything moves without animation.
@@ -409,7 +411,8 @@ First functional release. Everything described in the README is implemented and 
 - Full documentation: README, Contributing Guide, Architecture, User Guide, Developer Guide
 - MIT License
 
-[Unreleased]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.4.10...v0.5.0
 [0.4.10]: https://github.com/gianluca-schwekendiek/taskbar-grouping/compare/v0.4.9...v0.4.10
