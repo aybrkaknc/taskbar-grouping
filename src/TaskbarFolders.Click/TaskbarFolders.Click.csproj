@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- WinExe: it runs on every click and must not flash a console window. -->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>TaskbarFolders.Click</RootNamespace>
+    <AssemblyName>TaskbarFolders.Click</AssemblyName>
+    <ApplicationIcon>..\..\assets\icons\manager.ico</ApplicationIcon>
+    <Description>TaskbarFolders Click - the tiny program a taskbar tile starts; hands the click to the resident launcher</Description>
+
+    <!-- Native AOT: no runtime to start, so the process is ready in a few milliseconds. The
+         client's whole job is to pass one line to the resident launcher and exit, and the
+         launcher's own start-up (~70 ms for a self-contained .NET exe) was most of what a click
+         still cost. -->
+    <PublishAot>true</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <StackTraceSupport>false</StackTraceSupport>
+    <IlcOptimizationPreference>Size</IlcOptimizationPreference>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TaskbarFolders.Shared\TaskbarFolders.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

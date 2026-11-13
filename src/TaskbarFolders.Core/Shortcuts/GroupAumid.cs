@@ -12,7 +12,7 @@ namespace TaskbarFolders.Core.Shortcuts;
 public static class GroupAumid
 {
     /// <summary>Stable namespace prefix for all TaskbarFolders group AUMIDs.</summary>
-    public const string Prefix = "TaskbarFolders.Group.";
+    public const string Prefix = TaskbarFolders.Shared.Hosting.HostEndpoint.GroupAumidPrefix;
 
     /// <summary>Builds the AUMID for the supplied group.</summary>
     /// <param name="groupId">Group identifier — usually a GUID hex string.</param>

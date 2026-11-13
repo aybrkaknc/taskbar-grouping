@@ -95,6 +95,13 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     private bool _showInExplorerMenu = true;
 
     /// <summary>
+    /// Whether the launcher stays running in the notification area, so a popup opens without
+    /// starting a new process. Takes effect the next time a launcher starts.
+    /// </summary>
+    [ObservableProperty]
+    private bool _launcherResident = true;
+
+    /// <summary>
     /// Raised after a change has been written to the store, once per change — the Explorer menu
     /// is rewritten on it, and reads the setting back from the store.
     /// </summary>
@@ -120,6 +127,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
             AutoStart = _autoStartService.IsEnabled;
             EnableAnimations = settings.EnableAnimations;
             ShowInExplorerMenu = settings.ShowInExplorerMenu;
+            LauncherResident = settings.LauncherResident;
             PopupPosition = settings.PopupPosition;
             PopupBackdrop = settings.PopupBackdrop;
             PopupTint = settings.PopupTint;
@@ -162,6 +170,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
                 AutoStart = AutoStart,
                 EnableAnimations = EnableAnimations,
                 ShowInExplorerMenu = ShowInExplorerMenu,
+                LauncherResident = LauncherResident,
                 PopupPosition = PopupPosition,
                 PopupBackdrop = PopupBackdrop,
                 PopupTint = PopupTint,
@@ -260,6 +269,7 @@ public sealed partial class SettingsViewModel : ObservableObject, IDisposable
     partial void OnAutoStartChanged(bool value) => QueueApply(nameof(AutoStart));
     partial void OnEnableAnimationsChanged(bool value) => QueueApply(nameof(EnableAnimations));
     partial void OnShowInExplorerMenuChanged(bool value) => QueueApply(nameof(ShowInExplorerMenu));
+    partial void OnLauncherResidentChanged(bool value) => QueueApply(nameof(LauncherResident));
     partial void OnPopupPositionChanged(PopupPositionPreference value) => QueueApply(nameof(PopupPosition));
     partial void OnPopupBackdropChanged(PopupBackdrop value) => QueueApply(nameof(PopupBackdrop));
     partial void OnPopupTintChanged(PopupTint value) => QueueApply(nameof(PopupTint));

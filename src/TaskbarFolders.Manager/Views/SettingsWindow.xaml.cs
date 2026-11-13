@@ -60,7 +60,7 @@ public partial class SettingsWindow : Window
     {
         var hwnd = new WindowInteropHelper(this).Handle;
         var dark = ThemeService?.EffectiveTheme == ThemePreference.Dark;
-        _ = WindowBackdrop.TrySetDarkTitleBar(hwnd, dark);
+        _ = TitleBar.Apply(hwnd, dark);
     }
 
     private static IThemeService? ThemeService =>

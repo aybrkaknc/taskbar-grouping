@@ -1,0 +1,42 @@
+﻿<Window x:Class="TaskbarFolders.Manager.Views.NoticeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="400"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource WindowBackground}"
+        Foreground="{DynamicResource ForegroundDefault}"
+        TextElement.Foreground="{DynamicResource ForegroundDefault}"
+        FontFamily="Segoe UI"
+        FontSize="13">
+    <!-- The Manager's own notice, in the same theme as the rest of the window. Shown in place of
+         the system message box for information that needs no decision; a yes-or-no question
+         still uses the message box. -->
+    <Border Padding="24,20,24,16">
+        <DockPanel>
+            <TextBlock x:Name="CaptionText"
+                       DockPanel.Dock="Top"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,12"
+                       TextWrapping="Wrap" />
+            <Grid DockPanel.Dock="Bottom" Margin="0,16,0,0">
+                <Button x:Name="OkButton"
+                        HorizontalAlignment="Right"
+                        MinWidth="88"
+                        Padding="16,8"
+                        Content="OK"
+                        Style="{StaticResource AccentButton}"
+                        IsDefault="True"
+                        IsCancel="True"
+                        Click="OnOkClicked" />
+            </Grid>
+            <TextBlock x:Name="MessageText"
+                       Foreground="{DynamicResource ForegroundSubtle}"
+                       TextWrapping="Wrap"
+                       LineHeight="19" />
+        </DockPanel>
+    </Border>
+</Window>

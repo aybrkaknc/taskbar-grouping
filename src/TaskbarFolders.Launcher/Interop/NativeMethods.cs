@@ -115,6 +115,12 @@ internal static class NativeMethods
     public const int WM_MBUTTONDOWN = 0x0207;
     public const int WM_XBUTTONDOWN = 0x020B;
 
+    // (-1, -1) asks Windows to trim the process's working set: the pages go to the standby list
+    // and come back on demand. Used by the resident launcher while it is idle.
+    [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetProcessWorkingSetSize(IntPtr process, nint minimumSize, nint maximumSize);
+
     // DwmSetWindowAttribute backdrop control moved to TaskbarFolders.Core.Interop.WindowBackdrop
     // — both Manager and Launcher consume that single helper.
 }

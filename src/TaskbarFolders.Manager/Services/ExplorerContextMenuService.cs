@@ -94,7 +94,7 @@ public sealed class ExplorerContextMenuService : IDisposable
             var groups = settings.ShowInExplorerMenu
                 ? await _groups.LoadAllAsync(cancellationToken).ConfigureAwait(false)
                 : [];
-            var launcher = groups.Count > 0 ? _launcher.TryResolve() : null;
+            var launcher = groups.Count > 0 ? _launcher.TryResolveClick() ?? _launcher.TryResolve() : null;
 
             Write(groups, launcher);
         }

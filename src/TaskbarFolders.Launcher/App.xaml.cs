@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -9,9 +11,11 @@ using Microsoft.Extensions.Logging;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Launcher.Configuration;
+using TaskbarFolders.Launcher.Hosting;
 using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Shared.Configuration;
+using TaskbarFolders.Shared.Hosting;
 using TaskbarFolders.Shared.Logging;
 using TaskbarFolders.Shared.Models;
 
@@ -36,11 +40,25 @@ namespace TaskbarFolders.Launcher;
 /// <see cref="StartupFailureLogger"/> — Trace-only diagnostics are invisible in published
 /// builds and are forbidden here.
 /// </remarks>
+[System.Diagnostics.CodeAnalysis.SuppressMessage(
+    "Design",
+    "CA1001:Types that own disposable fields should be disposable",
+    Justification = "An Application is not disposed; everything it owns is released in OnExit.")]
 public partial class App : Application
 {
     private ServiceProvider? _services;
     private PopupPresence? _presence;
     private TileToggle? _tileToggle;
+
+    // Set only while this process is the resident launcher.
+    private HostElection? _election;
+    private PopupHost? _host;
+    private HostPipeServer? _pipe;
+    private TrayIcon? _tray;
+    private IdleTrimmer? _trimmer;
+
+    // Runs before Main creates the App, so the warm-up starts as early as it can.
+    static App() => StartRenderWarmup();
 
     /// <summary>
     /// Gets the application service provider once <see cref="OnStartup"/> has completed.
@@ -62,10 +80,18 @@ public partial class App : Application
                 args.ExceptionObject as Exception);
         DispatcherUnhandledException += (_, args) =>
         {
+            args.Handled = true;
+            if (_host is not null)
+            {
+                // The resident launcher has to outlive one popup's failure: the next click would
+                // otherwise find no host. If it is beyond saving, the next click starts a new one.
+                StartupFailureLogger.Log("Unhandled dispatcher exception; the resident launcher keeps running.", args.Exception);
+                return;
+            }
+
             StartupFailureLogger.Log(
                 "Unhandled dispatcher exception; shutting down with exit code 4.",
                 args.Exception);
-            args.Handled = true;
             Shutdown(4);
         };
 
@@ -270,10 +296,28 @@ public partial class App : Application
         _services.GetRequiredService<ICursorAnchor>().Seed(anchor);
 
         var logger = _services.GetRequiredService<ILogger<App>>();
+        var perf = _services.GetRequiredService<PerfRecorder>();
         logger.LogInformation("Launcher starting for group {GroupId}.", groupId);
 
         // Files after the group id come from Explorer's "Taskbar Groups" menu.
         var filesToAdd = CommandLineParser.ParseFilesToAdd(e.Args);
+
+        // The first launcher to start becomes the resident one and serves every later click; the
+        // rest were already handed over in Program.Main. A launcher that finds a host it could not
+        // reach (hung, or still starting) shows its popup itself, as a launcher that is not resident.
+        if (settings.LauncherResident)
+        {
+            _election = new HostElection();
+            if (_election.TryBecomeHost())
+            {
+                await RunResidentAsync(e, groupId, anchor, filesToAdd, logger, perf, tStart).ConfigureAwait(true);
+                return;
+            }
+
+            _election.Dispose();
+            _election = null;
+            logger.LogWarning("A resident launcher exists but did not take this click; showing the popup from this process.");
+        }
 
         // This click on the tile is the one that just closed the group's popup: a toggle.
         if (filesToAdd.Count == 0 && TileToggle.TryConsume(groupId))
@@ -311,6 +355,13 @@ public partial class App : Application
         await viewModel.LoadAsync().ConfigureAwait(true);
         var tVm = Stopwatch.GetTimestamp();
 
+        // Icon extraction needs the tile metrics and the app list, both set by LoadAsync, but
+        // not the window: it runs on the thread pool while the UI thread builds, places and
+        // shows the window, so the icons are ready sooner after the first frame. Results are
+        // applied through the dispatcher and bound when the window appears.
+        viewModel.StartIconLoad();
+        var tIcons = Stopwatch.GetTimestamp();
+
         var popup = _services.GetRequiredService<Views.PopupWindow>();
         var tWindow = Stopwatch.GetTimestamp();
         MainWindow = popup;
@@ -330,7 +381,6 @@ public partial class App : Application
         long tPlaced = 0;
         long tShown = 0;
         long tActivated = 0;
-        long tIcons = 0;
 
         // Attached after the constructor, so it runs after the window's own
         // SourceInitialized handler: the HWND exists and size + placement are computed.
@@ -352,6 +402,23 @@ public partial class App : Application
                 ToMs(tStart, tPlaced != 0 ? tPlaced : tLoaded),
                 ToMs(tStart, tShown != 0 ? tShown : tLoaded),
                 ToMs(tStart, tLoaded));
+
+            // The same checkpoints, as one machine-readable record in perf-launcher-<day>.jsonl.
+            // ms_since_process_start on the record is the time at which this handler ran.
+            perf.Record(
+                "popup.loaded",
+                ("group", groupId),
+                ("apps", viewModel.Apps.Count),
+                ("process_age_ms", processAge),
+                ("runtime_ms", processAge - ToMs(tStart, tLoaded)),
+                ("aumid_ms", ToMs(tStart, tAumid)),
+                ("settings_ms", ToMs(tStart, tSettings)),
+                ("di_ms", ToMs(tStart, tDi)),
+                ("theme_ms", ToMs(tStart, tTheme)),
+                ("vm_ms", ToMs(tStart, tVm)),
+                ("window_ms", ToMs(tStart, tWindow)),
+                ("placed_ms", ToMs(tStart, tPlaced != 0 ? tPlaced : tLoaded)),
+                ("loaded_ms", ToMs(tStart, tLoaded)));
         };
 
         // Second line, kept separate so the Loaded line survives if this one never comes.
@@ -371,6 +438,21 @@ public partial class App : Application
                 ToMs(tStart, tActivated),
                 ToMs(tStart, tIcons),
                 rendered);
+
+            // The window's own marks (XAML load, HWND, DWM, layout, placement, Win32 messages),
+            // in the order they were taken, measured from the same origin as the fields above.
+            var fields = new List<(string Key, object? Value)>
+            {
+                ("group", groupId),
+                ("process_age_ms", processAge),
+                ("runtime_ms", processAge - rendered),
+                ("shown_ms", ToMs(tStart, tShown)),
+                ("activated_ms", ToMs(tStart, tActivated)),
+                ("icons_started_ms", ToMs(tStart, tIcons)),
+                ("rendered_ms", rendered),
+            };
+            fields.AddRange(popup.Marks.ToFields(tStart));
+            perf.Record("popup.first_render", fields.ToArray());
         };
 
         // A press on the tile that opened the popup is also the click that starts the next
@@ -384,7 +466,9 @@ public partial class App : Application
             }
         };
 
+        popup.Marks.Mark("show_call");
         popup.Show();
+        popup.Marks.Mark("show_returned");
         tShown = Stopwatch.GetTimestamp();
 
         // Explicitly request activation (parity with pin mode). Show() alone does not
@@ -392,9 +476,6 @@ public partial class App : Application
         // dismiss-on-focus-loss depends on the popup having been activated once.
         popup.Activate();
         tActivated = Stopwatch.GetTimestamp();
-
-        viewModel.StartIconLoad();
-        tIcons = Stopwatch.GetTimestamp();
 
         // Later launchers that add files to this group ask this popup to show them.
         _presence.ListenForReload(() => Dispatcher.BeginInvoke(new Func<Task>(viewModel.ReloadAsync)));
@@ -407,6 +488,114 @@ public partial class App : Application
             .FirstOrDefault()?.StartBackgroundPrune();
 
         base.OnStartup(e);
+    }
+
+    /// <summary>
+    /// Runs this process as the resident launcher: it stays alive after the popup closes, listens
+    /// for the requests of later clicks, and shows an icon in the notification area. The click that
+    /// started it is its first request.
+    /// </summary>
+    private async Task RunResidentAsync(
+        StartupEventArgs e,
+        string groupId,
+        System.Windows.Point anchor,
+        IReadOnlyList<string> files,
+        ILogger logger,
+        PerfRecorder perf,
+        long tStart)
+    {
+        // Closing the last popup must not end the process; only the tray menu does.
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+        var services = _services!;
+        _host = new PopupHost(
+            this,
+            services.GetRequiredService<PopupSessionFactory>(),
+            services.GetRequiredService<IAppSettingsStore>(),
+            new HostRouter(),
+            perf,
+            services.GetRequiredService<ILogger<PopupHost>>());
+
+        // Listening starts before the first popup is built, so a second click that arrives while
+        // it opens already finds the pipe.
+        var host = _host;
+        _pipe = new HostPipeServer(HostEndpoint.PipeName, request => host.HandleAsync(request), logger);
+        _pipe.Start();
+
+        _tray = new TrayIcon("Taskbar Folders", OpenManager, () => Shutdown(0));
+
+        // While idle the launcher hands its memory back; the next popup takes it again in no time.
+        _trimmer = new IdleTrimmer(() => !host.HasOpenPopups, TimeSpan.FromSeconds(5), logger, perf);
+        host.AllPopupsClosed += (_, _) => _trimmer.Schedule();
+        logger.LogInformation("Launcher is resident (pipe {Pipe}).", HostEndpoint.PipeName);
+
+        await host.HandleAsync(new HostRequest(groupId, (int)anchor.X, (int)anchor.Y, files), tStart).ConfigureAwait(true);
+
+        // Deferred startup IO: prune stale icon-cache PNGs and old log files in the background.
+        services.GetRequiredService<IIconCache>().StartBackgroundPrune();
+        services.GetServices<ILoggerProvider>()
+            .OfType<FileLoggerProvider>()
+            .FirstOrDefault()?.StartBackgroundPrune();
+
+        base.OnStartup(e);
+    }
+
+    // The Manager sits next to the launcher's folder in an installed layout.
+    private static void OpenManager()
+    {
+        var directory = Path.GetDirectoryName(Environment.ProcessPath);
+        if (directory is null)
+        {
+            return;
+        }
+
+        var manager = Path.GetFullPath(Path.Combine(directory, "..", "Manager", "TaskbarFolders.Manager.exe"));
+        if (!File.Exists(manager))
+        {
+            return;
+        }
+
+        try
+        {
+            using var process = Process.Start(new ProcessStartInfo(manager) { UseShellExecute = true });
+        }
+        catch (System.ComponentModel.Win32Exception ex)
+        {
+            StartupFailureLogger.Log($"Could not start the Manager at '{manager}'.", ex);
+        }
+    }
+
+    // WPF connects to the desktop compositor the first time any visual property changes, and
+    // waits for the native render thread to answer: ~80 ms of a cold start (a CPU profile of
+    // the popup's open, under PopupWindow's InitializeComponent). That start-up is per process,
+    // not per window, so a throwaway element on a helper thread with its own dispatcher can pay
+    // it while this thread builds the Application, the services and the view model.
+    // Best effort: if anything goes wrong the real window simply pays the cost itself.
+    private static void StartRenderWarmup()
+    {
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                _ = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+                var probe = new System.Windows.Controls.Border { Opacity = 0.5 };
+
+                // Stays alive until the process ends: shutting the dispatcher down tears the
+                // channel down again, and that teardown can hold up the real window's connect.
+                GC.KeepAlive(probe);
+                Thread.Sleep(Timeout.Infinite);
+            }
+            catch (Exception)
+            {
+                // Warm-up only; the window works the same without it.
+            }
+        })
+        {
+            Name = "WpfRenderWarmup",
+            IsBackground = true,
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
     }
 
     private static double ToMs(long from, long to) => (to - from) * 1000.0 / Stopwatch.Frequency;
@@ -424,6 +613,17 @@ public partial class App : Application
             _tileToggle.Dispose();
             _tileToggle = null;
         }
+
+        _trimmer?.Cancel();
+        _trimmer = null;
+        _pipe?.Dispose();
+        _pipe = null;
+        _tray?.Dispose();
+        _tray = null;
+        _election?.Dispose();
+        _election = null;
+        _host?.Dispose();
+        _host = null;
 
         _presence?.Dispose();
         _presence = null;

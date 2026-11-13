@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-13
+
+### Added
+
+- **The launcher stays running, so a popup opens almost at once.** Every click used to start a new launcher that built its window from nothing: about 440 ms to the first frame. The first launcher a click starts now stays in the notification area (right-click for *Open* and *Exit*), and every later click is passed to it by a tiny native program, `TaskbarFolders.Click.exe`, which exits at once: about 95 ms. It shows each group in a new window, closes it on a second click on the tile, adds files sent from Explorer's menu, and picks up a changed theme or setting on the next click. Five seconds after the last popup closes it hands its memory back (about 10 MB in Task Manager while idle). *Settings → Keep the launcher running in the notification area* turns it off for one launcher per click as before. See ADR-010.
+- **Timing records for the popup's open.** `perf-launcher-<day>.jsonl` in the logs folder holds one line per measurement: the stages of an open, the window's own steps (XAML, HWND, backdrop, layout, placement), each icon's load, and each app's launch.
+- `hot-reload.bat` runs the Manager or the Launcher under `dotnet watch`.
+
+### Changed
+
+- **Icons are read before the window is built**, so they are ready with the first frame, not after it; and the first render of WPF's compositor is paid on a helper thread while the application starts. Together about 70 ms off a launcher that is not resident.
+
+### Fixed
+
+- A second popup in the same launcher stacked another theme dictionary in front of the first; it is replaced now.
+- The Manager no longer loses the new `launcherResident` setting when it saves another one: it writes the whole settings document.
+
 ## [0.6.0] - 2026-10-31
 
 ### Added

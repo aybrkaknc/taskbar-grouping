@@ -23,9 +23,9 @@ namespace TaskbarFolders.Launcher.ViewModels;
 /// <summary>
 /// Backing view model for <see cref="Views.PopupWindow"/>. Two-phase load:
 /// <see cref="LoadAsync"/> populates names + grid metadata fast (no icons), then
-/// <see cref="StartIconLoad"/> extracts and assigns icons in parallel after the
-/// window has been shown so the popup appears instantly rather than waiting for
-/// per-app shell icon extraction.
+/// <see cref="StartIconLoad"/> extracts and assigns icons in parallel on the thread
+/// pool, without blocking the window, so the popup appears instantly rather than
+/// waiting for per-app shell icon extraction. It may start before the window exists.
 /// </summary>
 public sealed partial class PopupViewModel : ObservableObject, IDisposable
 {
@@ -36,8 +36,11 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     private readonly IGroupSyncService _syncService;
     private readonly LauncherOptions _options;
     private readonly ILogger<PopupViewModel>? _logger;
+    private readonly PerfRecorder? _perf;
 
     private readonly object _iconLoadLock = new();
+    private int _iconsPending;
+    private long _iconsStarted;
     private CancellationTokenSource? _iconLoadCts;
 
     // The group as loaded, kept so edits made in the popup can be saved back. Null when the
@@ -52,7 +55,8 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         IProcessLauncher launcher,
         IGroupSyncService syncService,
         LauncherOptions options,
-        ILogger<PopupViewModel>? logger = null)
+        ILogger<PopupViewModel>? logger = null,
+        PerfRecorder? perf = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(extractor);
@@ -68,6 +72,7 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
         _syncService = syncService;
         _options = options;
         _logger = logger;
+        _perf = perf;
 
         Apps.CollectionChanged += (_, _) => OnPropertyChanged(nameof(EffectiveColumns));
     }
@@ -169,8 +174,8 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
     /// <summary>
     /// Reads the group config and populates <see cref="Apps"/> with icon-less view models.
     /// Returns fast (~5 ms) so the window can be shown without waiting for shell icon
-    /// extraction. Call <see cref="StartIconLoad"/> after <c>Window.Show</c> to stream
-    /// icons in.
+    /// extraction. Call <see cref="StartIconLoad"/> next, before or after the window is
+    /// built, to stream icons in.
     /// </summary>
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
@@ -226,6 +231,8 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
             token = _iconLoadCts.Token;
         }
 
+        _iconsStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+        Interlocked.Exchange(ref _iconsPending, Apps.Count);
         foreach (var app in Apps)
         {
             _ = LoadIconForAsync(app, token);
@@ -526,7 +533,15 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
             return;
         }
 
+        var launchStart = System.Diagnostics.Stopwatch.GetTimestamp();
         var ok = _launcher.Launch(app.Path, app.Arguments);
+        _perf?.Record(
+            "app.launch",
+            ("group", _options.GroupId),
+            ("app", app.Name),
+            ("kind", PerfRecorder.KindOf(app.Path)),
+            ("ok", ok),
+            ("launch_ms", PerfRecorder.ElapsedMs(launchStart, System.Diagnostics.Stopwatch.GetTimestamp())));
         if (ok)
         {
             _logger?.LogInformation("Launched {Path} from group {GroupId}.", app.Path, _options.GroupId);
@@ -554,16 +569,31 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
 
     private async Task LoadIconForAsync(PopupAppViewModel app, CancellationToken token)
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+        var outcome = "loaded";
+
+        // Time spent in the extraction itself, on the pool thread; "ms" in the record also holds
+        // the wait for the UI thread to pick the result up.
+        double extractMs = 0;
         try
         {
             // Off the UI thread: the chosen image, the cache and the shell all read files. The
             // result comes back frozen, so it can cross to the UI thread.
             var size = Tile.ExtractPx;
-            var icon = await Task.Run(() => AppIcons.Load(app.Entry, size, _extractor, _cache), token)
+            var icon = await Task.Run(
+                    () =>
+                    {
+                        var extractStart = System.Diagnostics.Stopwatch.GetTimestamp();
+                        var loaded = AppIcons.Load(app.Entry, size, _extractor, _cache);
+                        extractMs = PerfRecorder.ElapsedMs(extractStart, System.Diagnostics.Stopwatch.GetTimestamp());
+                        return loaded;
+                    },
+                    token)
                 .ConfigureAwait(true);
 
             if (token.IsCancellationRequested)
             {
+                outcome = "cancelled";
                 return;
             }
 
@@ -573,19 +603,42 @@ public sealed partial class PopupViewModel : ObservableObject, IDisposable
             }
             else
             {
+                outcome = "missing";
                 app.IconMissing = true;
             }
         }
         catch (OperationCanceledException)
         {
             // Window closed mid-extraction — drop silently.
+            outcome = "cancelled";
         }
         catch (Exception ex)
         {
             // A single bad path must not crash the launcher process; the tile shows the
             // placeholder. Log so support can correlate with shell errors.
             _logger?.LogWarning(ex, "Failed to extract icon for {Path}.", app.Path);
+            outcome = "error";
             app.IconMissing = true;
+        }
+        finally
+        {
+            _perf?.Record(
+                "icon.load",
+                ("group", _options.GroupId),
+                ("app", app.Name),
+                ("kind", PerfRecorder.KindOf(app.Path)),
+                ("outcome", outcome),
+                ("extract_ms", extractMs),
+                ("ms", PerfRecorder.ElapsedMs(started, System.Diagnostics.Stopwatch.GetTimestamp())));
+
+            if (Interlocked.Decrement(ref _iconsPending) == 0 && _perf is not null)
+            {
+                _perf.Record(
+                    "icons.done",
+                    ("group", _options.GroupId),
+                    ("apps", Apps.Count),
+                    ("ms", PerfRecorder.ElapsedMs(_iconsStarted, System.Diagnostics.Stopwatch.GetTimestamp())));
+            }
         }
     }
 }

@@ -58,7 +58,7 @@ public static class ManagerServiceCollectionExtensions
         services.AddSingleton<IShellChangeNotifier, ShellChangeNotifier>();
         services.AddSingleton<ILauncherPathResolver, LauncherPathResolver>();
         services.AddSingleton<IGroupSyncService, GroupSyncService>();
-        services.AddSingleton<IUserConfirmation, MessageBoxUserConfirmation>();
+        services.AddSingleton<IUserConfirmation, InAppUserConfirmation>();
         services.AddSingleton<IProcessRunner, ProcessRunner>();
         services.AddSingleton<IPinToTaskbarService, LauncherProcessPinService>();
         services.AddSingleton<IGroupIconReader, GroupIconReader>();

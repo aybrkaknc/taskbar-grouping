@@ -57,6 +57,14 @@ public sealed class AppSettings
     public bool ShowInExplorerMenu { get; set; } = true;
 
     /// <summary>
+    /// Whether the launcher stays running in the notification area after a popup closes, so the
+    /// next tile click opens its popup without starting a new process. Off, every click starts a
+    /// launcher that exits with its popup (the behaviour before the resident launcher).
+    /// </summary>
+    [JsonPropertyName("launcherResident")]
+    public bool LauncherResident { get; set; } = true;
+
+    /// <summary>
     /// Whether the user has been told about taskbar tiles left behind by groups that no longer
     /// exist. Shown once, after a group is deleted; not part of the settings dialog.
     /// </summary>
