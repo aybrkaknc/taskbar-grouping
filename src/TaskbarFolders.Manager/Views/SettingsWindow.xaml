@@ -68,7 +68,10 @@
 
             <CheckBox IsChecked="{Binding EnableAnimations}" Content="Enable popup animations" Margin="0,0,0,12" />
             <CheckBox IsChecked="{Binding AutoStart}" Content="Start TaskbarFolders Manager when Windows starts" Margin="0,0,0,12" />
-            <CheckBox IsChecked="{Binding ShowInExplorerMenu}" Content="Show &quot;Taskbar Groups&quot; in Explorer's right-click menu" />
+            <CheckBox IsChecked="{Binding ShowInExplorerMenu}" Content="Show &quot;Taskbar Groups&quot; in Explorer's right-click menu" Margin="0,0,0,12" />
+            <CheckBox IsChecked="{Binding LauncherResident}"
+                      Content="Keep the launcher running in the notification area (popups open faster)"
+                      ToolTip="The launcher stays loaded after a popup closes, so the next click opens one at once. Turn off to start a new launcher on every click. Takes effect the next time a launcher starts." />
 
             <TextBlock Margin="0,16,0,0" Foreground="{DynamicResource ForegroundSubtle}" FontSize="11" TextWrapping="Wrap">
                 Auto-start writes a per-user entry to

@@ -95,6 +95,46 @@ public sealed class ShortcutGenerator : IShortcutGenerator
     }
 
     /// <inheritdoc/>
+    public bool TryUpdateTarget(string shortcutPath, string targetPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetPath);
+        if (string.IsNullOrWhiteSpace(shortcutPath) || !File.Exists(shortcutPath))
+        {
+            return false;
+        }
+
+        var link = new ShellLink();
+        try
+        {
+            ((IPersistFile)link).Load(shortcutPath, StgmReadWrite);
+
+            // Read what it starts now: a pinned copy that already starts the right program is not
+            // rewritten, so the pinned folder is not touched on every sync.
+            var current = new System.Text.StringBuilder(260);
+            ((IShellLinkW)link).GetPath(current, current.Capacity, IntPtr.Zero, 0);
+            if (string.Equals(current.ToString(), targetPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            ((IShellLinkW)link).SetPath(targetPath);
+            ((IShellLinkW)link).SetWorkingDirectory(Path.GetDirectoryName(targetPath) ?? string.Empty);
+            ((IPersistFile)link).Save(shortcutPath, fRemember: true);
+            _logger?.LogInformation("Pointed {Path} at {Target}.", shortcutPath, targetPath);
+            return true;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidCastException or IOException or UnauthorizedAccessException)
+        {
+            _logger?.LogWarning(ex, "Could not update the target of {Path}.", shortcutPath);
+            return false;
+        }
+        finally
+        {
+            Marshal.FinalReleaseComObject(link);
+        }
+    }
+
+    /// <inheritdoc/>
     public bool TryUpdateIcon(string shortcutPath, string iconPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(iconPath);

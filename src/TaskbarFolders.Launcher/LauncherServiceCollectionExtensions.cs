@@ -4,6 +4,7 @@ using TaskbarFolders.Core.Groups;
 using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Launcher.Configuration;
+using TaskbarFolders.Launcher.Hosting;
 using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Launcher.Views;
@@ -68,6 +69,11 @@ public static class LauncherServiceCollectionExtensions
         services.AddSingleton<TaskbarPinRunner>();
         services.AddSingleton<PerfRecorder>();
 
+        // The resident launcher builds one session per popup from these shared services.
+        services.AddSingleton<PopupSessionFactory>();
+
+        // One group per process: the path of a launcher that is not resident, and of the tests.
+        // A resident launcher gets its view model and window from PopupSessionFactory instead.
         services.AddSingleton<PopupViewModel>();
         services.AddTransient<PopupWindow>();
         services.AddTransient<PinHostWindow>();

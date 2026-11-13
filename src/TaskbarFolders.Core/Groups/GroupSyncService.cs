@@ -109,22 +109,26 @@ public sealed class GroupSyncService : IGroupSyncService
         var iconPath = _paths.GetGroupIconFile(config.Id, IconVersion(composite));
         await _icoWriter.WriteAsync(composite, iconPath, cancellationToken).ConfigureAwait(false);
 
+        // A shortcut starts the click client when there is one: it hands the click to the resident
+        // launcher and exits, far quicker than starting the launcher. Without it, the launcher.
+        var target = _launcherResolver.TryResolveClick() ?? launcher;
+
         _shortcutGenerator.Generate(new GroupShortcutRequest(
             GroupId: config.Id,
             DisplayName: config.GroupName,
-            TargetExePath: launcher,
+            TargetExePath: target,
             IconPath: iconPath,
             ShortcutPath: _paths.GetGroupShortcutFile(config.Id)));
 
         // v0.4.1: also write a Start Menu anchor .lnk so Windows.UI.Shell.TaskbarManager
         // RequestPinCurrentAppAsync can persist the pin. The pin API silently fails to
         // anchor a pinned tile when no Start Menu entry with the matching AUMID exists.
-        WriteStartMenuShortcut(config, launcher, iconPath);
+        WriteStartMenuShortcut(config, target, iconPath);
 
         // The taskbar's pinned copy is Windows' own file and keeps the icon path it was
         // pinned with; point it at the new file too, then drop the old versions — in that
         // order, so the pin never refers to a file that is gone.
-        RepointPinnedCopies(config.Id, iconPath);
+        RepointPinnedCopies(config.Id, iconPath, target);
         DeleteGroupIcons(config.Id, keepPath: iconPath);
     }
 
@@ -221,7 +225,7 @@ public sealed class GroupSyncService : IGroupSyncService
             return false;
         }
 
-        WriteStartMenuShortcut(config, launcher, iconPath);
+        WriteStartMenuShortcut(config, _launcherResolver.TryResolveClick() ?? launcher, iconPath);
         return true;
     }
 
@@ -357,7 +361,7 @@ public sealed class GroupSyncService : IGroupSyncService
     /// tells the shell it changed. Only the icon location of our own pins is touched; nothing
     /// in the pinned folder is created or deleted.
     /// </summary>
-    private void RepointPinnedCopies(string groupId, string iconPath)
+    private void RepointPinnedCopies(string groupId, string iconPath, string targetPath)
     {
         var aumid = GroupAumid.For(groupId);
         foreach (var pinned in EnumerateFiles(_paths.PinnedTaskbarDirectory, "*.lnk"))
@@ -367,7 +371,10 @@ public sealed class GroupSyncService : IGroupSyncService
                 continue;
             }
 
-            if (_shortcutGenerator.TryUpdateIcon(pinned, iconPath))
+            // Both are done for every sync, and each reports whether it rewrote the file.
+            var iconChanged = _shortcutGenerator.TryUpdateIcon(pinned, iconPath);
+            var targetChanged = _shortcutGenerator.TryUpdateTarget(pinned, targetPath);
+            if (iconChanged || targetChanged)
             {
                 _shellChangeNotifier.NotifyUpdate(pinned);
             }

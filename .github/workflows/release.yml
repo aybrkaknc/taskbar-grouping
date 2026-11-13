@@ -37,6 +37,17 @@ jobs:
       - name: Publish Launcher (self-contained)
         run: dotnet publish src/TaskbarFolders.Launcher/TaskbarFolders.Launcher.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true --output ./publish/Launcher
 
+      - name: Publish Click client (native AOT)
+        # The tiny program a pinned tile starts. It is published on its own and only its exe is
+        # copied next to the launcher's, so the Launcher folder holds two programs by design.
+        # Native AOT needs the C++ build tools, which windows-latest has.
+        shell: pwsh
+        run: |
+          dotnet publish src/TaskbarFolders.Click/TaskbarFolders.Click.csproj --configuration Release --runtime win-x64 --output ./click-publish
+          if ($LASTEXITCODE -ne 0) { throw "Publishing the click client failed with $LASTEXITCODE" }
+          Copy-Item ./click-publish/TaskbarFolders.Click.exe ./publish/Launcher/
+          Remove-Item ./click-publish -Recurse -Force
+
       - name: Create portable ZIP
         # The ZIP holds the Manager and Launcher folders only; a portable copy uninstalls through
         # the Manager itself (Settings, or Manager.exe --uninstall).

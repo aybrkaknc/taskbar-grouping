@@ -7,6 +7,7 @@ using TaskbarFolders.Core.Icons;
 using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Launcher;
 using TaskbarFolders.Launcher.Configuration;
+using TaskbarFolders.Launcher.Hosting;
 using TaskbarFolders.Launcher.Services;
 using TaskbarFolders.Launcher.ViewModels;
 using TaskbarFolders.Shared.Configuration;
@@ -78,6 +79,7 @@ public sealed class CompositionRootTests : IDisposable
     [InlineData(typeof(PinVerifier))]
     [InlineData(typeof(IShortcutReader))]
     [InlineData(typeof(PopupViewModel))]
+    [InlineData(typeof(PopupSessionFactory))]
     [InlineData(typeof(LauncherOptions))]
     [InlineData(typeof(IAppDataPathProvider))]
     public void EveryRegisteredService_Resolves(Type serviceType)

@@ -30,4 +30,14 @@ public interface IShortcutGenerator
     /// <param name="iconPath">New icon file.</param>
     /// <returns><see langword="false"/> when the shortcut is missing or could not be rewritten; never throws for those.</returns>
     bool TryUpdateIcon(string shortcutPath, string iconPath);
+
+    /// <summary>
+    /// Points an existing shortcut at a different program, leaving its arguments, icon and
+    /// AppUserModelID as they are. Used on the taskbar's pinned copy of a group shortcut when the
+    /// shortcuts' target changes (to the click client), so a tile pinned earlier starts it too.
+    /// </summary>
+    /// <param name="shortcutPath">Existing <c>.lnk</c> to update in place.</param>
+    /// <param name="targetPath">The program the shortcut should start.</param>
+    /// <returns><see langword="false"/> when the shortcut is missing, already has that target, or could not be rewritten; never throws for those.</returns>
+    bool TryUpdateTarget(string shortcutPath, string targetPath);
 }

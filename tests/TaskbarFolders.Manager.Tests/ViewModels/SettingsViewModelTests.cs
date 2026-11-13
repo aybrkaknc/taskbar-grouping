@@ -287,6 +287,41 @@ public class SettingsViewModelTests
     }
 
     [Fact]
+    public async Task LauncherResident_IsLoaded_AndWrittenWhenChanged()
+    {
+        var sut = CreateSut(new AppSettings { LauncherResident = true }, autoStartEnabled: false, out var store, out _, out _);
+        var written = new List<AppSettings>();
+        store.Setup(s => s.SaveAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+             .Callback<AppSettings, CancellationToken>((a, _) => written.Add(a))
+             .Returns(Task.CompletedTask);
+        await sut.LoadAsync();
+        sut.LauncherResident.Should().BeTrue();
+
+        sut.LauncherResident = false;
+        await sut.WhenIdleAsync();
+
+        written.Last().LauncherResident.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ChangingAnotherSetting_KeepsLauncherResidentAsStored()
+    {
+        // The store takes the whole document: a save built without this setting would turn a
+        // resident launcher back on for someone who had turned it off.
+        var sut = CreateSut(new AppSettings { LauncherResident = false }, autoStartEnabled: false, out var store, out _, out _);
+        var written = new List<AppSettings>();
+        store.Setup(s => s.SaveAsync(It.IsAny<AppSettings>(), It.IsAny<CancellationToken>()))
+             .Callback<AppSettings, CancellationToken>((a, _) => written.Add(a))
+             .Returns(Task.CompletedTask);
+        await sut.LoadAsync();
+
+        sut.EnableAnimations = false;
+        await sut.WhenIdleAsync();
+
+        written.Last().LauncherResident.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Saved_IsRaisedOnlyAfterTheStoreHasBeenWritten()
     {
         // ExplorerContextMenuService reads the setting back from the store when Saved fires.

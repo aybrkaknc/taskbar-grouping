@@ -54,6 +54,13 @@ dotnet publish src/TaskbarFolders.Launcher/TaskbarFolders.Launcher.csproj -c Rel
 
 Both projects also set `PublishReadyToRun`, which is why the published output is large. Do not publish both projects into one flat folder — the installer will not find them.
 
+The third program, `TaskbarFolders.Click`, is what pinned tiles and Explorer's menu start: it hands the click to the resident launcher (ADR-010) and exits, and starts the launcher itself when none is running. It is a native-AOT executable, so publishing it needs the **C++ build tools** (Visual Studio 2022 Build Tools, *Desktop development with C++*) and the first restore downloads the ILCompiler package. It goes into the **Launcher's folder**, next to `TaskbarFolders.Launcher.exe` — the shortcuts look for it there, and fall back to the launcher when it is missing:
+
+```powershell
+dotnet publish src/TaskbarFolders.Click/TaskbarFolders.Click.csproj -c Release -r win-x64 -o ./click-publish
+Copy-Item ./click-publish/TaskbarFolders.Click.exe ./publish/Launcher/
+```
+
 ## Running
 
 ```bash

@@ -38,7 +38,7 @@ public partial class InstalledAppsWindow : Window
         _ = MicaSurfaces.TryApply(this);
         var dark = Application.Current is App { Services: { } services }
             && services.GetService<IThemeService>()?.EffectiveTheme == ThemePreference.Dark;
-        _ = WindowBackdrop.TrySetDarkTitleBar(new WindowInteropHelper(this).Handle, dark);
+        _ = TitleBar.Apply(new WindowInteropHelper(this).Handle, dark);
         SourceInitialized -= OnSourceInitialized;
     }
 

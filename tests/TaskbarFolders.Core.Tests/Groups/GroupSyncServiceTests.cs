@@ -664,6 +664,65 @@ public sealed class GroupSyncServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task SyncAsync_ShortcutsStartTheClickClient_WhenOneIsBesideTheLauncher()
+    {
+        _launcherResolver.Setup(r => r.TryResolveClick()).Returns("C:/install/TaskbarFolders.Click.exe");
+        var sut = CreateSut();
+
+        await sut.SyncAsync(SyncableGroup("g", "Tools"));
+
+        // The per-group shortcut and the Start menu anchor (which the taskbar pin is copied from).
+        _shortcutGenerator.Verify(g => g.Generate(It.Is<GroupShortcutRequest>(r =>
+            r.ShortcutPath == _paths.GetGroupShortcutFile("g") &&
+            r.TargetExePath == "C:/install/TaskbarFolders.Click.exe")), Times.Once);
+        _shortcutGenerator.Verify(g => g.Generate(It.Is<GroupShortcutRequest>(r =>
+            r.ShortcutPath == _paths.GetStartMenuShortcutFile("Tools") &&
+            r.TargetExePath == "C:/install/TaskbarFolders.Click.exe")), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncAsync_ShortcutsStartTheLauncher_WhenThereIsNoClickClient()
+    {
+        // The default of the mock: TryResolveClick returns null.
+        var sut = CreateSut();
+
+        await sut.SyncAsync(SyncableGroup("g", "Tools"));
+
+        _shortcutGenerator.Verify(g => g.Generate(It.Is<GroupShortcutRequest>(r =>
+            r.TargetExePath == "C:/install/Launcher.exe")), Times.Exactly(2));
+        _shortcutGenerator.Verify(g => g.TryUpdateTarget(It.IsAny<string>(), "C:/install/Launcher.exe"), Times.Never,
+            "no pinned copy exists in this test");
+    }
+
+    [Fact]
+    public async Task SyncAsync_PointsThisGroupsPinnedCopiesAtTheClickClient_AndOnlyThose()
+    {
+        _launcherResolver.Setup(r => r.TryResolveClick()).Returns("C:/install/TaskbarFolders.Click.exe");
+        var mine = StampPinned("mine", "g");
+        var otherGroup = StampPinned("other", "h");
+        var sut = CreateSut();
+
+        await sut.SyncAsync(SyncableGroup("g", "Tools"));
+
+        _shortcutGenerator.Verify(g => g.TryUpdateTarget(mine, "C:/install/TaskbarFolders.Click.exe"), Times.Once);
+        _shortcutGenerator.Verify(g => g.TryUpdateTarget(otherGroup, It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SyncAsync_NotifiesTheShell_WhenOnlyThePinnedCopysTargetChanged()
+    {
+        _launcherResolver.Setup(r => r.TryResolveClick()).Returns("C:/install/TaskbarFolders.Click.exe");
+        var mine = StampPinned("mine", "g");
+        _shortcutGenerator.Setup(g => g.TryUpdateIcon(It.IsAny<string>(), It.IsAny<string>())).Returns(false);
+        _shortcutGenerator.Setup(g => g.TryUpdateTarget(It.IsAny<string>(), It.IsAny<string>())).Returns(true);
+        var sut = CreateSut();
+
+        await sut.SyncAsync(SyncableGroup("g", "Tools"));
+
+        _shellChangeNotifier.Verify(n => n.NotifyUpdate(mine), Times.Once);
+    }
+
+    [Fact]
     public async Task SyncAsync_DoesNotNotify_WhenAPinnedCopyCouldNotBeUpdated()
     {
         var mine = StampPinned("mine", "g");

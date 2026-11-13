@@ -37,6 +37,7 @@ public static class WindowBackdrop
     private const uint DWMWA_SYSTEMBACKDROP_TYPE = 38;
     private const uint DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
     private const uint DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+    private const uint DWMWA_CAPTION_COLOR = 35;
     private const int DWMWCP_ROUND = 2;
 
     /// <summary>First build that honours <c>DWMWA_SYSTEMBACKDROP_TYPE</c> (Windows 11 22H2).</summary>
@@ -94,6 +95,29 @@ public static class WindowBackdrop
 
         var value = enabled ? 1 : 0;
         var hr = DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref value, sizeof(int));
+        return hr == 0;
+    }
+
+    /// <summary>
+    /// Paints the window's title bar in <paramref name="red"/>, <paramref name="green"/>,
+    /// <paramref name="blue"/>, in place of the colour Windows gives it from the accent. Windows 11
+    /// only; an older Windows does not know the attribute and the title bar keeps its colour.
+    /// </summary>
+    /// <param name="hwnd">Target window handle (non-zero).</param>
+    /// <param name="red">Red component.</param>
+    /// <param name="green">Green component.</param>
+    /// <param name="blue">Blue component.</param>
+    /// <returns><see langword="true"/> if the call succeeded.</returns>
+    public static bool TrySetCaptionColor(IntPtr hwnd, byte red, byte green, byte blue)
+    {
+        if (hwnd == IntPtr.Zero)
+        {
+            return false;
+        }
+
+        // COLORREF is 0x00BBGGRR.
+        var value = red | (green << 8) | (blue << 16);
+        var hr = DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, ref value, sizeof(int));
         return hr == 0;
     }
 
