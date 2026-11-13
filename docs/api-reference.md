@@ -279,6 +279,12 @@ string? TryResolve();
 
 The launcher executable a group's shortcuts target, or `null` when it cannot be found — sync then logs and skips the shortcut. Each executable supplies its own implementation (see the Manager section).
 
+```csharp
+string? TryResolveClick();   // default: the TaskbarFolders.Click.exe beside the launcher, or null
+```
+
+The native click client that shortcuts target in preference to the launcher when it sits beside it (ADR-010). `null` means the shortcuts target the launcher, which hands the click over itself, only more slowly.
+
 #### [`GroupIconFiles`](../src/TaskbarFolders.Core/Groups/GroupIconFiles.cs)
 
 ```csharp
@@ -354,7 +360,7 @@ What the Manager does after `Unsupported`. `Diagnose` reads `NoPinningToTaskbar`
 | [`ISystemThemeProbe`](../src/TaskbarFolders.Manager/Services/ISystemThemeProbe.cs) | `IsLightMode` from the Windows personalisation setting |
 | [`IThemeService`](../src/TaskbarFolders.Manager/Services/IThemeService.cs) | `Preference`, `EffectiveTheme`, `SetPreference()`; subscribes to system theme changes only while the preference is `System` |
 | [`IProcessRunner`](../src/TaskbarFolders.Manager/Services/IProcessRunner.cs) | `RunAndWaitAsync(ProcessStartInfo, TimeSpan, …)` returning the exit code; `TryStart(ProcessStartInfo)` without waiting |
-| [`IUserConfirmation`](../src/TaskbarFolders.Manager/Services/IUserConfirmation.cs) | `Confirm()` and `Notify()`, so view models stay free of `MessageBox` |
+| [`IUserConfirmation`](../src/TaskbarFolders.Manager/Services/IUserConfirmation.cs) | `Confirm()` and `Notify()`, so view models stay free of `MessageBox`. The Manager's implementation is `InAppUserConfirmation`: `Notify` shows a `NoticeWindow` in the Manager's theme, modal like the message box it replaces; `Confirm` still asks with the system message box, because its answer decides what happens next. |
 | [`IShellRestarter`](../src/TaskbarFolders.Manager/Services/IShellRestarter.cs) | `RestartAsync()`: ends this session's `explorer.exe` and starts it if Windows does not; only after the user agrees (offered after a deleted group's tile is unpinned) |
 | [`IGroupIconReader`](../src/TaskbarFolders.Manager/Services/IGroupIconReader.cs) | `TryRead(groupId)`: the group's current taskbar icon for the sidebar, decoded from `GroupIconFiles.FindCurrent` at 48 px; `null` before the group has one |
 

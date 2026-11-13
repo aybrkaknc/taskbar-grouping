@@ -162,7 +162,7 @@ Diesen Ordner erreichen Sie jederzeit über **⋯ → Show shortcut…** neben *
 
 ## Eine Gruppe benutzen
 
-Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fenster mit allen Programmen der Gruppe. Unter Windows 11 22H2 und neuer liegt es standardmäßig auf Mica, demselben Material wie der Manager; wählbar sind stattdessen Mica Alt, ein verschwommenes Glas (Acrylic) oder eine schlichte, deckende Fläche — siehe *Popup backdrop* unter [Einstellungen](#einstellungen) und *Backdrop* unter [Aufbau des Aufklapp-Fensters](#aufbau-des-aufklapp-fensters). Ältere Versionen zeigen eine schlichte durchscheinende Fläche.
+Klicken Sie auf die angeheftete Kachel. Neben der Taskleiste öffnet sich ein Fenster mit allen Programmen der Gruppe. Der erste Klick nach der Anmeldung startet den Launcher von TaskbarFolders, der danach im Infobereich der Taskleiste (Tray) bleibt; weitere Klicks werden an ihn übergeben, daher öffnet sich das Fenster in einem Bruchteil einer Sekunde. Ein Rechtsklick auf sein Symbol dort bietet **Open Taskbar Folders** und **Exit**. Unter Windows 11 22H2 und neuer liegt es standardmäßig auf Mica, demselben Material wie der Manager; wählbar sind stattdessen Mica Alt, ein verschwommenes Glas (Acrylic) oder eine schlichte, deckende Fläche — siehe *Popup backdrop* unter [Einstellungen](#einstellungen) und *Backdrop* unter [Aufbau des Aufklapp-Fensters](#aufbau-des-aufklapp-fensters). Ältere Versionen zeigen eine schlichte durchscheinende Fläche.
 
 ![Das Aufklapp-Fenster](../assets/screenshots/popup.png)
 
@@ -212,6 +212,7 @@ Zu erreichen über den **⚙**-Knopf oben rechts.
 | Popup tint | None, Accent, Midnight, Forest, Sunset | None | Eine Farbe über dem Hintergrund jedes Aufklapp-Fensters: *Accent* ist die in Windows gewählte Akzentfarbe, die übrigen sind feste Töne in Blau, Grün und Orange. Jede gibt es in einer dunklen und einer hellen Fassung, auf der die Namen im jeweiligen Erscheinungsbild lesbar bleiben. Eine Gruppe kann unter *Appearance* ihre eigene Wahl treffen. |
 | Enable popup animations | ein / aus | ein | Blendet das Aufklapp-Fenster animiert ein. |
 | Start TaskbarFolders Manager when Windows starts | ein / aus | aus | Startet den Manager bei der Anmeldung. |
+| Keep the launcher running in the notification area | ein / aus | ein | Hält den Launcher nach dem Schließen eines Fensters geladen, damit der nächste Klick sofort öffnet. Aus: Jeder Klick startet einen Launcher, der mit seinem Fenster beendet wird; das ist langsamer. Die Änderung gilt beim nächsten Start des Launchers.
 | Show "Taskbar Groups" in Explorer's right-click menu | ein / aus | ein | Zeigt Ihre Gruppen unter *Weitere Optionen anzeigen* für `.exe`- und `.lnk`-Dateien. Der Manager hält die Liste aktuell. |
 
 Jede Einstellung wirkt und wird gespeichert, sobald Sie sie ändern; es gibt keine Save-Schaltfläche, **Close** schließt nur das Fenster. Lehnt Windows eine Änderung ab — etwa weil der Autostart-Eintrag nicht geschrieben werden kann —, erklärt eine Meldung das, und der Haken springt auf den tatsächlichen Zustand zurück.

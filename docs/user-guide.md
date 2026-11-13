@@ -106,7 +106,7 @@ You can open that folder yourself at any time with **⋯ → Show shortcut…** 
 
 ## Using a group
 
-Click the pinned tile. A popup opens next to the taskbar, anchored near the tile you clicked, showing every app in the group. On Windows 11 22H2 and later it sits on Mica by default, the same material as the Manager; you can choose Mica Alt, a blurred glass (Acrylic) or a plain opaque panel instead — see *Popup backdrop* in [Settings](#settings) and *Backdrop* under [Popup layout](#popup-layout). Older versions get a plain translucent panel.
+Click the pinned tile. A popup opens next to the taskbar, anchored near the tile you clicked, showing every app in the group. The first click after you sign in starts TaskbarFolders' launcher, which then stays in the notification area (the system tray); later clicks are handed to it, so the popup opens in a fraction of a second. Right-click the launcher's icon there for **Open Taskbar Folders** or **Exit**. On Windows 11 22H2 and later it sits on Mica by default, the same material as the Manager; you can choose Mica Alt, a blurred glass (Acrylic) or a plain opaque panel instead — see *Popup backdrop* in [Settings](#settings) and *Backdrop* under [Popup layout](#popup-layout). Older versions get a plain translucent panel.
 
 ![The popup](../assets/screenshots/popup.png)
 
@@ -157,6 +157,7 @@ Open with the **⚙** button in the top right.
 | Popup backdrop | Mica, Mica Alt, Acrylic, Off | Mica | What every popup is drawn on. *Mica* matches the Manager; *Mica Alt* shows your desktop's colour more strongly; *Acrylic* blurs whatever is behind the popup; *Off* is a plain opaque panel. A group can choose its own on *Appearance*. Windows 11 22H2 and later. |
 | Popup tint | None, Accent, Midnight, Forest, Sunset | None | A colour laid over every popup's backdrop: *Accent* is the accent colour you chose in Windows, the others are fixed shades of blue, green and orange. Each comes in a dark and a light version that keeps the names readable in its theme. A group can choose its own on *Appearance*. |
 | Enable popup animations | on / off | on | Turns the popup's open animation on or off. |
+| Keep the launcher running in the notification area | on / off | on | Keeps the launcher loaded after a popup closes, so the next click opens at once. Off: every click starts a launcher that exits with its popup, which is slower. The change applies the next time a launcher starts.|
 | Start TaskbarFolders Manager when Windows starts | on / off | off | Adds or removes the per-user Run registry entry. |
 | Show "Taskbar Groups" in Explorer's right-click menu | on / off | on | Lists your groups under *Show more options* for `.exe` and `.lnk` files. Kept up to date by the Manager. |
 

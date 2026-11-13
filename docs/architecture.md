@@ -15,7 +15,8 @@ graph TB
 
     subgraph Applications
         Manager[Manager<br/>WPF - group management]
-        Launcher[Launcher<br/>WPF - one popup per click]
+        Click[Click client<br/>native AOT - forwards a click]
+        Launcher[Launcher<br/>WPF - resident, one popup per open]
     end
 
     subgraph Libraries
@@ -56,7 +57,7 @@ The Launcher targets `net8.0-windows10.0.19041.0` rather than `net8.0-windows`; 
 
 ## Grouping: one launcher, many identities
 
-There is exactly **one** `TaskbarFolders.Launcher.exe`. Groups are not separate binaries; they are separate *shell identities* pointing at that one binary.
+There is exactly **one** `TaskbarFolders.Launcher.exe`, and it stays running after its popup closes (ADR-010). Groups are not separate binaries; they are separate *shell identities* pointing at the shared binary. The shortcuts target `TaskbarFolders.Click.exe` next to it when that is present: a 2 MB native-AOT program that hands the click to the resident launcher over a named pipe and exits, and starts the launcher itself when none is running.
 
 Each group gets a `.lnk` in `%APPDATA%\TaskbarFolders\shortcuts\` that:
 
@@ -154,7 +155,9 @@ The popup closes on a click outside it, Escape, its ✕ button, focus loss, a su
 
 All of these end in `Window.Close()`, and `OnClosing` is the single place that applies the fade-out: with animations on it cancels the first request, plays `CloseAnimation` on `ChromeRoot` (about 120 ms), and closes for real on `Completed` or after a 300 ms safety net. Clicks outside are detected by `OutsideClickWatcher`, a process-local `WH_MOUSE_LL` hook installed on `ContentRendered` and removed when the popup closes, because `Deactivated` only fires for a popup that was activated in the first place.
 
-Clicking the group's tile while its popup is open closes it and opens nothing. The hook sees the press on the tile first; when it lies within 40 DIP of the click that opened the popup, the launcher leaves a per-group marker (`TileToggle`, a named event) and, after the window has closed, keeps its process alive for up to 1.5 s. The launcher the shell starts for that same click finds the marker, signals it and exits without a window.
+Clicking the group's tile while its popup is open closes it and opens nothing. The hook sees the press on the tile first; when it lies within 40 DIP of the click that opened the popup, the resident launcher remembers that the group was just closed by its own tile (`HostRouter`, for 1.5 s). The request the click then sends is dropped, so the tile does not reopen what the press closed. Outside that window a request for an open group closes it, and a request that carries files never toggles (`PopupHost`, `HostRouter`).
+
+Each open gets its own `PopupSession`: the view model, the file adder and the window are created for that popup and disposed with it, while the services shared between popups live in the container. Settings and the theme are read again on every open. The resident launcher's tray icon (`TrayIcon`) offers *Open* and *Exit*, and an idle host trims its working set about five seconds after the last popup closes (`IdleTrimmer`). The host is found through the named mutex `Local\TaskbarFolders.Host` and the pipe `TaskbarFolders.Host.<user>.<session>` (`HostEndpoint`, `HostElection`, `HostPipeServer`, `HostForwarder`). When a host exists and does not acknowledge within 400 ms, the launcher shows its popup itself.
 
 The popup has two window modes, chosen in its constructor before the HWND exists. On Windows 11 22H2+ it is a non-layered window whose `WindowChrome` glass frame covers the client area, with a DWM material behind it — Mica, Mica Alt or Acrylic, the group's choice or else the default in Settings — tinted by the theme, and rounded corners; with the backdrop *Off* it asks DWM for none and paints the opaque `PopupSolidBackground` panel. Elsewhere it stays a layered (`AllowsTransparency`) window and paints a translucent fallback panel, because DWM never draws a backdrop behind a layered window. See [ADR-004](adr/004-popup-acrylic-backdrop.md).
 

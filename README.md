@@ -217,7 +217,7 @@ Autostart is a per-user `HKCU\…\CurrentVersion\Run` entry — no scheduled tas
 
 ### How it works
 
-Every group gets its own `.lnk` in `%APPDATA%\TaskbarFolders\shortcuts\`. The shortcut points at the **one shared** `TaskbarFolders.Launcher.exe`, passes `--group-id`, uses the group's generated `.ico`, and carries a distinct AppUserModelID (`TaskbarFolders.Group.<id>`) stamped through `IPropertyStore`. Windows treats each AppUserModelID as a separate application, which is what makes the groups sit next to each other on the taskbar as independent tiles.
+Every group gets its own `.lnk` in `%APPDATA%\TaskbarFolders\shortcuts\`. The shortcut points at the **one shared** `TaskbarFolders.Click.exe` that sits next to `TaskbarFolders.Launcher.exe`. It passes `--group-id`, uses the group's generated `.ico`, and carries a distinct AppUserModelID (`TaskbarFolders.Group.<id>`) stamped through `IPropertyStore`. Windows treats each AppUserModelID as a separate application, which is what makes the groups sit next to each other on the taskbar as independent tiles.
 
 A matching shortcut is also written into the Start menu. That copy is not cosmetic: Windows only persists a programmatic pin if the AppUserModelID is already known to the Start menu index.
 
@@ -227,15 +227,15 @@ graph LR
     A --> C[Shortcut<br/>shortcuts/&lt;id&gt;.lnk<br/>AUMID + --group-id]
     B --> C
     C --> D[Taskbar tile]
-    D -->|click| E[Launcher.exe<br/>--group-id]
-    E --> F[Popup grid]
+    D -->|click| E[Click.exe<br/>hands the click over]
+    E -->|named pipe| F[Resident launcher<br/>popup grid]
 ```
 
 <p align="center">
   <img src="assets/screenshots/popup.png" alt="The popup: the group's name and buttons above its apps, on Mica" width="310">
 </p>
 
-Full detail in [docs/architecture.md](docs/architecture.md), and the reasoning behind the shared-launcher design in [ADR-002](docs/adr/002-per-group-lnk-aumid.md).
+The launcher stays running in the notification area after its first popup, so later clicks open a popup in about a tenth of a second instead of starting a new program each time (see [ADR-010](docs/adr/010-resident-launcher-host.md)). Full detail in [docs/architecture.md](docs/architecture.md), and the reasoning behind the shared-launcher design in [ADR-002](docs/adr/002-per-group-lnk-aumid.md).
 
 <p align="right">(<a href="#usage">back to top</a>)</p>
 

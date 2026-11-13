@@ -2,7 +2,7 @@
 
 Releases are cut from `develop` by pushing a `v*` tag. Everything after that is automated except the verification that matters most — actually installing the result.
 
-## Version numbers live in five places
+## Version numbers live in four places
 
 They must all agree before the tag is pushed. Nothing checks this for you.
 
@@ -11,7 +11,6 @@ They must all agree before the tag is pushed. Nothing checks this for you.
 | `Directory.Build.props` | `<Version>` — feeds every assembly |
 | `installer/setup.iss` | `#define MyAppVersion` — shown in the wizard and in Add or Remove Programs |
 | `src/TaskbarFolders.Manager/app.manifest` | `assemblyIdentity version` — four-part form, e.g. `0.4.5.0` |
-| `README.md` | the status line under the badges |
 | `CHANGELOG.md` | a new section for the version, dated |
 
 `app.manifest` was stuck at `0.2.0.0` from v0.2.0 until v0.4.5 because it was not on this list. Nothing reads it for versioning, so the drift was invisible — which is exactly why it needs to stay on the list.

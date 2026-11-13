@@ -57,6 +57,14 @@ The launcher records why it gave up before it exits.
 | Pin | 3 | Pinning failed unexpectedly |
 | Pin | 5 | Windows reported success, but no tile carrying the group's identity was found |
 
+## The popup opens slowly, or a launcher stays in the notification area
+
+The first click after sign-in starts the launcher, which stays in the notification area so that later clicks open at once. The first click is the slow one, and the launcher remains after its popup closes; that is intended. To go back to one launcher per click, turn off *Keep the launcher running in the notification area* in Settings. The change applies the next time a launcher starts.
+
+To see where the time goes, open `%APPDATA%\TaskbarFolders\logs\perf-launcher-<date>.jsonl`. Each line is one measurement: `popup.first_render` gives the time to the first frame, `icon.load` each icon, `app.launch` each start. Attach the lines for the slow click to a report.
+
+If the tray icon is missing, the launcher is probably no longer running, for example after you chose *Exit*. Click a pinned tile: that starts a launcher again, and it adds its icon back.
+
 ## Clicking a pinned tile does nothing
 
 A brief busy cursor and then nothing means the launcher started and exited.
