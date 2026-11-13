@@ -66,6 +66,7 @@ public static class LauncherServiceCollectionExtensions
         services.AddSingleton<IShortcutReader, ShortcutReader>();
         services.AddSingleton<PinVerifier>();
         services.AddSingleton<TaskbarPinRunner>();
+        services.AddSingleton<PerfRecorder>();
 
         services.AddSingleton<PopupViewModel>();
         services.AddTransient<PopupWindow>();

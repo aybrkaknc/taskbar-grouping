@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -41,6 +42,9 @@ public partial class App : Application
     private ServiceProvider? _services;
     private PopupPresence? _presence;
     private TileToggle? _tileToggle;
+
+    // Runs before Main creates the App, so the warm-up starts as early as it can.
+    static App() => StartRenderWarmup();
 
     /// <summary>
     /// Gets the application service provider once <see cref="OnStartup"/> has completed.
@@ -270,6 +274,7 @@ public partial class App : Application
         _services.GetRequiredService<ICursorAnchor>().Seed(anchor);
 
         var logger = _services.GetRequiredService<ILogger<App>>();
+        var perf = _services.GetRequiredService<PerfRecorder>();
         logger.LogInformation("Launcher starting for group {GroupId}.", groupId);
 
         // Files after the group id come from Explorer's "Taskbar Groups" menu.
@@ -311,6 +316,13 @@ public partial class App : Application
         await viewModel.LoadAsync().ConfigureAwait(true);
         var tVm = Stopwatch.GetTimestamp();
 
+        // Icon extraction needs the tile metrics and the app list, both set by LoadAsync, but
+        // not the window: it runs on the thread pool while the UI thread builds, places and
+        // shows the window, so the icons are ready sooner after the first frame. Results are
+        // applied through the dispatcher and bound when the window appears.
+        viewModel.StartIconLoad();
+        var tIcons = Stopwatch.GetTimestamp();
+
         var popup = _services.GetRequiredService<Views.PopupWindow>();
         var tWindow = Stopwatch.GetTimestamp();
         MainWindow = popup;
@@ -330,7 +342,6 @@ public partial class App : Application
         long tPlaced = 0;
         long tShown = 0;
         long tActivated = 0;
-        long tIcons = 0;
 
         // Attached after the constructor, so it runs after the window's own
         // SourceInitialized handler: the HWND exists and size + placement are computed.
@@ -352,6 +363,23 @@ public partial class App : Application
                 ToMs(tStart, tPlaced != 0 ? tPlaced : tLoaded),
                 ToMs(tStart, tShown != 0 ? tShown : tLoaded),
                 ToMs(tStart, tLoaded));
+
+            // The same checkpoints, as one machine-readable record in perf-launcher-<day>.jsonl.
+            // ms_since_process_start on the record is the time at which this handler ran.
+            perf.Record(
+                "popup.loaded",
+                ("group", groupId),
+                ("apps", viewModel.Apps.Count),
+                ("process_age_ms", processAge),
+                ("runtime_ms", processAge - ToMs(tStart, tLoaded)),
+                ("aumid_ms", ToMs(tStart, tAumid)),
+                ("settings_ms", ToMs(tStart, tSettings)),
+                ("di_ms", ToMs(tStart, tDi)),
+                ("theme_ms", ToMs(tStart, tTheme)),
+                ("vm_ms", ToMs(tStart, tVm)),
+                ("window_ms", ToMs(tStart, tWindow)),
+                ("placed_ms", ToMs(tStart, tPlaced != 0 ? tPlaced : tLoaded)),
+                ("loaded_ms", ToMs(tStart, tLoaded)));
         };
 
         // Second line, kept separate so the Loaded line survives if this one never comes.
@@ -371,6 +399,21 @@ public partial class App : Application
                 ToMs(tStart, tActivated),
                 ToMs(tStart, tIcons),
                 rendered);
+
+            // The window's own marks (XAML load, HWND, DWM, layout, placement, Win32 messages),
+            // in the order they were taken, measured from the same origin as the fields above.
+            var fields = new List<(string Key, object? Value)>
+            {
+                ("group", groupId),
+                ("process_age_ms", processAge),
+                ("runtime_ms", processAge - rendered),
+                ("shown_ms", ToMs(tStart, tShown)),
+                ("activated_ms", ToMs(tStart, tActivated)),
+                ("icons_started_ms", ToMs(tStart, tIcons)),
+                ("rendered_ms", rendered),
+            };
+            fields.AddRange(popup.Marks.ToFields(tStart));
+            perf.Record("popup.first_render", fields.ToArray());
         };
 
         // A press on the tile that opened the popup is also the click that starts the next
@@ -384,7 +427,9 @@ public partial class App : Application
             }
         };
 
+        popup.Marks.Mark("show_call");
         popup.Show();
+        popup.Marks.Mark("show_returned");
         tShown = Stopwatch.GetTimestamp();
 
         // Explicitly request activation (parity with pin mode). Show() alone does not
@@ -392,9 +437,6 @@ public partial class App : Application
         // dismiss-on-focus-loss depends on the popup having been activated once.
         popup.Activate();
         tActivated = Stopwatch.GetTimestamp();
-
-        viewModel.StartIconLoad();
-        tIcons = Stopwatch.GetTimestamp();
 
         // Later launchers that add files to this group ask this popup to show them.
         _presence.ListenForReload(() => Dispatcher.BeginInvoke(new Func<Task>(viewModel.ReloadAsync)));
@@ -407,6 +449,39 @@ public partial class App : Application
             .FirstOrDefault()?.StartBackgroundPrune();
 
         base.OnStartup(e);
+    }
+
+    // WPF connects to the desktop compositor the first time any visual property changes, and
+    // waits for the native render thread to answer: ~80 ms of a cold start (a CPU profile of
+    // the popup's open, under PopupWindow's InitializeComponent). That start-up is per process,
+    // not per window, so a throwaway element on a helper thread with its own dispatcher can pay
+    // it while this thread builds the Application, the services and the view model.
+    // Best effort: if anything goes wrong the real window simply pays the cost itself.
+    private static void StartRenderWarmup()
+    {
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                _ = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+                var probe = new System.Windows.Controls.Border { Opacity = 0.5 };
+
+                // Stays alive until the process ends: shutting the dispatcher down tears the
+                // channel down again, and that teardown can hold up the real window's connect.
+                GC.KeepAlive(probe);
+                Thread.Sleep(Timeout.Infinite);
+            }
+            catch (Exception)
+            {
+                // Warm-up only; the window works the same without it.
+            }
+        })
+        {
+            Name = "WpfRenderWarmup",
+            IsBackground = true,
+        };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
     }
 
     private static double ToMs(long from, long to) => (to - from) * 1000.0 / Stopwatch.Frequency;

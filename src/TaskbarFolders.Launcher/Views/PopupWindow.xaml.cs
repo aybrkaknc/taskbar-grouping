@@ -89,6 +89,9 @@ public sealed partial class PopupWindow : Window, IDisposable
     /// </summary>
     public bool DismissesOnOutsideInteraction => !_dismissSuspended && !_viewModel.IsPinned;
 
+    /// <summary>Named timestamps of the steps of opening, read by the launcher's perf record.</summary>
+    internal PerfMarks Marks { get; } = new();
+
     /// <summary>Initializes a new instance of the <see cref="PopupWindow"/> class.</summary>
     public PopupWindow(
         PopupViewModel viewModel,
@@ -99,7 +102,9 @@ public sealed partial class PopupWindow : Window, IDisposable
         ArgumentNullException.ThrowIfNull(positionHelper);
         ArgumentNullException.ThrowIfNull(settings);
 
+        Marks.Mark("ctor_start");
         InitializeComponent();
+        Marks.Mark("initcomponent");
         _viewModel = viewModel;
         _positionHelper = positionHelper;
         _settings = settings;
@@ -117,6 +122,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         _backdrop = PopupBackdropChoice.Resolve(viewModel.Backdrop, settings.PopupBackdrop);
         _tint = PopupBackdropChoice.ResolveTint(viewModel.Tint, settings.PopupTint);
         _useSystemBackdrop = WindowBackdrop.IsSupported;
+        Marks.Mark("backdrop_supported_checked");
         if (_useSystemBackdrop)
         {
             AllowsTransparency = false;
@@ -149,6 +155,31 @@ public sealed partial class PopupWindow : Window, IDisposable
         PreviewKeyDown += OnPreviewKeyDown;
         ContentRendered += OnContentRendered;
         SourceInitialized += OnSourceInitialized;
+        Loaded += (_, _) => Marks.Mark("loaded");
+        Marks.Mark("ctor_end");
+    }
+
+    // First occurrence of the messages that bracket showing the window; their marks say how long
+    // each stage of Window.Show takes. Never handles a message.
+    private IntPtr MarkMessages(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        var name = msg switch
+        {
+            0x0083 => "wm_nccalcsize",
+            0x0018 => "wm_showwindow",
+            0x0047 => "wm_windowposchanged",
+            0x0006 => "wm_activate",
+            0x0007 => "wm_setfocus",
+            0x000F => "wm_paint",
+            0x031E => "wm_dwmcompositionchanged",
+            _ => null,
+        };
+        if (name is not null)
+        {
+            Marks.Mark(name);
+        }
+
+        return IntPtr.Zero;
     }
 
     /// <summary>
@@ -159,6 +190,7 @@ public sealed partial class PopupWindow : Window, IDisposable
     /// </summary>
     private void OnContentRendered(object? sender, EventArgs e)
     {
+        Marks.Mark("content_rendered");
         ContentRendered -= OnContentRendered;
 
         // The first tile takes the focus, so Enter launches it without a click (upstream #26).
@@ -356,6 +388,9 @@ public sealed partial class PopupWindow : Window, IDisposable
 
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
+        Marks.Mark("source_initialized");
+        HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(MarkMessages);
+
         if (_useSystemBackdrop)
         {
             ApplySystemBackdrop();
@@ -365,7 +400,9 @@ public sealed partial class PopupWindow : Window, IDisposable
             PaintPanel(_backdrop == PopupBackdrop.Off ? "PopupSolidBackground" : "PopupFallbackBackground");
         }
 
+        Marks.Mark("backdrop_done");
         ApplySizeAndPlacement();
+        Marks.Mark("size_placement_done");
 
         if (_settings.EnableAnimations && TryFindResource("OpenAnimation") is Storyboard storyboard)
         {
@@ -429,6 +466,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         var dark = LauncherThemeApplier.Resolve(_settings.Theme) == ThemePreference.Dark;
         _ = WindowBackdrop.TrySetDarkTitleBar(hwnd, dark);
         _ = WindowBackdrop.TrySetRoundedCorners(hwnd);
+        Marks.Mark("dwm_attributes_set");
 
         if (_backdrop == PopupBackdrop.Off)
         {
@@ -782,13 +820,15 @@ public sealed partial class PopupWindow : Window, IDisposable
         // unchanged, which is exactly the case on a repeat pass — invalidate so DesiredSize
         // reflects the strip's current state rather than the previous one.
         UpdateLayout();
+        Marks.Mark("layout_pass_1");
         ChromeRoot.InvalidateMeasure();
         ChromeRoot.Measure(new Size(Width, double.PositiveInfinity));
         Height = Math.Clamp(ChromeRoot.DesiredSize.Height, MinHeight, MaxHeight);
-
+        Marks.Mark("chrome_measured");
 
         // Second pass so hit-test / DesiredSize match the new explicit size before placement.
         UpdateLayout();
+        Marks.Mark("layout_pass_2");
 
         // Past MaxHeight the tile grid scrolls (issue #32), and the vertical bar takes its width
         // out of the viewport, which would squeeze the fixed-size tiles; widen the window by
@@ -804,6 +844,7 @@ public sealed partial class PopupWindow : Window, IDisposable
         }
 
         var placement = _positionHelper.ComputePlacement(new Size(Width, Height), _settings.PopupPosition);
+        Marks.Mark("placement_computed");
         Left = placement.Left;
         Top = placement.Top;
 
