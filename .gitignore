@@ -60,3 +60,7 @@ installer/Output/
 
 ## Publish output
 publish/
+
+## Local AI tooling notes (not part of the project)
+CLAUDE.md
+Instructions.md
