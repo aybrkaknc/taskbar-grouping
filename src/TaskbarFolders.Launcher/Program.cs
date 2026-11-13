@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using TaskbarFolders.Core.Shortcuts;
 using TaskbarFolders.Launcher.Configuration;
 using TaskbarFolders.Launcher.Hosting;
